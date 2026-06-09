@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "mySCP",
+    "slug": "myscp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "myscp",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F5132"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
