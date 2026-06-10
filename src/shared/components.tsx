@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,7 +32,7 @@ export function Screen({ title, eyebrow, children }: ScreenProps) {
 
   return (
     <SafeAreaView style={globalStyles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={globalStyles.content}>
+      <ScrollView contentContainerStyle={[globalStyles.content, width >= 768 && styles.wideContent]}>
         <View style={styles.screenHeader}>
           {showDrawerButton ? (
             <Pressable
@@ -81,22 +81,118 @@ export function Card({ children }: { children: ReactNode }) {
   return <View style={styles.card}>{children}</View>;
 }
 
+export function CompactCard({ children }: { children: ReactNode }) {
+  return <View style={styles.compactCard}>{children}</View>;
+}
+
 export function Row({ children }: { children: ReactNode }) {
   return <View style={styles.row}>{children}</View>;
 }
 
-export function Pill({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "primary" | "accent" }) {
+export function Pill({
+  label,
+  tone = "neutral"
+}: {
+  label: string;
+  tone?: "neutral" | "primary" | "accent" | "success" | "danger";
+}) {
   return (
-    <View style={[styles.pill, tone === "primary" && styles.pillPrimary, tone === "accent" && styles.pillAccent]}>
+    <View
+      style={[
+        styles.pill,
+        tone === "primary" && styles.pillPrimary,
+        tone === "accent" && styles.pillAccent,
+        tone === "success" && styles.pillSuccess,
+        tone === "danger" && styles.pillDanger
+      ]}
+    >
       <Text style={[styles.pillText, tone !== "neutral" && styles.pillStrongText]}>{label}</Text>
     </View>
   );
 }
 
-export function Button({ label, variant = "primary" }: { label: string; variant?: "primary" | "secondary" }) {
+export function FilterChip({
+  label,
+  selected,
+  onPress
+}: {
+  label: string;
+  selected?: boolean;
+  onPress?: () => void;
+}) {
   return (
-    <Pressable style={[styles.button, variant === "secondary" && styles.secondaryButton]}>
-      <Text style={[styles.buttonText, variant === "secondary" && styles.secondaryButtonText]}>{label}</Text>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.filterChip, selected && styles.filterChipSelected]}
+    >
+      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+export function SearchField({
+  value,
+  onChangeText,
+  placeholder
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <View style={styles.searchBox}>
+      <Ionicons name="search" color={theme.colors.muted} size={18} />
+      <TextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.colors.muted}
+        style={styles.searchInput}
+        value={value}
+      />
+    </View>
+  );
+}
+
+export function ProgressBar({ value }: { value: number }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  return (
+    <View style={styles.progressTrack}>
+      <View style={[styles.progressFill, { width: `${clamped}%` }]} />
+    </View>
+  );
+}
+
+export function MetaText({ children }: { children: ReactNode }) {
+  return <Text style={styles.meta}>{children}</Text>;
+}
+
+export function Button({
+  label,
+  variant = "primary",
+  onPress
+}: {
+  label: string;
+  variant?: "primary" | "secondary" | "ghost";
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.button, variant === "secondary" && styles.secondaryButton, variant === "ghost" && styles.ghostButton]}
+    >
+      <Text
+        style={[
+          styles.buttonText,
+          variant === "secondary" && styles.secondaryButtonText,
+          variant === "ghost" && styles.ghostButtonText
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -112,6 +208,11 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0,
     textTransform: "uppercase"
+  },
+  wideContent: {
+    alignSelf: "center",
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl
   },
   screenHeader: {
     alignItems: "flex-start",
@@ -180,7 +281,23 @@ export const styles = StyleSheet.create({
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     gap: theme.spacing.sm,
-    padding: theme.spacing.md
+    padding: theme.spacing.md,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6
+  },
+  compactCard: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    gap: theme.spacing.xs,
+    padding: theme.spacing.md,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5
   },
   row: {
     alignItems: "center",
@@ -200,7 +317,13 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.primarySoft
   },
   pillAccent: {
-    backgroundColor: "#FBEFD8"
+    backgroundColor: theme.colors.accentSoft
+  },
+  pillSuccess: {
+    backgroundColor: theme.colors.successSoft
+  },
+  pillDanger: {
+    backgroundColor: theme.colors.dangerSoft
   },
   pillText: {
     color: theme.colors.muted,
@@ -209,6 +332,62 @@ export const styles = StyleSheet.create({
   },
   pillStrongText: {
     color: theme.colors.ink
+  },
+  filterChip: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs
+  },
+  filterChipSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary
+  },
+  filterChipText: {
+    color: theme.colors.ink,
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  filterChipTextSelected: {
+    color: "#FFFFFF"
+  },
+  searchBox: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: theme.spacing.md
+  },
+  searchInput: {
+    color: theme.colors.ink,
+    flex: 1,
+    fontSize: 16,
+    minHeight: 48
+  },
+  progressTrack: {
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: 999,
+    height: 8,
+    overflow: "hidden"
+  },
+  progressFill: {
+    backgroundColor: theme.colors.accent,
+    borderRadius: 999,
+    height: "100%"
+  },
+  meta: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    lineHeight: 18
   },
   button: {
     alignItems: "center",
@@ -223,6 +402,10 @@ export const styles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: theme.colors.primarySoft
   },
+  ghostButton: {
+    backgroundColor: "transparent",
+    minHeight: 44
+  },
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
@@ -233,10 +416,14 @@ export const styles = StyleSheet.create({
   secondaryButtonText: {
     color: theme.colors.primary
   },
+  ghostButtonText: {
+    color: theme.colors.primary
+  },
   sectionTitle: {
     color: theme.colors.ink,
     fontSize: 18,
-    fontWeight: "800"
+    fontWeight: "900",
+    lineHeight: 24
   },
   body: {
     color: theme.colors.ink,

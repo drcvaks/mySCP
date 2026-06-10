@@ -42,7 +42,7 @@ export default function MyChaburahScreen() {
           <Row key={file.id}>
             <View style={{ flex: 1 }}>
               <Text style={styles.body}>{file.title}</Text>
-              <Text style={styles.muted}>Week {file.week} · {fileTypeLabel(file.fileType)}</Text>
+              <Text style={styles.muted}>Week {file.week} - {fileTypeLabel(file.fileType)}</Text>
             </View>
             <Pill label={file.visibility === "everyone" ? "Everyone" : "Local"} />
           </Row>
