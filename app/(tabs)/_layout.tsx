@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { Platform, useWindowDimensions } from "react-native";
 import { currentUser } from "../../src/data/mockData";
 import { isAdmin, isGlobalAdmin, isRabbi } from "../../src/shared/permissions";
 import { theme } from "../../src/shared/theme";
@@ -14,7 +15,8 @@ const iconMap = {
   "rabbi-hub": "library-outline",
   admin: "settings-outline",
   "global-admin": "globe-outline",
-  profile: "person-outline"
+  profile: "person-outline",
+  settings: "options-outline"
 } as const;
 
 type TabName = keyof typeof iconMap;
@@ -26,10 +28,13 @@ function tabIcon(name: TabName) {
 }
 
 export default function TabLayout() {
+  const { width } = useWindowDimensions();
+  const compactPhoneNav = Platform.OS === "android" && width < 768;
   const showRabbiHub = isRabbi(currentUser) || isGlobalAdmin(currentUser);
   const showAdmin = isAdmin(currentUser) || isRabbi(currentUser) || isGlobalAdmin(currentUser);
   const showGlobalAdmin = isGlobalAdmin(currentUser);
   const showProfile = currentUser.role === "participant";
+  const leftRailNav = Platform.OS === "web" || width >= 768;
 
   return (
     <Tabs
@@ -37,41 +42,46 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.muted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarIconStyle: { marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: "700", lineHeight: 15 },
+        tabBarPosition: leftRailNav ? "left" : "bottom",
         tabBarStyle: {
           borderTopColor: theme.colors.border,
-          minHeight: 64,
+          borderRightColor: leftRailNav ? theme.colors.border : undefined,
+          minHeight: leftRailNav ? undefined : 72,
+          paddingBottom: leftRailNav ? 0 : 10,
           paddingTop: 8,
-          paddingBottom: 8
+          width: leftRailNav ? 220 : undefined
         }
       }}
     >
       <Tabs.Screen name="dashboard" options={{ title: "Dashboard", tabBarIcon: tabIcon("dashboard") }} />
       <Tabs.Screen name="chaburah" options={{ title: "My Chaburah", tabBarIcon: tabIcon("chaburah") }} />
-      <Tabs.Screen name="files" options={{ title: "Files", tabBarIcon: tabIcon("files") }} />
       <Tabs.Screen name="review" options={{ title: "Review", tabBarIcon: tabIcon("review") }} />
-      <Tabs.Screen name="directory" options={{ title: "Directory", tabBarIcon: tabIcon("directory") }} />
-      <Tabs.Screen name="ask-rav" options={{ title: "Ask Rav", tabBarIcon: tabIcon("ask-rav") }} />
+      <Tabs.Screen name="files" options={{ title: "Files", tabBarIcon: tabIcon("files") }} />
+      <Tabs.Screen name="directory" options={{ title: "Directory", tabBarIcon: tabIcon("directory"), href: compactPhoneNav ? null : undefined }} />
+      <Tabs.Screen name="ask-rav" options={{ title: "Ask Rav", tabBarIcon: tabIcon("ask-rav"), href: null }} />
       <Tabs.Screen
         name="rabbi-hub"
-        options={{ title: "Rabbi Hub", tabBarIcon: tabIcon("rabbi-hub"), href: showRabbiHub ? undefined : null }}
+        options={{ title: "Rabbi Hub", tabBarIcon: tabIcon("rabbi-hub"), href: showRabbiHub && !compactPhoneNav ? undefined : null }}
       />
       <Tabs.Screen
         name="admin"
-        options={{ title: "Admin", tabBarIcon: tabIcon("admin"), href: showAdmin ? undefined : null }}
+        options={{ title: "Admin", tabBarIcon: tabIcon("admin"), href: showAdmin && !compactPhoneNav ? undefined : null }}
       />
       <Tabs.Screen
         name="global-admin"
         options={{
-          title: "Global",
+          title: "Global Admin",
           tabBarIcon: tabIcon("global-admin"),
-          href: showGlobalAdmin ? undefined : null
+          href: showGlobalAdmin && !compactPhoneNav ? undefined : null
         }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: "Profile", tabBarIcon: tabIcon("profile"), href: showProfile ? undefined : null }}
+        options={{ title: "Profile", tabBarIcon: tabIcon("profile"), href: showProfile && !compactPhoneNav ? undefined : null }}
       />
+      <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: tabIcon("settings"), href: compactPhoneNav ? null : undefined }} />
     </Tabs>
   );
 }

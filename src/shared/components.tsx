@@ -1,5 +1,7 @@
-import { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ReactNode, useState } from "react";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { globalStyles, theme } from "./theme";
 
@@ -10,13 +12,67 @@ interface ScreenProps {
 }
 
 export function Screen({ title, eyebrow, children }: ScreenProps) {
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const showDrawerButton = Platform.OS === "android" && width < 768;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const drawerItems = [
+    { label: "Directory", href: "/(tabs)/directory" },
+    { label: "Rabbi Hub", href: "/(tabs)/rabbi-hub" },
+    { label: "Admin", href: "/(tabs)/admin" },
+    { label: "Global Admin", href: "/(tabs)/global-admin" },
+    { label: "Profile", href: "/(tabs)/profile" },
+    { label: "Settings", href: "/(tabs)/settings" }
+  ] as const;
+
+  function navigateTo(href: (typeof drawerItems)[number]["href"]) {
+    setMenuOpen(false);
+    router.push(href as never);
+  }
+
   return (
     <SafeAreaView style={globalStyles.screen} edges={["top"]}>
       <ScrollView contentContainerStyle={globalStyles.content}>
-        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-        <Text style={globalStyles.title}>{title}</Text>
+        <View style={styles.screenHeader}>
+          {showDrawerButton ? (
+            <Pressable
+              accessibilityLabel="Open navigation menu"
+              accessibilityRole="button"
+              onPress={() => setMenuOpen(true)}
+              style={styles.menuButton}
+            >
+              <Ionicons name="menu" color={theme.colors.ink} size={28} />
+            </Pressable>
+          ) : null}
+          <View style={styles.titleBlock}>
+            {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+            <Text style={globalStyles.title}>{title}</Text>
+          </View>
+        </View>
         {children}
       </ScrollView>
+      <Modal animationType="fade" transparent visible={menuOpen} onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={styles.drawerBackdrop} onPress={() => setMenuOpen(false)}>
+          <Pressable style={styles.drawerPanel}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>Menu</Text>
+              <Pressable
+                accessibilityLabel="Close navigation menu"
+                accessibilityRole="button"
+                onPress={() => setMenuOpen(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" color={theme.colors.ink} size={24} />
+              </Pressable>
+            </View>
+            {drawerItems.map((item) => (
+              <Pressable key={item.href} onPress={() => navigateTo(item.href)} style={styles.drawerItem}>
+                <Text style={styles.drawerItemText}>{item.label}</Text>
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -56,6 +112,67 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0,
     textTransform: "uppercase"
+  },
+  screenHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: theme.spacing.sm
+  },
+  titleBlock: {
+    flex: 1,
+    gap: 2
+  },
+  menuButton: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: "center",
+    width: 44
+  },
+  drawerBackdrop: {
+    backgroundColor: "rgba(31, 41, 51, 0.35)",
+    flex: 1
+  },
+  drawerPanel: {
+    backgroundColor: theme.colors.surface,
+    borderRightColor: theme.colors.border,
+    borderRightWidth: 1,
+    flex: 1,
+    gap: theme.spacing.xs,
+    padding: theme.spacing.md,
+    paddingTop: theme.spacing.xl,
+    width: 288
+  },
+  drawerHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.sm
+  },
+  drawerTitle: {
+    color: theme.colors.ink,
+    fontSize: 22,
+    fontWeight: "800"
+  },
+  closeButton: {
+    alignItems: "center",
+    height: 44,
+    justifyContent: "center",
+    width: 44
+  },
+  drawerItem: {
+    borderRadius: theme.radius.sm,
+    minHeight: 50,
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.md
+  },
+  drawerItemText: {
+    color: theme.colors.ink,
+    fontSize: 17,
+    fontWeight: "700"
   },
   card: {
     backgroundColor: theme.colors.surface,
@@ -97,18 +214,21 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radius.sm,
-    minHeight: 44,
+    alignSelf: "stretch",
     justifyContent: "center",
+    minHeight: 52,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm
+    paddingVertical: 13
   },
   secondaryButton: {
     backgroundColor: theme.colors.primarySoft
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "800"
+    fontSize: 16,
+    fontWeight: "800",
+    lineHeight: 21,
+    textAlign: "center"
   },
   secondaryButtonText: {
     color: theme.colors.primary

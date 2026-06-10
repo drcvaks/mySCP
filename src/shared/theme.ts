@@ -33,6 +33,7 @@ export const globalStyles = StyleSheet.create({
   },
   content: {
     padding: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
     gap: theme.spacing.md
   },
   title: {
