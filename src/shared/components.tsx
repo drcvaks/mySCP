@@ -17,12 +17,12 @@ export function Screen({ title, eyebrow, children }: ScreenProps) {
   const showDrawerButton = Platform.OS === "android" && width < 768;
   const [menuOpen, setMenuOpen] = useState(false);
   const drawerItems = [
-    { label: "Directory", href: "/(tabs)/directory" },
-    { label: "Rabbi Hub", href: "/(tabs)/rabbi-hub" },
-    { label: "Admin", href: "/(tabs)/admin" },
-    { label: "Global Admin", href: "/(tabs)/global-admin" },
-    { label: "Profile", href: "/(tabs)/profile" },
-    { label: "Settings", href: "/(tabs)/settings" }
+    { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" },
+    { label: "Rabbi Hub", href: "/(tabs)/rabbi-hub", icon: "library-outline" },
+    { label: "Admin", href: "/(tabs)/admin", icon: "settings-outline" },
+    { label: "Global Admin", href: "/(tabs)/global-admin", icon: "globe-outline" },
+    { label: "Profile", href: "/(tabs)/profile", icon: "person-outline" },
+    { label: "Settings", href: "/(tabs)/settings", icon: "options-outline" }
   ] as const;
 
   function navigateTo(href: (typeof drawerItems)[number]["href"]) {
@@ -67,6 +67,7 @@ export function Screen({ title, eyebrow, children }: ScreenProps) {
             </View>
             {drawerItems.map((item) => (
               <Pressable key={item.href} onPress={() => navigateTo(item.href)} style={styles.drawerItem}>
+                <Ionicons name={item.icon} color={theme.colors.primary} size={22} />
                 <Text style={styles.drawerItemText}>{item.label}</Text>
               </Pressable>
             ))}
@@ -265,9 +266,11 @@ export const styles = StyleSheet.create({
     width: 44
   },
   drawerItem: {
+    alignItems: "center",
     borderRadius: theme.radius.sm,
+    flexDirection: "row",
+    gap: theme.spacing.md,
     minHeight: 50,
-    justifyContent: "center",
     paddingHorizontal: theme.spacing.md
   },
   drawerItemText: {
