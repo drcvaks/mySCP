@@ -32,7 +32,11 @@ export function Screen({ title, eyebrow, children }: ScreenProps) {
 
   return (
     <SafeAreaView style={globalStyles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={[globalStyles.content, width >= 768 && styles.wideContent]}>
+      <ScrollView
+        contentContainerStyle={[globalStyles.content, width >= 768 && styles.wideContent]}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.screenHeader}>
           {showDrawerButton ? (
             <Pressable

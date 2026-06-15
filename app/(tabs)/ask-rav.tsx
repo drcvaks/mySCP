@@ -51,11 +51,11 @@ export default function AskRavScreen() {
           value={draft}
         />
         <Row>
-          <MetaText>{trimmedDraft.length} characters</MetaText>
+          <MetaText>{trimmedDraft.length} characters - minimum 10</MetaText>
           <Pill label="Private draft" tone="accent" />
         </Row>
         {message ? <Text style={message.startsWith("Please") ? styles.errorText : styles.successText}>{message}</Text> : null}
-        <Button disabled={trimmedDraft.length < 10} label="Submit Question" onPress={submit} />
+        <Button disabled={trimmedDraft.length === 0} label="Submit Question" onPress={submit} />
       </Card>
 
       <Card>
