@@ -157,6 +157,28 @@ export function SearchField({
   );
 }
 
+export function TextArea({
+  value,
+  onChangeText,
+  placeholder
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <TextInput
+      multiline
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={theme.colors.muted}
+      style={styles.textArea}
+      textAlignVertical="top"
+      value={value}
+    />
+  );
+}
+
 export function ProgressBar({ value }: { value: number }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
@@ -173,17 +195,26 @@ export function MetaText({ children }: { children: ReactNode }) {
 export function Button({
   label,
   variant = "primary",
-  onPress
+  onPress,
+  disabled = false
 }: {
   label: string;
   variant?: "primary" | "secondary" | "ghost";
   onPress?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
-      style={[styles.button, variant === "secondary" && styles.secondaryButton, variant === "ghost" && styles.ghostButton]}
+      style={({ pressed }) => [
+        styles.button,
+        variant === "secondary" && styles.secondaryButton,
+        variant === "ghost" && styles.ghostButton,
+        pressed && !disabled && styles.buttonPressed,
+        disabled && styles.buttonDisabled
+      ]}
     >
       <Text
         style={[
@@ -376,6 +407,17 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 48
   },
+  textArea: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    color: theme.colors.ink,
+    fontSize: 16,
+    lineHeight: 23,
+    minHeight: 132,
+    padding: theme.spacing.md
+  },
   progressTrack: {
     backgroundColor: theme.colors.primarySoft,
     borderRadius: 999,
@@ -409,6 +451,13 @@ export const styles = StyleSheet.create({
     backgroundColor: "transparent",
     minHeight: 44
   },
+  buttonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }]
+  },
+  buttonDisabled: {
+    opacity: 0.45
+  },
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
@@ -437,6 +486,16 @@ export const styles = StyleSheet.create({
     color: theme.colors.muted,
     fontSize: 14,
     lineHeight: 20
+  },
+  successText: {
+    color: theme.colors.success,
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  errorText: {
+    color: theme.colors.danger,
+    fontSize: 14,
+    fontWeight: "800"
   },
   statNumber: {
     color: theme.colors.primary,

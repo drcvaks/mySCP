@@ -14,12 +14,16 @@ import {
   styles
 } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
+import { useAppState } from "../../src/state/AppState";
 
 const weeks = [1, 2, 3, 4, 5, 6, 7];
 
 export default function ReviewScreen() {
   const [selectedWeek, setSelectedWeek] = useState<number | "all">(1);
-  const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [complete, setComplete] = useState(false);
+  const { reviewSessions, saveReviewSession } = useAppState();
 
   const currentQuestions = useMemo(
     () =>
@@ -28,13 +32,75 @@ export default function ReviewScreen() {
       ),
     [selectedWeek]
   );
-  const firstQuestion = currentQuestions[0];
-  const answered = selectedChoice !== null;
-  const isCorrect = answered && firstQuestion ? selectedChoice === firstQuestion.correctChoiceIndex : false;
+  const currentQuestion = currentQuestions[currentIndex];
+  const selectedChoice = currentQuestion ? answers[currentQuestion.id] : undefined;
+  const answered = selectedChoice !== undefined;
+  const isCorrect = answered && currentQuestion ? selectedChoice === currentQuestion.correctChoiceIndex : false;
+  const score = currentQuestions.filter(
+    (question) => answers[question.id] === question.correctChoiceIndex
+  ).length;
+  const progress = currentQuestions.length ? ((currentIndex + (answered ? 1 : 0)) / currentQuestions.length) * 100 : 0;
+  const matchingSessions = reviewSessions.filter((session) => session.week === selectedWeek);
+  const bestScore = matchingSessions.length
+    ? Math.max(...matchingSessions.map((session) => Math.round((session.correctAnswers / session.totalQuestions) * 100)))
+    : 0;
 
-  function chooseWeek(week: number | "all") {
+  function reset(week: number | "all" = selectedWeek) {
     setSelectedWeek(week);
-    setSelectedChoice(null);
+    setCurrentIndex(0);
+    setAnswers({});
+    setComplete(false);
+  }
+
+  function finish() {
+    if (!currentQuestions.length) return;
+    saveReviewSession({
+      week: selectedWeek,
+      totalQuestions: currentQuestions.length,
+      correctAnswers: score
+    });
+    setComplete(true);
+  }
+
+  function next() {
+    if (!answered) return;
+    if (currentIndex === currentQuestions.length - 1) {
+      finish();
+      return;
+    }
+    setCurrentIndex((index) => index + 1);
+  }
+
+  if (complete) {
+    const percentage = Math.round((score / currentQuestions.length) * 100);
+    return (
+      <Screen title="Review Complete" eyebrow={selectedWeek === "all" ? "All weeks" : `Week ${selectedWeek}`}>
+        <Card>
+          <Pill label={percentage >= 80 ? "Strong result" : "Keep reviewing"} tone={percentage >= 80 ? "success" : "accent"} />
+          <Text style={[styles.statNumber, { fontSize: 44 }]}>{percentage}%</Text>
+          <SectionTitle>{score} of {currentQuestions.length} correct</SectionTitle>
+          <ProgressBar value={percentage} />
+          <Text style={styles.muted}>This result has been saved to your local review history.</Text>
+          <Button label="Try Again" onPress={() => reset()} />
+          {selectedWeek !== "all" && selectedWeek < 7 ? (
+            <Button label={`Continue to Week ${selectedWeek + 1}`} onPress={() => reset(selectedWeek + 1)} variant="secondary" />
+          ) : null}
+        </Card>
+
+        <Card>
+          <SectionTitle>Recent Review History</SectionTitle>
+          {reviewSessions.slice(0, 5).map((session) => (
+            <Row key={session.id}>
+              <MetaText>{session.week === "all" ? "All weeks" : `Week ${session.week}`} - {new Date(session.completedAt).toLocaleDateString()}</MetaText>
+              <Pill
+                label={`${Math.round((session.correctAnswers / session.totalQuestions) * 100)}%`}
+                tone={session.correctAnswers / session.totalQuestions >= 0.8 ? "success" : "accent"}
+              />
+            </Row>
+          ))}
+        </Card>
+      </Screen>
+    );
   }
 
   return (
@@ -50,7 +116,7 @@ export default function ReviewScreen() {
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <FilterChip
             label={`All (${reviewQuestions.filter((question) => question.enabled).length})`}
-            onPress={() => chooseWeek("all")}
+            onPress={() => reset("all")}
             selected={selectedWeek === "all"}
           />
           {weeks.map((week) => {
@@ -59,7 +125,7 @@ export default function ReviewScreen() {
               <FilterChip
                 key={week}
                 label={`Week ${week} (${count})`}
-                onPress={() => chooseWeek(week)}
+                onPress={() => reset(week)}
                 selected={selectedWeek === week}
               />
             );
@@ -70,29 +136,29 @@ export default function ReviewScreen() {
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 140 }}>
-            <Text style={styles.muted}>{selectedWeek === "all" ? "All weeks" : `Week ${selectedWeek}`} progress</Text>
-            <Text style={styles.statNumber}>80%</Text>
+            <Text style={styles.muted}>Quiz progress</Text>
+            <Text style={styles.statNumber}>{Math.round(progress)}%</Text>
           </View>
           <View style={{ flex: 1, minWidth: 140 }}>
-            <Text style={styles.muted}>Best score</Text>
-            <Text style={styles.statNumber}>92%</Text>
+            <Text style={styles.muted}>Best saved score</Text>
+            <Text style={styles.statNumber}>{bestScore}%</Text>
           </View>
         </Row>
-        <ProgressBar value={80} />
+        <ProgressBar value={progress} />
       </Card>
 
-      {firstQuestion ? (
+      {currentQuestion ? (
         <Card>
           <Row>
-            <Pill label={`Week ${firstQuestion.week}`} tone="primary" />
-            <Pill label={firstQuestion.kind === "true_false" ? "True / False" : "Multiple Choice"} tone="accent" />
+            <Pill label={`Question ${currentIndex + 1} of ${currentQuestions.length}`} tone="primary" />
+            <Pill label={`Week ${currentQuestion.week}`} tone="accent" />
           </Row>
-          <Text style={[styles.sectionTitle, { fontSize: 20, lineHeight: 28 }]}>{firstQuestion.prompt}</Text>
+          <Text style={[styles.sectionTitle, { fontSize: 20, lineHeight: 28 }]}>{currentQuestion.prompt}</Text>
 
           <View style={{ gap: 10 }}>
-            {firstQuestion.choices.map((choice, index) => {
+            {currentQuestion.choices.map((choice, index) => {
               const isSelected = selectedChoice === index;
-              const isAnswer = index === firstQuestion.correctChoiceIndex;
+              const isAnswer = index === currentQuestion.correctChoiceIndex;
               const feedbackStyle = answered
                 ? isAnswer
                   ? { backgroundColor: theme.colors.successSoft, borderColor: theme.colors.success }
@@ -106,7 +172,7 @@ export default function ReviewScreen() {
                   accessibilityRole="button"
                   disabled={answered}
                   key={choice}
-                  onPress={() => setSelectedChoice(index)}
+                  onPress={() => setAnswers((current) => ({ ...current, [currentQuestion.id]: index }))}
                   style={[choiceStyles.choice, feedbackStyle]}
                 >
                   <View
@@ -140,13 +206,29 @@ export default function ReviewScreen() {
               <Text style={[styles.body, { color: isCorrect ? theme.colors.success : theme.colors.danger, fontWeight: "900" }]}>
                 {isCorrect ? "Correct" : "Not quite"}
               </Text>
-              <MetaText>{firstQuestion.explanation}</MetaText>
+              <MetaText>{currentQuestion.explanation}</MetaText>
             </View>
           ) : (
-            <MetaText>Select an answer to see immediate feedback and the explanation.</MetaText>
+            <MetaText>Select an answer to continue.</MetaText>
           )}
 
-          <Button label="Reset Question" onPress={() => setSelectedChoice(null)} variant="secondary" />
+          <Row>
+            <View style={{ minWidth: 120 }}>
+              <Button
+                disabled={currentIndex === 0}
+                label="Previous"
+                onPress={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+                variant="ghost"
+              />
+            </View>
+            <View style={{ minWidth: 160 }}>
+              <Button
+                disabled={!answered}
+                label={currentIndex === currentQuestions.length - 1 ? "Finish Review" : "Next Question"}
+                onPress={next}
+              />
+            </View>
+          </Row>
         </Card>
       ) : (
         <Card>
@@ -154,12 +236,6 @@ export default function ReviewScreen() {
           <Text style={styles.muted}>There are no enabled review questions for this selection.</Text>
         </Card>
       )}
-
-      <Card>
-        <SectionTitle>Retry</SectionTitle>
-        <Text style={styles.muted}>Participants can retry each week for a better score.</Text>
-        <Button label={selectedWeek === "all" ? "Retry All Weeks" : `Retry Week ${selectedWeek}`} onPress={() => setSelectedChoice(null)} />
-      </Card>
     </Screen>
   );
 }

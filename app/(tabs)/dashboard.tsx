@@ -1,14 +1,22 @@
 import { Text, View } from "react-native";
-import { announcements, chaburos, currentUser, learningFiles, reviewQuestions } from "../../src/data/mockData";
+import { useRouter } from "expo-router";
+import { announcements, chaburos, learningFiles, reviewQuestions } from "../../src/data/mockData";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
-
-const currentChaburah = chaburos.find((chaburah) => chaburah.id === currentUser.chaburahId);
-const latestSourceSheet = learningFiles.find((file) => file.fileType === "source_sheet");
-const localAnnouncements = announcements.filter(
-  (announcement) => announcement.isGlobal || announcement.chaburahId === currentUser.chaburahId
-);
+import { useAppState } from "../../src/state/AppState";
 
 export default function DashboardScreen() {
+  const router = useRouter();
+  const { selectedChaburahId, reviewSessions } = useAppState();
+  const currentChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
+  const latestSourceSheet = learningFiles.find((file) => file.fileType === "source_sheet");
+  const localAnnouncements = announcements.filter(
+    (announcement) => announcement.isGlobal || announcement.chaburahId === selectedChaburahId
+  );
+  const latestReview = reviewSessions[0];
+  const readiness = latestReview
+    ? Math.round((latestReview.correctAnswers / latestReview.totalQuestions) * 100)
+    : 0;
+
   return (
     <Screen title="This Week in SCP" eyebrow="Practical Kashrus">
       <Card>
@@ -20,14 +28,14 @@ export default function DashboardScreen() {
             <Text style={styles.muted}>Next Shiur</Text>
             <Text style={styles.body}>{currentChaburah?.schedule}</Text>
           </View>
-          <Button label="My Chaburah" variant="secondary" />
+          <Button label="My Chaburah" onPress={() => router.push("/(tabs)/chaburah")} variant="secondary" />
         </Row>
       </Card>
 
       <Row>
         <Card>
           <Text style={styles.muted}>Bechina Readiness</Text>
-          <Text style={styles.statNumber}>78%</Text>
+          <Text style={styles.statNumber}>{readiness}%</Text>
         </Card>
         <Card>
           <Text style={styles.muted}>Review Questions</Text>
@@ -39,13 +47,13 @@ export default function DashboardScreen() {
         <SectionTitle>Latest Source Sheet</SectionTitle>
         <Text style={styles.body}>{latestSourceSheet?.title}</Text>
         <Text style={styles.muted}>{latestSourceSheet?.topic}</Text>
-        <Button label="Open" />
+        <Button label="Open" onPress={() => router.push("/(tabs)/files")} />
       </Card>
 
       <Card>
         <SectionTitle>Missed Last Shiur?</SectionTitle>
         <Text style={styles.muted}>Catch up with recordings and review summaries from your chaburah.</Text>
-        <Button label="Catch Up" variant="secondary" />
+        <Button label="Catch Up" onPress={() => router.push("/(tabs)/files")} variant="secondary" />
       </Card>
 
       <Card>
@@ -61,7 +69,7 @@ export default function DashboardScreen() {
       <Card>
         <SectionTitle>Ask the Rav</SectionTitle>
         <Text style={styles.muted}>Submit a question to your local rav and track the answer here.</Text>
-        <Button label="Submit Question" />
+        <Button label="Submit Question" onPress={() => router.push("/(tabs)/ask-rav")} />
       </Card>
     </Screen>
   );

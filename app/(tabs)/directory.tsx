@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Text, useWindowDimensions, View } from "react-native";
+import { Alert, Platform, Text, useWindowDimensions, View } from "react-native";
 import { chaburos, currentUser } from "../../src/data/mockData";
 import {
   Button,
@@ -13,10 +13,12 @@ import {
   styles
 } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
+import { useAppState } from "../../src/state/AppState";
 
 export default function DirectoryScreen() {
   const [search, setSearch] = useState("");
   const { width } = useWindowDimensions();
+  const { joinChaburah, selectedChaburahId } = useAppState();
   const cardWidth = width >= 900 ? "48%" : "100%";
 
   const filteredChaburos = useMemo(() => {
@@ -29,6 +31,24 @@ export default function DirectoryScreen() {
         .includes(query)
     );
   }, [search]);
+
+  function confirmJoin(chaburahId: string, name: string) {
+    if (chaburahId === selectedChaburahId) return;
+    if (Platform.OS === "web") {
+      if (globalThis.confirm(`Join ${name} as your current chaburah?`)) {
+        joinChaburah(chaburahId);
+      }
+      return;
+    }
+    Alert.alert(
+      "Change Chaburah?",
+      `Join ${name} as your current chaburah?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Join", onPress: () => joinChaburah(chaburahId) }
+      ]
+    );
+  }
 
   return (
     <Screen title="Directory" eyebrow="Find SCP locations">
@@ -55,7 +75,7 @@ export default function DirectoryScreen() {
       ) : (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.md }}>
           {filteredChaburos.map((chaburah) => {
-            const joined = chaburah.id === currentUser.chaburahId;
+            const joined = chaburah.id === selectedChaburahId;
 
             return (
               <View key={chaburah.id} style={{ width: cardWidth, maxWidth: 500 }}>
@@ -77,7 +97,12 @@ export default function DirectoryScreen() {
                   <Row>
                     <Pill label={`${chaburah.memberCount} members`} tone="accent" />
                     <View style={{ minWidth: 132 }}>
-                      <Button label={joined ? "Joined" : "Join"} variant={joined ? "secondary" : "primary"} />
+                      <Button
+                        disabled={joined}
+                        label={joined ? "Joined" : "Join"}
+                        onPress={() => confirmJoin(chaburah.id, chaburah.name)}
+                        variant={joined ? "secondary" : "primary"}
+                      />
                     </View>
                   </Row>
                 </CompactCard>

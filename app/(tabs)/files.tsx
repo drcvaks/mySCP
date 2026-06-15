@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
-import { currentUser, learningFiles } from "../../src/data/mockData";
+import { Alert, Linking, Text, View } from "react-native";
+import { learningFiles } from "../../src/data/mockData";
 import {
   Button,
   Card,
@@ -15,19 +15,21 @@ import {
 } from "../../src/shared/components";
 import { fileTypeLabel, visibilityLabel } from "../../src/shared/format";
 import { FileType, Visibility } from "../../src/shared/types";
+import { useAppState } from "../../src/state/AppState";
 
-const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "link"];
+const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "pdf", "link"];
 const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
 
 export default function FilesScreen() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<FileType | "all">("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
+  const { selectedChaburahId } = useAppState();
 
   const visibleFiles = useMemo(
     () =>
-      learningFiles.filter((file) => file.visibility === "everyone" || file.chaburahId === currentUser.chaburahId),
-    []
+      learningFiles.filter((file) => file.visibility === "everyone" || file.chaburahId === selectedChaburahId),
+    [selectedChaburahId]
   );
 
   const filteredFiles = useMemo(() => {
@@ -43,6 +45,25 @@ export default function FilesScreen() {
       return matchesSearch && matchesType && matchesScope;
     });
   }, [search, selectedScope, selectedType, visibleFiles]);
+
+  async function openFile(fileId: string) {
+    const file = learningFiles.find((item) => item.id === fileId);
+    if (!file) return;
+    if (!file.url) {
+      Alert.alert(
+        file.title,
+        "This mock file does not have an uploaded URL yet. File storage and previews will be connected in Checkpoint 3."
+      );
+      return;
+    }
+
+    const supported = await Linking.canOpenURL(file.url);
+    if (!supported) {
+      Alert.alert("Cannot Open File", "This device cannot open the file URL.");
+      return;
+    }
+    await Linking.openURL(file.url);
+  }
 
   return (
     <Screen title="Files" eyebrow="Source sheets, review sheets, recordings">
@@ -108,7 +129,7 @@ export default function FilesScreen() {
             <Row>
               <MetaText>Organized by title, topic, week, type, and scope.</MetaText>
               <View style={{ minWidth: 112 }}>
-                <Button label="Open" variant="secondary" />
+                <Button label={file.url ? "Open" : "Details"} onPress={() => openFile(file.id)} variant="secondary" />
               </View>
             </Row>
           </Card>

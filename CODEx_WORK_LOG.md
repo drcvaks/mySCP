@@ -1,14 +1,41 @@
 # Codex Work Log
 
-Last updated: June 11, 2026
+Last updated: June 14, 2026
 
 ## Project State
 
-`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript and mock data. It currently provides the Checkpoint 1 application shell and visual workflows without Supabase, authentication, storage, SQL, migrations, or backend integration.
+`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, mock data, and persisted local state. Checkpoint 2 provides functional local workflows without Supabase, authentication, remote file storage, SQL, migrations, or backend integration.
 
 The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used only as a visual reference.
 
 ## Changes Completed
+
+### Checkpoint 2 Functional Workflows
+
+- Added a shared `AppStateProvider`.
+- Added persisted local state with Expo-compatible AsyncStorage.
+- Persisted the selected chaburah, review history, and Ask Rav submissions.
+- Wired Dashboard and My Chaburah buttons to their destination screens.
+- Made chaburah membership changes update the rest of the application immediately.
+- Added confirmation before changing chaburahs.
+- Added complete Review sessions with multiple questions, previous/next navigation, scoring, results, retry, best score, and history.
+- Added file URL opening with clear unavailable-file feedback for mock files without URLs.
+- Added Ask Rav validation, submission, and local question history.
+- Added disabled and pressed states to shared buttons.
+- Restored Ask Rav to web/tablet navigation while keeping the compact Android navigation.
+
+Primary files:
+
+- `src/state/AppState.tsx`
+- `app/_layout.tsx`
+- `app/(tabs)/dashboard.tsx`
+- `app/(tabs)/chaburah.tsx`
+- `app/(tabs)/review.tsx`
+- `app/(tabs)/files.tsx`
+- `app/(tabs)/directory.tsx`
+- `app/(tabs)/ask-rav.tsx`
+- `src/shared/components.tsx`
+- `src/shared/types.ts`
 
 ### Initial Expo Application
 
@@ -94,7 +121,8 @@ Primary file:
 
 ## Decisions Made
 
-- Keep Expo SDK 54 and the existing dependency set.
+- Keep Expo SDK 54.
+- Add only one necessary Checkpoint 2 dependency: `@react-native-async-storage/async-storage`, installed through `expo install` for SDK compatibility.
 - Do not copy architecture, API code, authentication, or backend behavior from the Replit project.
 - Preserve the existing Expo Router structure and screen/component organization.
 - Use responsive width and platform checks instead of introducing a new drawer dependency.
@@ -110,16 +138,17 @@ Primary file:
 - The Expo web development server ran successfully.
 - `/`, `/review`, `/files`, and `/directory` returned HTTP 200.
 - No package dependency changes were introduced during the visual redesign.
+- Checkpoint 2 TypeScript validation passed.
+- Checkpoint 2 production web export completed successfully.
+- Checkpoint 2 `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
 ### Functional Behavior
 
-- Connect visual buttons to real actions and navigation where appropriate.
-- Implement opening/downloading files and external links.
-- Implement persistent quiz sessions, question navigation, scoring, and history.
-- Implement actual Join/Joined directory behavior.
-- Decide where Ask Rav should appear in the final navigation.
+- Add real file URLs, remote downloads, previews, and sharing.
+- Add answered Ask Rav responses and rabbi/admin response workflows.
+- Add loading/error notifications for persistence failures if product requirements call for them.
 - Replace placeholder Settings, Rabbi Hub, Admin, and Global Admin content with real workflows.
 
 ### Backend
@@ -138,7 +167,7 @@ Primary file:
 - Add accessible disabled/pressed states to shared buttons and filters.
 - Decide whether joined chaburah cards should be visually pinned or sorted first.
 - Add file previews or native sharing once file URLs exist.
-- Update `README.md` to reflect the responsive navigation, Settings screen, and current visual state.
+- Add automated interaction tests once a stable browser test environment is available.
 
 ## Useful Commands
 

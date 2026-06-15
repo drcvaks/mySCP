@@ -72,4 +72,14 @@ export interface AskRavQuestion {
   question: string;
   status: "submitted" | "answered";
   submittedAt: string;
+  answer?: string;
+  answeredAt?: string;
+}
+
+export interface ReviewSession {
+  id: string;
+  week: number | "all";
+  totalQuestions: number;
+  correctAnswers: number;
+  completedAt: string;
 }

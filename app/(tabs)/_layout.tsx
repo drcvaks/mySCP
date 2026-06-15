@@ -60,7 +60,10 @@ export default function TabLayout() {
       <Tabs.Screen name="review" options={{ title: "Review", tabBarIcon: tabIcon("review") }} />
       <Tabs.Screen name="files" options={{ title: "Files", tabBarIcon: tabIcon("files") }} />
       <Tabs.Screen name="directory" options={{ title: "Directory", tabBarIcon: tabIcon("directory"), href: compactPhoneNav ? null : undefined }} />
-      <Tabs.Screen name="ask-rav" options={{ title: "Ask Rav", tabBarIcon: tabIcon("ask-rav"), href: null }} />
+      <Tabs.Screen
+        name="ask-rav"
+        options={{ title: "Ask Rav", tabBarIcon: tabIcon("ask-rav"), href: compactPhoneNav ? null : undefined }}
+      />
       <Tabs.Screen
         name="rabbi-hub"
         options={{ title: "Rabbi Hub", tabBarIcon: tabIcon("rabbi-hub"), href: showRabbiHub && !compactPhoneNav ? undefined : null }}
