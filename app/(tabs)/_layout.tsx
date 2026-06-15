@@ -29,7 +29,7 @@ function tabIcon(name: TabName) {
 
 export default function TabLayout() {
   const { width } = useWindowDimensions();
-  const compactPhoneNav = Platform.OS === "android" && width < 768;
+  const compactPhoneNav = Platform.OS !== "web" && width < 768;
   const showRabbiHub = isRabbi(currentUser) || isGlobalAdmin(currentUser);
   const showAdmin = isAdmin(currentUser) || isRabbi(currentUser) || isGlobalAdmin(currentUser);
   const showGlobalAdmin = isGlobalAdmin(currentUser);

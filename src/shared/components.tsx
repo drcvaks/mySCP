@@ -14,7 +14,7 @@ interface ScreenProps {
 export function Screen({ title, eyebrow, children }: ScreenProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const showDrawerButton = Platform.OS === "android" && width < 768;
+  const showDrawerButton = Platform.OS !== "web" && width < 768;
   const [menuOpen, setMenuOpen] = useState(false);
   const drawerItems = [
     { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" },
