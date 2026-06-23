@@ -12,3 +12,7 @@ yarn-error.log*
 expo-env.d.ts
 # @end expo-cli
 README.md.bak
+.env
+.env.*
+!.env.example
+supabase/.temp/

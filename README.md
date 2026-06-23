@@ -21,7 +21,9 @@ This checkpoint includes:
 - Mock data for users, chaburos, announcements, files, and review questions
 - Persisted local state using AsyncStorage
 
-It does not yet include Supabase, authentication, remote file storage, SQL, migrations, RLS, or backend wiring.
+The running app does not yet use Supabase, authentication, remote file storage, or backend data.
+
+Checkpoint 3 Supabase schema and RLS drafts are available in `supabase/`. They have not yet been applied to or connected with a live project.
 
 ## Run
 

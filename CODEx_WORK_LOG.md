@@ -1,6 +1,6 @@
 # Codex Work Log
 
-Last updated: June 14, 2026
+Last updated: June 22, 2026
 
 ## Project State
 
@@ -9,6 +9,27 @@ Last updated: June 14, 2026
 The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used only as a visual reference.
 
 ## Changes Completed
+
+### Checkpoint 3 Supabase Draft
+
+- Added a clean initial database migration under `supabase/migrations/`.
+- Added 11 application tables covering profiles, chaburos, memberships, role requests, announcements, learning files, review content/history, and Ask Rav.
+- Added a signup trigger that creates profiles from Supabase Auth users and synchronizes email/profile metadata.
+- Added server-side membership, review-answer, review-completion, role-management, and role-request RPC functions.
+- Kept review answer keys in a separate protected table.
+- Added a private `learning-files` Storage bucket and object policies tied to database file records.
+- Added 38 RLS policies and explicit table/column grants.
+- Added development seed chaburos and setup/security documentation.
+- Added an environment variable template without real credentials.
+- Did not connect the Expo application to Supabase or modify any live Supabase project.
+
+Primary files:
+
+- `supabase/migrations/202606220001_initial_schema.sql`
+- `supabase/migrations/202606220002_rls_and_storage.sql`
+- `supabase/seed.sql`
+- `supabase/README.md`
+- `.env.example`
 
 ### Checkpoint 2 Functional Workflows
 
