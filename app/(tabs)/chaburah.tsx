@@ -1,19 +1,30 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { announcements, chaburos, learningFiles, reviewQuestions } from "../../src/data/mockData";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { fileTypeLabel } from "../../src/shared/format";
 import { useAppState } from "../../src/state/AppState";
 
 export default function MyChaburahScreen() {
   const router = useRouter();
-  const { selectedChaburahId } = useAppState();
+  const { announcements, chaburos, learningFiles, reviewQuestions, selectedChaburahId } = useAppState();
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
   const localAnnouncements = announcements.filter((item) => item.chaburahId === selectedChaburahId);
   const localFiles = learningFiles.filter(
     (item) => item.visibility === "everyone" || item.chaburahId === selectedChaburahId
   );
   const assignedQuestions = reviewQuestions.filter((item) => item.enabled && item.week <= 7);
+
+  if (!chaburah) {
+    return (
+      <Screen title="My Chaburah" eyebrow="Membership">
+        <Card>
+          <SectionTitle>No Chaburah Selected</SectionTitle>
+          <Text style={styles.muted}>Join a chaburah to see its schedule, files, announcements, and rabbi.</Text>
+          <Button label="Browse Directory" onPress={() => router.push("/(tabs)/directory")} />
+        </Card>
+      </Screen>
+    );
+  }
 
   return (
     <Screen title="My Chaburah" eyebrow={chaburah?.name}>
@@ -32,6 +43,7 @@ export default function MyChaburahScreen() {
 
       <Card>
         <SectionTitle>Announcements</SectionTitle>
+        {localAnnouncements.length === 0 ? <Text style={styles.muted}>No local announcements yet.</Text> : null}
         {localAnnouncements.map((announcement) => (
           <View key={announcement.id}>
             <Text style={styles.body}>{announcement.title}</Text>
@@ -42,6 +54,7 @@ export default function MyChaburahScreen() {
 
       <Card>
         <SectionTitle>Source Sheets & Recordings</SectionTitle>
+        {localFiles.length === 0 ? <Text style={styles.muted}>No learning files have been published yet.</Text> : null}
         {localFiles.slice(0, 3).map((file) => (
           <Row key={file.id}>
             <View style={{ flex: 1 }}>

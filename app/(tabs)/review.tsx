@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { reviewQuestions } from "../../src/data/mockData";
 import {
   Button,
   Card,
@@ -18,28 +17,41 @@ import { useAppState } from "../../src/state/AppState";
 
 const weeks = [1, 2, 3, 4, 5, 6, 7];
 
+interface Feedback {
+  isCorrect: boolean;
+  explanation: string;
+}
+
 export default function ReviewScreen() {
   const [selectedWeek, setSelectedWeek] = useState<number | "all">(1);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [feedback, setFeedback] = useState<Record<string, Feedback>>({});
   const [complete, setComplete] = useState(false);
-  const { reviewSessions, saveReviewSession } = useAppState();
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const {
+    checkReviewAnswer,
+    reviewQuestions,
+    reviewSessions,
+    saveReviewSession
+  } = useAppState();
 
   const currentQuestions = useMemo(
     () =>
       reviewQuestions.filter(
         (question) => question.enabled && (selectedWeek === "all" || question.week === selectedWeek)
       ),
-    [selectedWeek]
+    [reviewQuestions, selectedWeek]
   );
   const currentQuestion = currentQuestions[currentIndex];
   const selectedChoice = currentQuestion ? answers[currentQuestion.id] : undefined;
-  const answered = selectedChoice !== undefined;
-  const isCorrect = answered && currentQuestion ? selectedChoice === currentQuestion.correctChoiceIndex : false;
-  const score = currentQuestions.filter(
-    (question) => answers[question.id] === question.correctChoiceIndex
-  ).length;
-  const progress = currentQuestions.length ? ((currentIndex + (answered ? 1 : 0)) / currentQuestions.length) * 100 : 0;
+  const currentFeedback = currentQuestion ? feedback[currentQuestion.id] : undefined;
+  const answered = selectedChoice !== undefined && currentFeedback !== undefined;
+  const score = currentQuestions.filter((question) => feedback[question.id]?.isCorrect).length;
+  const progress = currentQuestions.length
+    ? ((currentIndex + (answered ? 1 : 0)) / currentQuestions.length) * 100
+    : 0;
   const matchingSessions = reviewSessions.filter((session) => session.week === selectedWeek);
   const bestScore = matchingSessions.length
     ? Math.max(...matchingSessions.map((session) => Math.round((session.correctAnswers / session.totalQuestions) * 100)))
@@ -49,23 +61,53 @@ export default function ReviewScreen() {
     setSelectedWeek(week);
     setCurrentIndex(0);
     setAnswers({});
+    setFeedback({});
     setComplete(false);
+    setMessage("");
   }
 
-  function finish() {
+  async function selectAnswer(choiceIndex: number) {
+    if (!currentQuestion || answers[currentQuestion.id] !== undefined) return;
+    setAnswers((current) => ({ ...current, [currentQuestion.id]: choiceIndex }));
+    setSubmitting(true);
+    setMessage("");
+    try {
+      const result = await checkReviewAnswer(currentQuestion.id, choiceIndex);
+      setFeedback((current) => ({ ...current, [currentQuestion.id]: result }));
+    } catch (answerError) {
+      setAnswers((current) => {
+        const next = { ...current };
+        delete next[currentQuestion.id];
+        return next;
+      });
+      setMessage(answerError instanceof Error ? answerError.message : "Unable to check the answer.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function finish() {
     if (!currentQuestions.length) return;
-    saveReviewSession({
-      week: selectedWeek,
-      totalQuestions: currentQuestions.length,
-      correctAnswers: score
-    });
+    setSubmitting(true);
+    const result = await saveReviewSession(
+      selectedWeek,
+      currentQuestions.map((question) => ({
+        questionId: question.id,
+        choiceIndex: answers[question.id]
+      }))
+    );
+    setSubmitting(false);
+    if (result) {
+      setMessage(result);
+      return;
+    }
     setComplete(true);
   }
 
-  function next() {
+  async function next() {
     if (!answered) return;
     if (currentIndex === currentQuestions.length - 1) {
-      finish();
+      await finish();
       return;
     }
     setCurrentIndex((index) => index + 1);
@@ -80,7 +122,7 @@ export default function ReviewScreen() {
           <Text style={[styles.statNumber, { fontSize: 44 }]}>{percentage}%</Text>
           <SectionTitle>{score} of {currentQuestions.length} correct</SectionTitle>
           <ProgressBar value={percentage} />
-          <Text style={styles.muted}>This result has been saved to your local review history.</Text>
+          <Text style={styles.muted}>This result has been saved to your Supabase review history.</Text>
           <Button label="Try Again" onPress={() => reset()} />
           {selectedWeek !== "all" && selectedWeek < 7 ? (
             <Button label={`Continue to Week ${selectedWeek + 1}`} onPress={() => reset(selectedWeek + 1)} variant="secondary" />
@@ -158,35 +200,22 @@ export default function ReviewScreen() {
           <View style={{ gap: 10 }}>
             {currentQuestion.choices.map((choice, index) => {
               const isSelected = selectedChoice === index;
-              const isAnswer = index === currentQuestion.correctChoiceIndex;
-              const feedbackStyle = answered
-                ? isAnswer
-                  ? { backgroundColor: theme.colors.successSoft, borderColor: theme.colors.success }
-                  : isSelected
-                    ? { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger }
-                    : {}
-                : {};
-
+              const isCorrect = currentFeedback?.isCorrect && isSelected;
+              const isIncorrect = currentFeedback && !currentFeedback.isCorrect && isSelected;
               return (
                 <Pressable
                   accessibilityRole="button"
-                  disabled={answered}
+                  disabled={selectedChoice !== undefined || submitting}
                   key={choice}
-                  onPress={() => setAnswers((current) => ({ ...current, [currentQuestion.id]: index }))}
-                  style={[choiceStyles.choice, feedbackStyle]}
+                  onPress={() => selectAnswer(index)}
+                  style={[
+                    choiceStyles.choice,
+                    isCorrect && { backgroundColor: theme.colors.successSoft, borderColor: theme.colors.success },
+                    isIncorrect && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger }
+                  ]}
                 >
-                  <View
-                    style={[
-                      choiceStyles.choiceMarker,
-                      (isSelected || (answered && isAnswer)) && choiceStyles.choiceMarkerSelected
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        choiceStyles.choiceMarkerText,
-                        (isSelected || (answered && isAnswer)) && choiceStyles.choiceMarkerTextSelected
-                      ]}
-                    >
+                  <View style={[choiceStyles.choiceMarker, isSelected && choiceStyles.choiceMarkerSelected]}>
+                    <Text style={[choiceStyles.choiceMarkerText, isSelected && choiceStyles.choiceMarkerTextSelected]}>
                       {String.fromCharCode(65 + index)}
                     </Text>
                   </View>
@@ -196,26 +225,27 @@ export default function ReviewScreen() {
             })}
           </View>
 
-          {answered ? (
+          {currentFeedback ? (
             <View
               style={[
                 choiceStyles.feedback,
-                { backgroundColor: isCorrect ? theme.colors.successSoft : theme.colors.dangerSoft }
+                { backgroundColor: currentFeedback.isCorrect ? theme.colors.successSoft : theme.colors.dangerSoft }
               ]}
             >
-              <Text style={[styles.body, { color: isCorrect ? theme.colors.success : theme.colors.danger, fontWeight: "900" }]}>
-                {isCorrect ? "Correct" : "Not quite"}
+              <Text style={[styles.body, { color: currentFeedback.isCorrect ? theme.colors.success : theme.colors.danger, fontWeight: "900" }]}>
+                {currentFeedback.isCorrect ? "Correct" : "Not quite"}
               </Text>
-              <MetaText>{currentQuestion.explanation}</MetaText>
+              <MetaText>{currentFeedback.explanation}</MetaText>
             </View>
           ) : (
-            <MetaText>Select an answer to continue.</MetaText>
+            <MetaText>{submitting ? "Checking answer..." : "Select an answer to continue."}</MetaText>
           )}
 
+          {message ? <Text style={styles.errorText}>{message}</Text> : null}
           <Row>
             <View style={{ minWidth: 120 }}>
               <Button
-                disabled={currentIndex === 0}
+                disabled={currentIndex === 0 || submitting}
                 label="Previous"
                 onPress={() => setCurrentIndex((index) => Math.max(0, index - 1))}
                 variant="ghost"
@@ -223,7 +253,7 @@ export default function ReviewScreen() {
             </View>
             <View style={{ minWidth: 160 }}>
               <Button
-                disabled={!answered}
+                disabled={!answered || submitting}
                 label={currentIndex === currentQuestions.length - 1 ? "Finish Review" : "Next Question"}
                 onPress={next}
               />
@@ -233,7 +263,7 @@ export default function ReviewScreen() {
       ) : (
         <Card>
           <SectionTitle>No Questions Yet</SectionTitle>
-          <Text style={styles.muted}>There are no enabled review questions for this selection.</Text>
+          <Text style={styles.muted}>No review questions have been published for this selection.</Text>
         </Card>
       )}
     </Screen>

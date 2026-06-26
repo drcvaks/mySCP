@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Alert, Platform, Text, useWindowDimensions, View } from "react-native";
-import { chaburos, currentUser } from "../../src/data/mockData";
 import {
   Button,
   CompactCard,
@@ -14,11 +13,14 @@ import {
 } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
 import { useAppState } from "../../src/state/AppState";
+import { useAuthState } from "../../src/state/AuthState";
 
 export default function DirectoryScreen() {
   const [search, setSearch] = useState("");
+  const [message, setMessage] = useState("");
   const { width } = useWindowDimensions();
-  const { joinChaburah, selectedChaburahId } = useAppState();
+  const { chaburos, joinChaburah, selectedChaburahId } = useAppState();
+  const { profile } = useAuthState();
   const cardWidth = width >= 900 ? "48%" : "100%";
 
   const filteredChaburos = useMemo(() => {
@@ -32,11 +34,16 @@ export default function DirectoryScreen() {
     );
   }, [search]);
 
+  async function join(chaburahId: string) {
+    const result = await joinChaburah(chaburahId);
+    setMessage(result ?? "Chaburah membership updated.");
+  }
+
   function confirmJoin(chaburahId: string, name: string) {
     if (chaburahId === selectedChaburahId) return;
     if (Platform.OS === "web") {
       if (globalThis.confirm(`Join ${name} as your current chaburah?`)) {
-        joinChaburah(chaburahId);
+        join(chaburahId);
       }
       return;
     }
@@ -45,7 +52,7 @@ export default function DirectoryScreen() {
       `Join ${name} as your current chaburah?`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Join", onPress: () => joinChaburah(chaburahId) }
+        { text: "Join", onPress: () => join(chaburahId) }
       ]
     );
   }
@@ -57,15 +64,16 @@ export default function DirectoryScreen() {
         <Text style={styles.muted}>Search by chaburah name, city, address, or rabbi.</Text>
         <SearchField
           onChangeText={setSearch}
-          placeholder={`Search near ${currentUser.city}, ${currentUser.country}...`}
+          placeholder={`Search near ${profile?.city || "your city"}, ${profile?.country || ""}...`}
           value={search}
         />
       </CompactCard>
 
       <Row>
         <SectionTitle>{filteredChaburos.length} Chaburos</SectionTitle>
-        <Pill label={`Default: ${currentUser.city}`} tone="accent" />
+        <Pill label={`Default: ${profile?.city || "Not set"}`} tone="accent" />
       </Row>
+      {message ? <Text style={message.includes("pending") ? styles.muted : styles.successText}>{message}</Text> : null}
 
       {filteredChaburos.length === 0 ? (
         <CompactCard>

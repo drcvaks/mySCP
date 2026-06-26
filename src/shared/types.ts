@@ -51,6 +51,8 @@ export interface LearningFile {
   uploadedBy: string;
   fileType: FileType;
   url?: string;
+  storagePath?: string;
+  description?: string;
 }
 
 export interface ReviewQuestion {
@@ -60,8 +62,8 @@ export interface ReviewQuestion {
   prompt: string;
   kind: "multiple_choice" | "true_false";
   choices: string[];
-  correctChoiceIndex: number;
-  explanation: string;
+  correctChoiceIndex?: number;
+  explanation?: string;
   enabled: boolean;
 }
 

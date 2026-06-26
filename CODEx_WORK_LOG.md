@@ -23,6 +23,20 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added an environment variable template without real credentials.
 - Did not connect the Expo application to Supabase or modify any live Supabase project.
 
+### Supabase App Connection
+
+- Installed `@supabase/supabase-js`.
+- Added a typed Supabase client using `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+- Added `AuthStateProvider` for session restoration, sign-in, sign-up, profile loading, and sign-out.
+- Added an `/auth` screen and protected app routes.
+- Replaced participant workflow mock data with live Supabase reads and RPC calls.
+- Directory now joins chaburos through `join_chaburah`.
+- Ask Rav now inserts protected Supabase rows.
+- Review now checks answers through `check_review_answer` and saves sessions through `complete_review_session`.
+- Files now open external URLs or private Storage signed URLs.
+- Added live loading/error handling for Supabase data failures.
+- Expanded `seed.sql` with test announcements, learning files, review questions, and answer keys.
+
 Primary files:
 
 - `supabase/migrations/202606220001_initial_schema.sql`

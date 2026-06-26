@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
-import { Platform, useWindowDimensions } from "react-native";
-import { currentUser } from "../../src/data/mockData";
+import { Redirect, Tabs } from "expo-router";
+import { ActivityIndicator, Platform, Text, useWindowDimensions, View } from "react-native";
 import { isAdmin, isGlobalAdmin, isRabbi } from "../../src/shared/permissions";
+import { Button } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
+import { useAppState } from "../../src/state/AppState";
+import { useAuthState } from "../../src/state/AuthState";
 
 const iconMap = {
   dashboard: "speedometer-outline",
@@ -28,12 +30,33 @@ function tabIcon(name: TabName) {
 }
 
 export default function TabLayout() {
+  const { loading, profile, session } = useAuthState();
+  const { error: dataError, hydrated, loading: dataLoading, refresh } = useAppState();
   const { width } = useWindowDimensions();
   const compactPhoneNav = Platform.OS !== "web" && width < 768;
-  const showRabbiHub = isRabbi(currentUser) || isGlobalAdmin(currentUser);
-  const showAdmin = isAdmin(currentUser) || isRabbi(currentUser) || isGlobalAdmin(currentUser);
-  const showGlobalAdmin = isGlobalAdmin(currentUser);
-  const showProfile = currentUser.role === "participant";
+  if (loading || (session && (!hydrated || dataLoading))) {
+    return (
+      <View style={{ alignItems: "center", flex: 1, justifyContent: "center" }}>
+        <ActivityIndicator color={theme.colors.primary} size="large" />
+      </View>
+    );
+  }
+  if (!session || !profile) return <Redirect href="/auth" />;
+  if (dataError) {
+    return (
+      <View style={{ alignItems: "center", flex: 1, gap: 16, justifyContent: "center", padding: 24 }}>
+        <Text style={{ color: theme.colors.danger, fontSize: 16, textAlign: "center" }}>{dataError}</Text>
+        <View style={{ maxWidth: 480, width: "100%" }}>
+          <Button label="Retry Loading Data" onPress={refresh} />
+        </View>
+      </View>
+    );
+  }
+
+  const showRabbiHub = isRabbi(profile) || isGlobalAdmin(profile);
+  const showAdmin = isAdmin(profile) || isRabbi(profile) || isGlobalAdmin(profile);
+  const showGlobalAdmin = isGlobalAdmin(profile);
+  const showProfile = true;
   const leftRailNav = Platform.OS === "web" || width >= 768;
 
   return (

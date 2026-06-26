@@ -1,12 +1,18 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { announcements, chaburos, learningFiles, reviewQuestions } from "../../src/data/mockData";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { useAppState } from "../../src/state/AppState";
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { selectedChaburahId, reviewSessions } = useAppState();
+  const {
+    announcements,
+    chaburos,
+    learningFiles,
+    reviewQuestions,
+    reviewSessions,
+    selectedChaburahId
+  } = useAppState();
   const currentChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const latestSourceSheet = learningFiles.find((file) => file.fileType === "source_sheet");
   const localAnnouncements = announcements.filter(
@@ -26,7 +32,7 @@ export default function DashboardScreen() {
         <Row>
           <View>
             <Text style={styles.muted}>Next Shiur</Text>
-            <Text style={styles.body}>{currentChaburah?.schedule}</Text>
+            <Text style={styles.body}>{currentChaburah?.schedule ?? "Join a chaburah to see its schedule."}</Text>
           </View>
           <Button label="My Chaburah" onPress={() => router.push("/(tabs)/chaburah")} variant="secondary" />
         </Row>
@@ -45,8 +51,8 @@ export default function DashboardScreen() {
 
       <Card>
         <SectionTitle>Latest Source Sheet</SectionTitle>
-        <Text style={styles.body}>{latestSourceSheet?.title}</Text>
-        <Text style={styles.muted}>{latestSourceSheet?.topic}</Text>
+        <Text style={styles.body}>{latestSourceSheet?.title ?? "No source sheet has been published yet."}</Text>
+        {latestSourceSheet ? <Text style={styles.muted}>{latestSourceSheet.topic}</Text> : null}
         <Button label="Open" onPress={() => router.push("/(tabs)/files")} />
       </Card>
 
@@ -58,6 +64,7 @@ export default function DashboardScreen() {
 
       <Card>
         <SectionTitle>Recent Announcements</SectionTitle>
+        {localAnnouncements.length === 0 ? <Text style={styles.muted}>No announcements have been published yet.</Text> : null}
         {localAnnouncements.slice(0, 3).map((announcement) => (
           <View key={announcement.id}>
             <Text style={styles.body}>{announcement.title}</Text>

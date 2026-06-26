@@ -1,102 +1,279 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
-import { currentUser } from "../data/mockData";
-import { AskRavQuestion, ReviewSession } from "../shared/types";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { formatSupabaseError } from "../lib/errors";
+import { supabase } from "../lib/supabase";
+import {
+  Announcement,
+  AskRavQuestion,
+  Chaburah,
+  LearningFile,
+  ReviewQuestion,
+  ReviewSession
+} from "../shared/types";
+import { useAuthState } from "./AuthState";
 
-const STORAGE_KEY = "myscp-checkpoint-2";
+interface ReviewFeedback {
+  isCorrect: boolean;
+  explanation: string;
+}
 
-interface PersistedState {
+interface ReviewAnswer {
+  questionId: string;
+  choiceIndex: number;
+}
+
+interface AppStateValue {
+  hydrated: boolean;
+  loading: boolean;
+  error: string | null;
   selectedChaburahId?: string;
+  chaburos: Chaburah[];
+  announcements: Announcement[];
+  learningFiles: LearningFile[];
+  reviewQuestions: ReviewQuestion[];
   reviewSessions: ReviewSession[];
   askRavQuestions: AskRavQuestion[];
+  refresh: () => Promise<void>;
+  joinChaburah: (chaburahId: string) => Promise<string | null>;
+  checkReviewAnswer: (questionId: string, choiceIndex: number) => Promise<ReviewFeedback>;
+  saveReviewSession: (week: number | "all", answers: ReviewAnswer[]) => Promise<string | null>;
+  submitAskRavQuestion: (question: string) => Promise<string | null>;
 }
-
-interface AppStateValue extends PersistedState {
-  hydrated: boolean;
-  joinChaburah: (chaburahId: string) => void;
-  saveReviewSession: (session: Omit<ReviewSession, "id" | "completedAt">) => void;
-  submitAskRavQuestion: (question: string) => void;
-}
-
-const initialState: PersistedState = {
-  selectedChaburahId: currentUser.chaburahId,
-  reviewSessions: [],
-  askRavQuestions: []
-};
 
 const AppStateContext = createContext<AppStateValue | null>(null);
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<PersistedState>(initialState);
+  const { session, profile, refreshProfile } = useAuthState();
+  const [chaburos, setChaburos] = useState<Chaburah[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [learningFiles, setLearningFiles] = useState<LearningFile[]>([]);
+  const [reviewQuestions, setReviewQuestions] = useState<ReviewQuestion[]>([]);
+  const [reviewSessions, setReviewSessions] = useState<ReviewSession[]>([]);
+  const [askRavQuestions, setAskRavQuestions] = useState<AskRavQuestion[]>([]);
+  const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!session) {
+      setChaburos([]);
+      setAnnouncements([]);
+      setLearningFiles([]);
+      setReviewQuestions([]);
+      setReviewSessions([]);
+      setAskRavQuestions([]);
+      setHydrated(true);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [
+        chaburosResult,
+        announcementsResult,
+        filesResult,
+        questionsResult,
+        sessionsResult,
+        askRavResult
+      ] = await Promise.all([
+        supabase.from("chaburos").select("*").order("name"),
+        supabase.from("announcements").select("*").order("created_at", { ascending: false }),
+        supabase.from("learning_files").select("*").order("created_at", { ascending: false }),
+        supabase.from("review_questions").select("*").order("week").order("created_at"),
+        supabase.from("review_sessions").select("*").order("completed_at", { ascending: false }).limit(25),
+        supabase.from("ask_rav_questions").select("*").order("submitted_at", { ascending: false })
+      ]);
+
+      const firstError = [
+        chaburosResult.error,
+        announcementsResult.error,
+        filesResult.error,
+        questionsResult.error,
+        sessionsResult.error,
+        askRavResult.error
+      ].find(Boolean);
+
+      if (firstError) {
+        setError(formatSupabaseError(firstError));
+        return;
+      }
+
+      setChaburos(
+        (chaburosResult.data ?? []).map((row) => ({
+          id: row.id,
+          name: row.name,
+          address: row.address ?? "",
+          city: row.city,
+          country: row.country,
+          rabbiName: row.rabbi_name ?? "Rabbi not assigned",
+          schedule: row.schedule_text ?? "Schedule not set",
+          memberCount: row.member_count,
+          discussionEnabled: row.discussion_enabled,
+          joinRequiresApproval: row.join_requires_approval,
+          zoomLink: row.zoom_url ?? undefined,
+          description: row.description ?? undefined
+        }))
+      );
+
+      setAnnouncements(
+        (announcementsResult.data ?? []).map((row) => ({
+          id: row.id,
+          chaburahId: row.chaburah_id ?? undefined,
+          title: row.title,
+          body: row.body,
+          postedBy: row.posted_by,
+          postedAt: row.created_at,
+          isGlobal: row.visibility === "everyone",
+          isPinned: row.is_pinned
+        }))
+      );
+
+      setLearningFiles(
+        (filesResult.data ?? []).map((row) => ({
+          id: row.id,
+          chaburahId: row.chaburah_id ?? undefined,
+          title: row.title,
+          week: row.week,
+          topic: row.topic,
+          visibility: row.visibility,
+          uploadedBy: row.uploaded_by,
+          fileType: row.file_type,
+          url: row.external_url ?? undefined,
+          storagePath: row.storage_path ?? undefined,
+          description: row.description ?? undefined
+        }))
+      );
+
+      setReviewQuestions(
+        (questionsResult.data ?? []).map((row) => ({
+          id: row.id,
+          week: row.week,
+          topic: row.topic,
+          prompt: row.prompt,
+          kind: row.kind,
+          choices: Array.isArray(row.choices)
+            ? row.choices.filter((choice): choice is string => typeof choice === "string")
+            : [],
+          enabled: row.enabled
+        }))
+      );
+
+      setReviewSessions(
+        (sessionsResult.data ?? []).map((row) => ({
+          id: row.id,
+          week: row.week ?? "all",
+          totalQuestions: row.total_questions,
+          correctAnswers: row.correct_answers,
+          completedAt: row.completed_at
+        }))
+      );
+
+      setAskRavQuestions(
+        (askRavResult.data ?? []).map((row) => ({
+          id: row.id,
+          chaburahId: row.chaburah_id,
+          askerId: row.asker_id,
+          question: row.question,
+          status: row.status === "answered" ? "answered" : "submitted",
+          submittedAt: row.submitted_at,
+          answer: row.answer ?? undefined,
+          answeredAt: row.answered_at ?? undefined
+        }))
+      );
+    } catch (refreshError) {
+      setError(formatSupabaseError(refreshError));
+    } finally {
+      setLoading(false);
+      setHydrated(true);
+    }
+  }, [session]);
 
   useEffect(() => {
-    let active = true;
-
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((saved) => {
-        if (!active || !saved) return;
-        const parsed = JSON.parse(saved) as Partial<PersistedState>;
-        setState({
-          selectedChaburahId: parsed.selectedChaburahId ?? initialState.selectedChaburahId,
-          reviewSessions: parsed.reviewSessions ?? [],
-          askRavQuestions: parsed.askRavQuestions ?? []
-        });
-      })
-      .catch(() => {
-        // The app remains usable with the initial local state if storage is unavailable.
-      })
-      .finally(() => {
-        if (active) setHydrated(true);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {
-      // Persistence failures should not block the current session.
-    });
-  }, [hydrated, state]);
+    refresh();
+  }, [refresh]);
 
   const value = useMemo<AppStateValue>(
     () => ({
-      ...state,
       hydrated,
-      joinChaburah: (chaburahId) => {
-        setState((current) => ({ ...current, selectedChaburahId: chaburahId }));
+      loading,
+      error,
+      selectedChaburahId: profile?.chaburahId,
+      chaburos,
+      announcements,
+      learningFiles,
+      reviewQuestions,
+      reviewSessions,
+      askRavQuestions,
+      refresh,
+      joinChaburah: async (chaburahId) => {
+        const { data, error: joinError } = await supabase.rpc("join_chaburah", {
+          target_chaburah_id: chaburahId
+        });
+        if (joinError) return joinError.message;
+        if (data === "pending") {
+          await refresh();
+          return "Your membership request is pending approval.";
+        }
+        await refreshProfile();
+        await refresh();
+        return null;
       },
-      saveReviewSession: (session) => {
-        const completed: ReviewSession = {
-          ...session,
-          id: `review-${Date.now()}`,
-          completedAt: new Date().toISOString()
+      checkReviewAnswer: async (questionId, choiceIndex) => {
+        const { data, error: answerError } = await supabase.rpc("check_review_answer", {
+          target_question_id: questionId,
+          selected_choice_index: choiceIndex
+        });
+        if (answerError) throw answerError;
+        const feedback = data?.[0];
+        if (!feedback) throw new Error("No answer feedback was returned.");
+        return {
+          isCorrect: feedback.is_correct,
+          explanation: feedback.explanation
         };
-        setState((current) => ({
-          ...current,
-          reviewSessions: [completed, ...current.reviewSessions].slice(0, 25)
-        }));
       },
-      submitAskRavQuestion: (question) => {
-        if (!state.selectedChaburahId) return;
-        const submitted: AskRavQuestion = {
-          id: `question-${Date.now()}`,
-          chaburahId: state.selectedChaburahId,
-          askerId: currentUser.id,
-          question,
-          status: "submitted",
-          submittedAt: new Date().toISOString()
-        };
-        setState((current) => ({
-          ...current,
-          askRavQuestions: [submitted, ...current.askRavQuestions]
-        }));
+      saveReviewSession: async (week, answers) => {
+        const { error: sessionError } = await supabase.rpc("complete_review_session", {
+          target_week: week === "all" ? null : week,
+          target_chaburah_id: profile?.chaburahId ?? null,
+          submitted_answers: answers.map((answer) => ({
+            question_id: answer.questionId,
+            choice_index: answer.choiceIndex
+          }))
+        });
+        if (sessionError) return sessionError.message;
+        await refresh();
+        return null;
+      },
+      submitAskRavQuestion: async (question) => {
+        if (!session?.user.id || !profile?.chaburahId) {
+          return "Join a chaburah before submitting a question.";
+        }
+        const { error: questionError } = await supabase.from("ask_rav_questions").insert({
+          chaburah_id: profile.chaburahId,
+          asker_id: session.user.id,
+          question
+        });
+        if (questionError) return questionError.message;
+        await refresh();
+        return null;
       }
     }),
-    [hydrated, state]
+    [
+      announcements,
+      askRavQuestions,
+      chaburos,
+      error,
+      hydrated,
+      learningFiles,
+      loading,
+      profile?.chaburahId,
+      refresh,
+      refreshProfile,
+      reviewQuestions,
+      reviewSessions,
+      session?.user.id
+    ]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
@@ -104,8 +281,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
 export function useAppState() {
   const value = useContext(AppStateContext);
-  if (!value) {
-    throw new Error("useAppState must be used inside AppStateProvider");
-  }
+  if (!value) throw new Error("useAppState must be used inside AppStateProvider");
   return value;
 }

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Alert, Linking, Text, View } from "react-native";
-import { learningFiles } from "../../src/data/mockData";
 import {
   Button,
   Card,
@@ -16,6 +15,7 @@ import {
 import { fileTypeLabel, visibilityLabel } from "../../src/shared/format";
 import { FileType, Visibility } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
+import { supabase } from "../../src/lib/supabase";
 
 const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "pdf", "link"];
 const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
@@ -24,7 +24,7 @@ export default function FilesScreen() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<FileType | "all">("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
-  const { selectedChaburahId } = useAppState();
+  const { learningFiles, selectedChaburahId } = useAppState();
 
   const visibleFiles = useMemo(
     () =>
@@ -49,20 +49,32 @@ export default function FilesScreen() {
   async function openFile(fileId: string) {
     const file = learningFiles.find((item) => item.id === fileId);
     if (!file) return;
-    if (!file.url) {
+    let targetUrl = file.url;
+    if (!targetUrl && file.storagePath) {
+      const { data, error } = await supabase.storage
+        .from("learning-files")
+        .createSignedUrl(file.storagePath, 60);
+      if (error) {
+        Alert.alert("Cannot Open File", error.message);
+        return;
+      }
+      targetUrl = data.signedUrl;
+    }
+
+    if (!targetUrl) {
       Alert.alert(
         file.title,
-        "This mock file does not have an uploaded URL yet. File storage and previews will be connected in Checkpoint 3."
+        "This file record does not have an uploaded object or external URL."
       );
       return;
     }
 
-    const supported = await Linking.canOpenURL(file.url);
+    const supported = await Linking.canOpenURL(targetUrl);
     if (!supported) {
       Alert.alert("Cannot Open File", "This device cannot open the file URL.");
       return;
     }
-    await Linking.openURL(file.url);
+    await Linking.openURL(targetUrl);
   }
 
   return (
@@ -129,7 +141,11 @@ export default function FilesScreen() {
             <Row>
               <MetaText>Organized by title, topic, week, type, and scope.</MetaText>
               <View style={{ minWidth: 112 }}>
-                <Button label={file.url ? "Open" : "Details"} onPress={() => openFile(file.id)} variant="secondary" />
+                <Button
+                  label={file.url || file.storagePath ? "Open" : "Details"}
+                  onPress={() => openFile(file.id)}
+                  variant="secondary"
+                />
               </View>
             </Row>
           </Card>

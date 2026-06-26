@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import { chaburos } from "../../src/data/mockData";
 import {
   Button,
   Card,
@@ -17,7 +16,7 @@ import { useAppState } from "../../src/state/AppState";
 export default function AskRavScreen() {
   const [draft, setDraft] = useState("");
   const [message, setMessage] = useState("");
-  const { askRavQuestions, selectedChaburahId, submitAskRavQuestion } = useAppState();
+  const { askRavQuestions, chaburos, selectedChaburahId, submitAskRavQuestion } = useAppState();
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
   const localQuestions = useMemo(
     () => askRavQuestions.filter((question) => question.chaburahId === selectedChaburahId),
@@ -25,14 +24,18 @@ export default function AskRavScreen() {
   );
   const trimmedDraft = draft.trim();
 
-  function submit() {
+  async function submit() {
     if (trimmedDraft.length < 10) {
       setMessage("Please enter at least 10 characters so the question has enough detail.");
       return;
     }
-    submitAskRavQuestion(trimmedDraft);
+    const result = await submitAskRavQuestion(trimmedDraft);
+    if (result) {
+      setMessage(result);
+      return;
+    }
     setDraft("");
-    setMessage("Your question was submitted locally.");
+    setMessage("Your question was submitted.");
   }
 
   return (
@@ -40,7 +43,7 @@ export default function AskRavScreen() {
       <Card>
         <SectionTitle>Submit a Question</SectionTitle>
         <Text style={styles.muted}>
-          Your question will be associated with {chaburah?.name}. Backend privacy rules will be added in Checkpoint 3.
+          Your question will be associated with {chaburah?.name ?? "your current chaburah"} and is protected by database privacy rules.
         </Text>
         <TextArea
           onChangeText={(value) => {

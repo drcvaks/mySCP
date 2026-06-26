@@ -1,7 +1,9 @@
 import { Text } from "react-native";
 import { Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { useAppState } from "../../src/state/AppState";
 
 export default function GlobalAdminScreen() {
+  const { chaburos, reviewSessions } = useAppState();
   return (
     <Screen title="Global Admin" eyebrow="SCP headquarters placeholder">
       <Card>
@@ -19,10 +21,10 @@ export default function GlobalAdminScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Sample Analytics</SectionTitle>
-        <Text style={styles.statNumber}>173 Active Chaburos</Text>
-        <Text style={styles.statNumber}>2,481 Active Users</Text>
-        <Text style={styles.statNumber}>84% Average Readiness</Text>
+        <SectionTitle>Live Overview</SectionTitle>
+        <Text style={styles.statNumber}>{chaburos.length} Active Chaburos</Text>
+        <Text style={styles.statNumber}>{reviewSessions.length} Visible Review Sessions</Text>
+        <Text style={styles.muted}>Full administrative reporting will be added after the management workflows.</Text>
       </Card>
     </Screen>
   );

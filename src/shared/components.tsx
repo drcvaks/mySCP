@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { globalStyles, theme } from "./theme";
+import { useAuthState } from "../state/AuthState";
 
 interface ScreenProps {
   title: string;
@@ -13,17 +14,33 @@ interface ScreenProps {
 
 export function Screen({ title, eyebrow, children }: ScreenProps) {
   const router = useRouter();
+  const { profile } = useAuthState();
   const { width } = useWindowDimensions();
   const showDrawerButton = Platform.OS !== "web" && width < 768;
   const [menuOpen, setMenuOpen] = useState(false);
   const drawerItems = [
-    { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" },
-    { label: "Rabbi Hub", href: "/(tabs)/rabbi-hub", icon: "library-outline" },
-    { label: "Admin", href: "/(tabs)/admin", icon: "settings-outline" },
-    { label: "Global Admin", href: "/(tabs)/global-admin", icon: "globe-outline" },
-    { label: "Profile", href: "/(tabs)/profile", icon: "person-outline" },
-    { label: "Settings", href: "/(tabs)/settings", icon: "options-outline" }
-  ] as const;
+    { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" as const, show: true },
+    {
+      label: "Rabbi Hub",
+      href: "/(tabs)/rabbi-hub",
+      icon: "library-outline" as const,
+      show: profile?.role === "local_rabbi" || profile?.role === "global_admin"
+    },
+    {
+      label: "Admin",
+      href: "/(tabs)/admin",
+      icon: "settings-outline" as const,
+      show: profile?.role === "local_admin" || profile?.role === "local_rabbi" || profile?.role === "global_admin"
+    },
+    {
+      label: "Global Admin",
+      href: "/(tabs)/global-admin",
+      icon: "globe-outline" as const,
+      show: profile?.role === "global_admin"
+    },
+    { label: "Profile", href: "/(tabs)/profile", icon: "person-outline" as const, show: true },
+    { label: "Settings", href: "/(tabs)/settings", icon: "options-outline" as const, show: true }
+  ].filter((item) => item.show);
 
   function navigateTo(href: (typeof drawerItems)[number]["href"]) {
     setMenuOpen(false);

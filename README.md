@@ -18,12 +18,12 @@ This checkpoint includes:
 - Global Admin placeholder
 - Profile screen
 - Settings placeholder
-- Mock data for users, chaburos, announcements, files, and review questions
-- Persisted local state using AsyncStorage
+- Supabase Auth session handling
+- Live Supabase reads and RPC calls for participant workflows
 
-The running app does not yet use Supabase, authentication, remote file storage, or backend data.
+Administrative screens are still placeholders. Remote file uploads and full admin/rabbi management workflows are not yet implemented.
 
-Checkpoint 3 Supabase schema and RLS drafts are available in `supabase/`. They have not yet been applied to or connected with a live project.
+Checkpoint 3 Supabase schema and RLS drafts are available in `supabase/`. The Expo app now reads Supabase credentials from `.env` and uses Supabase Auth plus live database/RPC calls for the participant workflows.
 
 ## Run
 
@@ -54,9 +54,11 @@ app/
     profile.tsx
     settings.tsx
 src/
-  data/
-    mockData.ts
+  lib/
+    database.types.ts
+    supabase.ts
   state/
+    AuthState.tsx
     AppState.tsx
   shared/
     components.tsx
@@ -66,13 +68,26 @@ src/
     types.ts
 ```
 
-The mock data and persisted local state are shaped with TypeScript interfaces so future Supabase queries can replace them with minimal UI changes.
+The Supabase data layer maps database rows into the app's existing TypeScript UI models.
+
+## Supabase Environment
+
+Create a local `.env` file:
+
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+Use the publishable/anon client key only. Never put the service-role key, database password, or direct PostgreSQL connection string in the Expo app.
+
+After promoting the first global admin profile, rerun `supabase/seed.sql` if you want the live app to include the test announcements, learning files, and review questions.
 
 ## Checkpoint 2 Behavior
 
 - Dashboard actions navigate to the relevant workflows.
-- Changing chaburah updates Dashboard, My Chaburah, Files, and Ask Rav.
-- Review sessions support previous/next navigation, immediate feedback, completion scoring, retry, and saved history.
-- File actions open real URLs when available and show a clear unavailable-file message for mock files.
-- Ask Rav validates and saves questions locally.
-- Local state persists between app sessions on Android and web.
+- Changing chaburah updates Dashboard, My Chaburah, Files, and Ask Rav through Supabase.
+- Review sessions use secured RPC calls for answer feedback and server-computed scores.
+- File actions open external URLs or private Storage signed URLs when available.
+- Ask Rav validates and saves questions to Supabase.
+- Supabase Auth persists sessions between app launches.

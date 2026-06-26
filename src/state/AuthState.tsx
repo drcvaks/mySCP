@@ -1,0 +1,158 @@
+import { Session } from "@supabase/supabase-js";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { AppState, Platform } from "react-native";
+import { formatSupabaseError } from "../lib/errors";
+import { supabase } from "../lib/supabase";
+import { UserProfile } from "../shared/types";
+
+interface AuthStateValue {
+  session: Session | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  error: string | null;
+  signIn: (email: string, password: string) => Promise<string | null>;
+  signUp: (email: string, password: string, fullName: string) => Promise<string | null>;
+  signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+}
+
+const AuthStateContext = createContext<AuthStateValue | null>(null);
+
+export function AuthStateProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadProfile(userId: string) {
+    const { data, error: profileError } = await supabase
+      .from("profiles")
+      .select("id,email,full_name,phone,city,state,country,role,current_chaburah_id")
+      .eq("id", userId)
+      .single();
+
+    if (profileError) throw profileError;
+
+    setProfile({
+      id: data.id,
+      fullName: data.full_name,
+      email: data.email,
+      phone: data.phone ?? undefined,
+      country: data.country,
+      city: data.city ?? "",
+      role: data.role,
+      chaburahId: data.current_chaburah_id ?? undefined
+    });
+  }
+
+  async function refreshProfile() {
+    if (!session?.user.id) return;
+    try {
+      await loadProfile(session.user.id);
+      setError(null);
+    } catch (profileError) {
+      setError(formatSupabaseError(profileError, "Unable to load profile."));
+    }
+  }
+
+  useEffect(() => {
+    supabase.auth
+      .getSession()
+      .then(async ({ data, error: sessionError }) => {
+        if (sessionError) {
+          setError(formatSupabaseError(sessionError));
+        }
+        setSession(data.session);
+        if (data.session) {
+          try {
+            await loadProfile(data.session.user.id);
+          } catch (profileError) {
+            setError(formatSupabaseError(profileError, "Unable to load profile."));
+          }
+        }
+      })
+      .catch((sessionError) => {
+        setError(formatSupabaseError(sessionError));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (!nextSession) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setTimeout(() => {
+        loadProfile(nextSession.user.id)
+          .catch((profileError) => {
+            setError(formatSupabaseError(profileError, "Unable to load profile."));
+          })
+          .finally(() => setLoading(false));
+      }, 0);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        supabase.auth.startAutoRefresh();
+      } else {
+        supabase.auth.stopAutoRefresh();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const value = useMemo<AuthStateValue>(
+    () => ({
+      session,
+      profile,
+      loading,
+      error,
+      signIn: async (email, password) => {
+        setError(null);
+        try {
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          return signInError ? formatSupabaseError(signInError) : null;
+        } catch (signInError) {
+          return formatSupabaseError(signInError);
+        }
+      },
+      signUp: async (email, password, fullName) => {
+        setError(null);
+        try {
+          const { data, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { full_name: fullName } }
+          });
+          if (signUpError) return formatSupabaseError(signUpError);
+          if (!data.session) return "Check your email to confirm the account, then sign in.";
+          return null;
+        } catch (signUpError) {
+          return formatSupabaseError(signUpError);
+        }
+      },
+      signOut: async () => {
+        await supabase.auth.signOut();
+      },
+      refreshProfile
+    }),
+    [error, loading, profile, session]
+  );
+
+  return <AuthStateContext.Provider value={value}>{children}</AuthStateContext.Provider>;
+}
+
+export function useAuthState() {
+  const value = useContext(AuthStateContext);
+  if (!value) throw new Error("useAuthState must be used inside AuthStateProvider");
+  return value;
+}
