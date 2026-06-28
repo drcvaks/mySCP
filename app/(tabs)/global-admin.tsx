@@ -118,7 +118,7 @@ export default function GlobalAdminScreen() {
     }
     const { error: roleError } = await supabase.rpc("admin_set_user_role", {
       target_user_id: targetProfile.id,
-      target_role: targetRole
+      new_role: targetRole
     });
     setSaving(false);
     if (roleError) {

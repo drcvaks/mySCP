@@ -170,7 +170,7 @@ export interface Database {
         Returns: ReviewSessionRow;
       };
       admin_set_user_role: {
-        Args: { target_user_id: string; target_role: Database["public"]["Enums"]["app_role"] };
+        Args: { target_user_id: string; new_role: Database["public"]["Enums"]["app_role"] };
         Returns: undefined;
       };
       review_role_request: {
