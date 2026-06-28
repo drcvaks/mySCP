@@ -61,7 +61,7 @@ export default function RabbiHubScreen() {
       ? parsedChoices
       : multipleChoiceOptions
           .slice(0, optionCount)
-          .map((choice, index) => choice.trim() || `Option ${String.fromCharCode(65 + index)}`);
+          .map((_choice, index) => `Option ${String.fromCharCode(65 + index)}`);
 
   function updateOptionCount(count: number) {
     setOptionCount(count);
@@ -307,7 +307,7 @@ export default function RabbiHubScreen() {
             {correctAnswerOptions.map((choice, index) => (
               <FilterChip
                 key={`${choice}-${index}`}
-                label={questionKind === "multiple_choice" ? `${String.fromCharCode(65 + index)}. ${choice}` : choice}
+                label={questionKind === "multiple_choice" ? String.fromCharCode(65 + index) : choice}
                 onPress={() => setCorrectChoiceIndex(String(index))}
                 selected={correctChoiceIndex === String(index)}
               />
