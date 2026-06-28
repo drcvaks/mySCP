@@ -30,6 +30,17 @@ export interface Chaburah {
   description?: string;
 }
 
+export interface ChaburahMembership {
+  id: string;
+  userId: string;
+  chaburahId: string;
+  memberRole: "participant" | "rabbi" | "admin";
+  status: "pending" | "active" | "suspended" | "left";
+  joinedAt: string;
+  fullName?: string;
+  email?: string;
+}
+
 export interface Announcement {
   id: string;
   chaburahId?: string;

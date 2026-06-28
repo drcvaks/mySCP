@@ -23,7 +23,14 @@ const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "pdf
 
 export default function AdminScreen() {
   const { profile } = useAuthState();
-  const { chaburos, learningFiles, refresh, selectedChaburahId } = useAppState();
+  const {
+    chaburos,
+    learningFiles,
+    memberships,
+    refresh,
+    reviewMembershipRequest,
+    selectedChaburahId
+  } = useAppState();
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const chaburah = chaburos.find((item) => item.id === managedChaburahId);
   const [address, setAddress] = useState("");
@@ -54,6 +61,12 @@ export default function AdminScreen() {
 
   const localFiles = learningFiles.filter(
     (file) => file.visibility === "everyone" || file.chaburahId === managedChaburahId
+  );
+  const pendingJoinRequests = memberships.filter(
+    (membership) =>
+      membership.chaburahId === managedChaburahId &&
+      membership.memberRole === "participant" &&
+      membership.status === "pending"
   );
 
   async function saveChaburah() {
@@ -123,6 +136,14 @@ export default function AdminScreen() {
     await refresh();
   }
 
+  async function handleMembershipRequest(membershipId: string, approve: boolean) {
+    setSaving(true);
+    setMessage("");
+    const result = await reviewMembershipRequest(membershipId, approve);
+    setSaving(false);
+    setMessage(result ?? "Membership request updated.");
+  }
+
   return (
     <Screen title="Admin" eyebrow="Local chaburah tools">
       <Card>
@@ -162,6 +183,47 @@ export default function AdminScreen() {
             </View>
             <Button disabled={saving} label={saving ? "Saving..." : "Save Chaburah Settings"} onPress={saveChaburah} />
           </>
+        )}
+      </Card>
+
+      <Card>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Join Requests</SectionTitle>
+            <Text style={styles.muted}>Approve or reject pending requests for this chaburah.</Text>
+          </View>
+          <Pill
+            label={`${pendingJoinRequests.length} pending`}
+            tone={pendingJoinRequests.length ? "accent" : "success"}
+          />
+        </Row>
+        {!managedChaburahId ? (
+          <Text style={styles.muted}>Select a chaburah before reviewing join requests.</Text>
+        ) : pendingJoinRequests.length === 0 ? (
+          <Text style={styles.muted}>No pending join requests.</Text>
+        ) : (
+          pendingJoinRequests.map((membership) => (
+            <Row key={membership.id}>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <Text style={styles.body}>{membership.fullName ?? "Unnamed user"}</Text>
+                <MetaText>{membership.email ?? membership.userId}</MetaText>
+              </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <Button
+                  disabled={saving}
+                  label="Approve"
+                  onPress={() => handleMembershipRequest(membership.id, true)}
+                  variant="secondary"
+                />
+                <Button
+                  disabled={saving}
+                  label="Reject"
+                  onPress={() => handleMembershipRequest(membership.id, false)}
+                  variant="ghost"
+                />
+              </View>
+            </Row>
+          ))
         )}
       </Card>
 

@@ -3,6 +3,7 @@ import { formatSupabaseError } from "../lib/errors";
 import { supabase } from "../lib/supabase";
 import {
   Announcement,
+  ChaburahMembership,
   AskRavQuestion,
   Chaburah,
   LearningFile,
@@ -27,6 +28,7 @@ interface AppStateValue {
   error: string | null;
   selectedChaburahId?: string;
   chaburos: Chaburah[];
+  memberships: ChaburahMembership[];
   announcements: Announcement[];
   learningFiles: LearningFile[];
   reviewQuestions: ReviewQuestion[];
@@ -34,6 +36,7 @@ interface AppStateValue {
   askRavQuestions: AskRavQuestion[];
   refresh: () => Promise<void>;
   joinChaburah: (chaburahId: string) => Promise<string | null>;
+  reviewMembershipRequest: (membershipId: string, approve: boolean) => Promise<string | null>;
   checkReviewAnswer: (questionId: string, choiceIndex: number) => Promise<ReviewFeedback>;
   saveReviewSession: (week: number | "all", answers: ReviewAnswer[]) => Promise<string | null>;
   submitAskRavQuestion: (question: string) => Promise<string | null>;
@@ -44,6 +47,7 @@ const AppStateContext = createContext<AppStateValue | null>(null);
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const { session, profile, refreshProfile } = useAuthState();
   const [chaburos, setChaburos] = useState<Chaburah[]>([]);
+  const [memberships, setMemberships] = useState<ChaburahMembership[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [learningFiles, setLearningFiles] = useState<LearningFile[]>([]);
   const [reviewQuestions, setReviewQuestions] = useState<ReviewQuestion[]>([]);
@@ -56,6 +60,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (!session) {
       setChaburos([]);
+      setMemberships([]);
       setAnnouncements([]);
       setLearningFiles([]);
       setReviewQuestions([]);
@@ -71,6 +76,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     try {
       const [
         chaburosResult,
+        membershipsResult,
+        profilesResult,
         announcementsResult,
         filesResult,
         questionsResult,
@@ -78,6 +85,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         askRavResult
       ] = await Promise.all([
         supabase.from("chaburos").select("*").order("name"),
+        supabase.from("chaburah_members").select("*").order("updated_at", { ascending: false }),
+        supabase.from("profiles").select("id,email,full_name"),
         supabase.from("announcements").select("*").order("created_at", { ascending: false }),
         supabase.from("learning_files").select("*").order("created_at", { ascending: false }),
         supabase.from("review_questions").select("*").order("week").order("created_at"),
@@ -87,6 +96,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
       const firstError = [
         chaburosResult.error,
+        membershipsResult.error,
+        profilesResult.error,
         announcementsResult.error,
         filesResult.error,
         questionsResult.error,
@@ -114,6 +125,29 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           zoomLink: row.zoom_url ?? undefined,
           description: row.description ?? undefined
         }))
+      );
+
+      const profileById = new Map(
+        (profilesResult.data ?? []).map((profileRow) => [
+          profileRow.id,
+          { email: profileRow.email, fullName: profileRow.full_name }
+        ])
+      );
+
+      setMemberships(
+        (membershipsResult.data ?? []).map((row) => {
+          const memberProfile = profileById.get(row.user_id);
+          return {
+            id: row.id,
+            userId: row.user_id,
+            chaburahId: row.chaburah_id,
+            memberRole: row.member_role,
+            status: row.status,
+            joinedAt: row.joined_at,
+            fullName: memberProfile?.fullName,
+            email: memberProfile?.email
+          };
+        })
       );
 
       setAnnouncements(
@@ -146,20 +180,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       );
 
       setReviewQuestions(
-      (questionsResult.data ?? []).map((row) => ({
-        id: row.id,
-        chaburahId: row.chaburah_id ?? undefined,
-        week: row.week,
-        topic: row.topic,
-        prompt: row.prompt,
-        kind: row.kind,
-        choices: Array.isArray(row.choices)
-          ? row.choices.filter((choice): choice is string => typeof choice === "string")
-          : [],
-        visibility: row.visibility,
-        enabled: row.enabled
-      }))
-    );
+        (questionsResult.data ?? []).map((row) => ({
+          id: row.id,
+          chaburahId: row.chaburah_id ?? undefined,
+          week: row.week,
+          topic: row.topic,
+          prompt: row.prompt,
+          kind: row.kind,
+          choices: Array.isArray(row.choices)
+            ? row.choices.filter((choice): choice is string => typeof choice === "string")
+            : [],
+          visibility: row.visibility,
+          enabled: row.enabled
+        }))
+      );
 
       setReviewSessions(
         (sessionsResult.data ?? []).map((row) => ({
@@ -202,6 +236,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       error,
       selectedChaburahId: profile?.chaburahId,
       chaburos,
+      memberships,
       announcements,
       learningFiles,
       reviewQuestions,
@@ -220,6 +255,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         await refreshProfile();
         await refresh();
         return null;
+      },
+      reviewMembershipRequest: async (membershipId, approve) => {
+        const { error: membershipError } = await supabase.rpc("review_membership_request", {
+          target_membership_id: membershipId,
+          approve_request: approve
+        });
+        if (membershipError) return membershipError.message;
+        await refresh();
+        return approve ? "Membership approved." : "Membership request rejected.";
       },
       checkReviewAnswer: async (questionId, choiceIndex) => {
         const { data, error: answerError } = await supabase.rpc("check_review_answer", {
@@ -269,6 +313,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       hydrated,
       learningFiles,
       loading,
+      memberships,
       profile?.chaburahId,
       refresh,
       refreshProfile,

@@ -95,6 +95,7 @@ supabase/
   migrations/
     202606220001_initial_schema.sql
     202606220002_rls_and_storage.sql
+    202606280001_review_membership_request.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
@@ -112,6 +113,7 @@ For a clean test project, apply the reset file first, then the migrations in ord
 
 - Global admins can create chaburos, activate/deactivate chaburos, and assign app roles by email.
 - Local admins can edit chaburah address, schedule, meeting link, description, discussion setting, and join-approval setting.
+- Local admins and rabbonim can approve or reject pending chaburah join requests.
 - Local admins and global admins can publish URL-based learning files with title, topic, week, file type, scope, and description.
 - Rabbonim and global admins can answer Ask the Rav questions.
 - Rabbonim and global admins can publish review questions while answer keys remain in the protected `review_question_answers` table.

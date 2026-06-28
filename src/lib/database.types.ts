@@ -50,6 +50,16 @@ type ChaburahRow = {
   updated_at: string;
 };
 
+type ChaburahMemberRow = {
+  id: string;
+  user_id: string;
+  chaburah_id: string;
+  member_role: Database["public"]["Enums"]["membership_role"];
+  status: Database["public"]["Enums"]["membership_status"];
+  joined_at: string;
+  updated_at: string;
+};
+
 type AnnouncementRow = {
   id: string;
   chaburah_id: string | null;
@@ -136,6 +146,7 @@ export interface Database {
         Partial<Pick<ProfileRow, "full_name" | "phone" | "city" | "state" | "country" | "avatar_url">>
       >;
       chaburos: Table<ChaburahRow>;
+      chaburah_members: Table<ChaburahMemberRow>;
       announcements: Table<AnnouncementRow>;
       learning_files: Table<LearningFileRow>;
       review_questions: Table<ReviewQuestionRow>;
@@ -177,10 +188,15 @@ export interface Database {
         Args: { target_request_id: string; approve: boolean; note: string | null };
         Returns: undefined;
       };
+      review_membership_request: {
+        Args: { target_membership_id: string; approve_request: boolean };
+        Returns: ChaburahMemberRow;
+      };
     };
     Enums: {
       app_role: "participant" | "local_rabbi" | "local_admin" | "global_admin";
       chaburah_status: "pending" | "active" | "inactive";
+      membership_role: "participant" | "rabbi" | "admin";
       membership_status: "pending" | "active" | "suspended" | "left";
       content_visibility: "everyone" | "chaburah";
       learning_file_type: "source_sheet" | "review_sheet" | "recording" | "pdf" | "link";

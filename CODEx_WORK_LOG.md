@@ -19,6 +19,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
   - view live chaburah and review-session counts
 - Replaced the local Admin placeholder with live tools to:
   - edit current chaburah address, schedule, Zoom/meeting link, description, discussion setting, and join-approval setting
+  - approve or reject pending chaburah join requests
   - publish URL-based learning files with title, topic, week, type, scope, and description
   - review recent visible learning files
 - Replaced the Rabbi Hub placeholder with live tools to:
@@ -37,6 +38,7 @@ Primary files:
 - `app/(tabs)/rabbi-hub.tsx`
 - `src/shared/components.tsx`
 - `src/lib/database.types.ts`
+- `supabase/migrations/202606280001_review_membership_request.sql`
 
 ### Checkpoint 3 Supabase Draft
 
