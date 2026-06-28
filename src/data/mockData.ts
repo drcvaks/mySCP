@@ -145,6 +145,7 @@ export const reviewQuestions: ReviewQuestion[] = [
     prompt: "Nat Bar Nat discussions often begin with which general kitchen scenario?",
     kind: "multiple_choice",
     choices: ["Clean pareve food cooked in a clean meat pot", "Wine touched by a non-Jew", "Checking lettuce", "Lighting candles"],
+    visibility: "everyone",
     correctChoiceIndex: 0,
     explanation: "The core kitchen case starts with transferred taste from clean utensils and pareve food.",
     enabled: true
@@ -156,6 +157,7 @@ export const reviewQuestions: ReviewQuestion[] = [
     prompt: "A chaburah review quiz should show feedback after an answer.",
     kind: "true_false",
     choices: ["True", "False"],
+    visibility: "everyone",
     correctChoiceIndex: 0,
     explanation: "Immediate feedback helps participants review before the bechina.",
     enabled: true
@@ -167,6 +169,7 @@ export const reviewQuestions: ReviewQuestion[] = [
     prompt: "Week 7 begins the wine section of the zman.",
     kind: "true_false",
     choices: ["True", "False"],
+    visibility: "everyone",
     correctChoiceIndex: 0,
     explanation: "The roadmap places Stam Yeinam and wine from Week 7 onward.",
     enabled: true

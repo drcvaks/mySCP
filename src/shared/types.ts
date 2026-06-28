@@ -57,11 +57,13 @@ export interface LearningFile {
 
 export interface ReviewQuestion {
   id: string;
+  chaburahId?: string;
   week: number;
   topic: string;
   prompt: string;
   kind: "multiple_choice" | "true_false";
   choices: string[];
+  visibility: Visibility;
   correctChoiceIndex?: number;
   explanation?: string;
   enabled: boolean;

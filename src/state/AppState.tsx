@@ -146,18 +146,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       );
 
       setReviewQuestions(
-        (questionsResult.data ?? []).map((row) => ({
-          id: row.id,
-          week: row.week,
-          topic: row.topic,
-          prompt: row.prompt,
-          kind: row.kind,
-          choices: Array.isArray(row.choices)
-            ? row.choices.filter((choice): choice is string => typeof choice === "string")
-            : [],
-          enabled: row.enabled
-        }))
-      );
+      (questionsResult.data ?? []).map((row) => ({
+        id: row.id,
+        chaburahId: row.chaburah_id ?? undefined,
+        week: row.week,
+        topic: row.topic,
+        prompt: row.prompt,
+        kind: row.kind,
+        choices: Array.isArray(row.choices)
+          ? row.choices.filter((choice): choice is string => typeof choice === "string")
+          : [],
+        visibility: row.visibility,
+        enabled: row.enabled
+      }))
+    );
 
       setReviewSessions(
         (sessionsResult.data ?? []).map((row) => ({

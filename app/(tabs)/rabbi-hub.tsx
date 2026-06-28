@@ -17,7 +17,7 @@ import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
-import { Visibility } from "../../src/shared/types";
+import { ReviewQuestion, Visibility } from "../../src/shared/types";
 
 const reviewWeeks = buildReviewWeeks();
 const optionCounts = [1, 2, 3, 4];
@@ -25,9 +25,10 @@ type QuestionKind = "true_false" | "multiple_choice";
 
 export default function RabbiHubScreen() {
   const { profile } = useAuthState();
-  const { askRavQuestions, chaburos, refresh, selectedChaburahId } = useAppState();
+  const { askRavQuestions, chaburos, refresh, reviewQuestions, selectedChaburahId } = useAppState();
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [week, setWeek] = useState(String(currentReviewWeek));
   const [questionKind, setQuestionKind] = useState<QuestionKind>("true_false");
   const [prompt, setPrompt] = useState("");
@@ -50,6 +51,17 @@ export default function RabbiHubScreen() {
   );
   const submittedQuestions = visibleQuestions.filter((question) => question.status === "submitted");
   const answeredQuestions = visibleQuestions.filter((question) => question.status === "answered");
+  const manageableReviewQuestions = useMemo(
+    () =>
+      reviewQuestions.filter(
+        (question) => profile?.role === "global_admin" || question.chaburahId === profile?.chaburahId
+      ),
+    [profile?.chaburahId, profile?.role, reviewQuestions]
+  );
+  const selectedWeekNumber = Number(week);
+  const selectedWeekReviewQuestions = manageableReviewQuestions.filter(
+    (question) => question.week === selectedWeekNumber
+  );
   const parsedChoices =
     questionKind === "true_false"
       ? ["True", "False"]
@@ -76,6 +88,49 @@ export default function RabbiHubScreen() {
     });
   }
 
+  function resetReviewForm() {
+    setEditingQuestionId(null);
+    setWeek(String(currentReviewWeek));
+    setQuestionKind("true_false");
+    setPrompt("");
+    setOptionCount(4);
+    setMultipleChoiceOptions(["", "", "", ""]);
+    setCorrectChoiceIndex("0");
+    setExplanation("");
+    setVisibility("chaburah");
+  }
+
+  async function startEditReviewQuestion(question: ReviewQuestion) {
+    setSaving(true);
+    setMessage("");
+    const { data, error } = await supabase
+      .from("review_question_answers")
+      .select("correct_choice_index,explanation")
+      .eq("question_id", question.id)
+      .single();
+    setSaving(false);
+    if (error || !data) {
+      setMessage(error?.message ?? "Unable to load the answer key for this question.");
+      return;
+    }
+
+    const nextOptions = ["", "", "", ""];
+    question.choices.slice(0, 4).forEach((choice, index) => {
+      nextOptions[index] = choice;
+    });
+
+    setEditingQuestionId(question.id);
+    setWeek(String(question.week));
+    setQuestionKind(question.kind);
+    setPrompt(question.prompt);
+    setOptionCount(question.kind === "multiple_choice" ? Math.max(1, Math.min(4, question.choices.length)) : 4);
+    setMultipleChoiceOptions(nextOptions);
+    setCorrectChoiceIndex(String(data.correct_choice_index));
+    setExplanation(data.explanation);
+    setVisibility(question.visibility);
+    setMessage("Editing review question.");
+  }
+
   async function submitAnswer(questionId: string) {
     if (!profile?.id || answer.trim().length < 5) return;
     setSaving(true);
@@ -100,7 +155,7 @@ export default function RabbiHubScreen() {
     await refresh();
   }
 
-  async function createReviewQuestion() {
+  async function saveReviewQuestion() {
     if (!profile?.id) return;
     const parsedWeek = Number(week);
     const parsedCorrect = Number(correctChoiceIndex);
@@ -131,30 +186,40 @@ export default function RabbiHubScreen() {
 
     setSaving(true);
     setMessage("");
-    const { data: question, error: questionError } = await supabase
-      .from("review_questions")
-      .insert({
+    const questionPayload = {
         chaburah_id: visibility === "chaburah" ? managedChaburahId : null,
         topic: `Week ${parsedWeek} Review`,
         week: parsedWeek,
         prompt: prompt.trim(),
         kind: questionKind,
         choices: parsedChoices,
-        visibility,
-        enabled: true,
-        created_by: profile.id
-      })
-      .select("id")
-      .single();
+        visibility
+    };
+    const questionResult = editingQuestionId
+      ? await supabase
+          .from("review_questions")
+          .update(questionPayload)
+          .eq("id", editingQuestionId)
+          .select("id")
+          .single()
+      : await supabase
+          .from("review_questions")
+          .insert({
+            ...questionPayload,
+            enabled: true,
+            created_by: profile.id
+          })
+          .select("id")
+          .single();
 
-    if (questionError || !question) {
+    if (questionResult.error || !questionResult.data) {
       setSaving(false);
-      setMessage(questionError?.message ?? "Unable to create the review question.");
+      setMessage(questionResult.error?.message ?? "Unable to save the review question.");
       return;
     }
 
     const { error: answerError } = await supabase.from("review_question_answers").upsert({
-      question_id: question.id,
+      question_id: questionResult.data.id,
       correct_choice_index: parsedCorrect,
       explanation: explanation.trim()
     });
@@ -165,14 +230,21 @@ export default function RabbiHubScreen() {
       return;
     }
 
-    setWeek(String(currentReviewWeek));
-    setQuestionKind("true_false");
-    setPrompt("");
-    setOptionCount(4);
-    setMultipleChoiceOptions(["", "", "", ""]);
-    setCorrectChoiceIndex("0");
-    setExplanation("");
-    setMessage("Review question published.");
+    resetReviewForm();
+    setMessage(editingQuestionId ? "Review question updated." : "Review question published.");
+    await refresh();
+  }
+
+  async function toggleReviewQuestion(question: ReviewQuestion) {
+    setSaving(true);
+    setMessage("");
+    const { error } = await supabase.from("review_questions").update({ enabled: !question.enabled }).eq("id", question.id);
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setMessage(question.enabled ? "Review question disabled." : "Review question enabled.");
     await refresh();
   }
 
@@ -231,7 +303,7 @@ export default function RabbiHubScreen() {
       )}
 
       <Card>
-        <SectionTitle>Publish Review Question</SectionTitle>
+        <SectionTitle>{editingQuestionId ? "Edit Review Question" : "Publish Review Question"}</SectionTitle>
         <Text style={styles.muted}>Correct answers stay in the protected answer table and are checked by RPC.</Text>
         {profile?.role === "global_admin" ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -315,7 +387,47 @@ export default function RabbiHubScreen() {
           </View>
         </View>
         <TextArea onChangeText={setExplanation} placeholder="Explanation shown after the answer" value={explanation} />
-        <Button disabled={saving} label={saving ? "Saving..." : "Publish Question"} onPress={createReviewQuestion} />
+        <Button disabled={saving} label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : "Publish Question"} onPress={saveReviewQuestion} />
+        {editingQuestionId ? <Button label="Cancel Edit" onPress={resetReviewForm} variant="ghost" /> : null}
+      </Card>
+
+      <Card>
+        <SectionTitle>Manage Review Questions</SectionTitle>
+        <Row>
+          <Text style={styles.muted}>Showing questions for Week {week}.</Text>
+          <Pill
+            label={`${selectedWeekReviewQuestions.length} question${selectedWeekReviewQuestions.length === 1 ? "" : "s"}`}
+            tone="accent"
+          />
+        </Row>
+        {selectedWeekReviewQuestions.length === 0 ? (
+          <Text style={styles.muted}>No review questions are available for this week yet.</Text>
+        ) : null}
+        {selectedWeekReviewQuestions.map((question) => (
+          <View key={question.id} style={{ gap: 8 }}>
+            <Row>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <Text style={styles.body}>{question.prompt}</Text>
+                <MetaText>
+                  Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
+                </MetaText>
+              </View>
+              <Pill label={question.enabled ? "Enabled" : "Disabled"} tone={question.enabled ? "success" : "danger"} />
+            </Row>
+            <Row>
+              <MetaText>{question.visibility === "everyone" ? "Everyone" : "Current Chaburah"}</MetaText>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <Button disabled={saving} label="Edit" onPress={() => startEditReviewQuestion(question)} variant="secondary" />
+                <Button
+                  disabled={saving}
+                  label={question.enabled ? "Disable" : "Enable"}
+                  onPress={() => toggleReviewQuestion(question)}
+                  variant="ghost"
+                />
+              </View>
+            </Row>
+          </View>
+        ))}
       </Card>
 
       <Card>
