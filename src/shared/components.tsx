@@ -178,6 +178,30 @@ export function SearchField({
   );
 }
 
+export function FormInput({
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = "default"
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  keyboardType?: "default" | "email-address" | "numeric" | "url";
+}) {
+  return (
+    <TextInput
+      autoCapitalize="none"
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={theme.colors.muted}
+      keyboardType={keyboardType}
+      style={styles.formInput}
+      value={value}
+    />
+  );
+}
+
 export function TextArea({
   value,
   onChangeText,
@@ -427,6 +451,16 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     minHeight: 48
+  },
+  formInput: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    color: theme.colors.ink,
+    fontSize: 16,
+    minHeight: 50,
+    paddingHorizontal: theme.spacing.md
   },
   textArea: {
     backgroundColor: theme.colors.surface,

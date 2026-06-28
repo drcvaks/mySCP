@@ -93,6 +93,13 @@ type ReviewQuestionRow = {
   updated_at: string;
 };
 
+type ReviewQuestionAnswerRow = {
+  question_id: string;
+  correct_choice_index: number;
+  explanation: string;
+  updated_at: string;
+};
+
 type ReviewSessionRow = {
   id: string;
   user_id: string;
@@ -132,6 +139,7 @@ export interface Database {
       announcements: Table<AnnouncementRow>;
       learning_files: Table<LearningFileRow>;
       review_questions: Table<ReviewQuestionRow>;
+      review_question_answers: Table<ReviewQuestionAnswerRow>;
       review_sessions: Table<ReviewSessionRow>;
       ask_rav_questions: Table<
         AskRavRow,
@@ -160,6 +168,14 @@ export interface Database {
           submitted_answers: Json;
         };
         Returns: ReviewSessionRow;
+      };
+      admin_set_user_role: {
+        Args: { target_user_id: string; target_role: Database["public"]["Enums"]["app_role"] };
+        Returns: undefined;
+      };
+      review_role_request: {
+        Args: { target_request_id: string; approve: boolean; note: string | null };
+        Returns: undefined;
       };
     };
     Enums: {

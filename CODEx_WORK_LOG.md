@@ -1,14 +1,42 @@
 # Codex Work Log
 
-Last updated: June 22, 2026
+Last updated: June 26, 2026
 
 ## Project State
 
-`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, mock data, and persisted local state. Checkpoint 2 provides functional local workflows without Supabase, authentication, remote file storage, SQL, migrations, or backend integration.
+`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 4 adds the first real admin/rabbi management workflows on top of the Checkpoint 3 Supabase integration.
 
 The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used only as a visual reference.
 
 ## Changes Completed
+
+### Checkpoint 4 Admin Workflows
+
+- Replaced the Global Admin placeholder with live tools to:
+  - create chaburos
+  - activate/deactivate chaburos
+  - assign app roles by user email through the existing admin RPC
+  - view live chaburah and review-session counts
+- Replaced the local Admin placeholder with live tools to:
+  - edit current chaburah address, schedule, Zoom/meeting link, description, discussion setting, and join-approval setting
+  - publish URL-based learning files with title, topic, week, type, scope, and description
+  - review recent visible learning files
+- Replaced the Rabbi Hub placeholder with live tools to:
+  - view submitted Ask the Rav questions
+  - save answers to Supabase
+  - publish review questions
+  - store review answer keys in the protected `review_question_answers` table
+  - review recently answered questions
+- Added a reusable `FormInput` component for admin forms.
+- Extended local Supabase TypeScript types for `review_question_answers` and admin RPCs.
+
+Primary files:
+
+- `app/(tabs)/global-admin.tsx`
+- `app/(tabs)/admin.tsx`
+- `app/(tabs)/rabbi-hub.tsx`
+- `src/shared/components.tsx`
+- `src/lib/database.types.ts`
 
 ### Checkpoint 3 Supabase Draft
 
@@ -36,6 +64,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Files now open external URLs or private Storage signed URLs.
 - Added live loading/error handling for Supabase data failures.
 - Expanded `seed.sql` with test announcements, learning files, review questions, and answer keys.
+- Added the React Native URL polyfill required by Supabase in Expo/React Native.
 
 Primary files:
 
@@ -157,6 +186,9 @@ Primary file:
 ## Decisions Made
 
 - Keep Expo SDK 54.
+- Keep Checkpoint 4 file management URL-based for now; native file picking/upload should be a separate dependency and UX decision.
+- Use existing Supabase RLS and RPCs for admin actions rather than adding service-role code to the Expo client.
+- Keep review answer keys out of the public `review_questions` table.
 - Add only one necessary Checkpoint 2 dependency: `@react-native-async-storage/async-storage`, installed through `expo install` for SDK compatibility.
 - Do not copy architecture, API code, authentication, or backend behavior from the Replit project.
 - Preserve the existing Expo Router structure and screen/component organization.
@@ -176,23 +208,29 @@ Primary file:
 - Checkpoint 2 TypeScript validation passed.
 - Checkpoint 2 production web export completed successfully.
 - Checkpoint 2 `expo-doctor` passed all 18 checks.
+- Checkpoint 3 TypeScript validation passed.
+- Checkpoint 3 production web export completed successfully.
+- Checkpoint 3 `expo-doctor` passed all 18 checks.
+- Checkpoint 4 TypeScript validation passed.
+- Checkpoint 4 production web export completed successfully.
+- Checkpoint 4 `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
 ### Functional Behavior
 
-- Add real file URLs, remote downloads, previews, and sharing.
-- Add answered Ask Rav responses and rabbi/admin response workflows.
-- Add loading/error notifications for persistence failures if product requirements call for them.
-- Replace placeholder Settings, Rabbi Hub, Admin, and Global Admin content with real workflows.
+- Add native file picking/upload to Supabase Storage.
+- Add file editing/deleting/replacing flows.
+- Add review question editing/deleting/enable-disable flows.
+- Add member management and join-request approval screens.
+- Add manual refresh controls or Supabase Realtime subscriptions for cross-device changes.
+- Add richer success/error notifications for admin actions.
 
 ### Backend
 
-- Add Supabase configuration when the backend checkpoint begins.
-- Add authentication and user session handling.
-- Replace mock arrays with database queries.
-- Add schema, migrations, storage, and row-level security.
-- Persist user roles, chaburah membership, files, announcements, questions, and review results.
+- Generate official Supabase TypeScript types from the live project when the CLI workflow is ready.
+- Add migrations for any new admin/RPC convenience functions discovered during real use.
+- Decide whether global admins need a dedicated chaburah selector for scoped local admin/rabbi actions.
 
 ### Product and UI Follow-Up
 
@@ -212,4 +250,5 @@ npx.cmd expo start
 npm.cmd run web
 npm.cmd run typecheck
 npx.cmd expo-doctor
+npx.cmd expo export --platform web --output-dir .tmp-checkpoint4-web
 ```
