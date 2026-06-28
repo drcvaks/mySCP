@@ -2,6 +2,7 @@ import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { fileTypeLabel } from "../../src/shared/format";
+import { currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAppState } from "../../src/state/AppState";
 
 export default function MyChaburahScreen() {
@@ -12,7 +13,7 @@ export default function MyChaburahScreen() {
   const localFiles = learningFiles.filter(
     (item) => item.visibility === "everyone" || item.chaburahId === selectedChaburahId
   );
-  const assignedQuestions = reviewQuestions.filter((item) => item.enabled && item.week <= 7);
+  const assignedQuestions = reviewQuestions.filter((item) => item.enabled && item.week <= currentReviewWeek + 3);
 
   if (!chaburah) {
     return (

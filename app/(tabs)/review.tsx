@@ -13,9 +13,8 @@ import {
   styles
 } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
+import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAppState } from "../../src/state/AppState";
-
-const weeks = [1, 2, 3, 4, 5, 6, 7];
 
 interface Feedback {
   isCorrect: boolean;
@@ -56,6 +55,10 @@ export default function ReviewScreen() {
   const bestScore = matchingSessions.length
     ? Math.max(...matchingSessions.map((session) => Math.round((session.correctAnswers / session.totalQuestions) * 100)))
     : 0;
+  const weeks = useMemo(() => {
+    const maxQuestionWeek = reviewQuestions.reduce((max, question) => Math.max(max, question.week), 0);
+    return buildReviewWeeks(maxQuestionWeek);
+  }, [reviewQuestions]);
 
   function reset(week: number | "all" = selectedWeek) {
     setSelectedWeek(week);
@@ -124,7 +127,7 @@ export default function ReviewScreen() {
           <ProgressBar value={percentage} />
           <Text style={styles.muted}>This result has been saved to your Supabase review history.</Text>
           <Button label="Try Again" onPress={() => reset()} />
-          {selectedWeek !== "all" && selectedWeek < 7 ? (
+          {selectedWeek !== "all" && selectedWeek < weeks[weeks.length - 1] ? (
             <Button label={`Continue to Week ${selectedWeek + 1}`} onPress={() => reset(selectedWeek + 1)} variant="secondary" />
           ) : null}
         </Card>
@@ -151,7 +154,7 @@ export default function ReviewScreen() {
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Choose a Week</SectionTitle>
-            <Text style={styles.muted}>Review by week or practice the full question bank.</Text>
+            <Text style={styles.muted}>Current week is Week {currentReviewWeek}. Review by week or practice the full question bank.</Text>
           </View>
           <Pill label={`${currentQuestions.length} questions`} tone="accent" />
         </Row>

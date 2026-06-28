@@ -16,10 +16,10 @@ import {
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
+import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { Visibility } from "../../src/shared/types";
 
-const currentReviewWeek = 9;
-const reviewWeeks = Array.from({ length: currentReviewWeek + 3 }, (_, index) => index + 1);
+const reviewWeeks = buildReviewWeeks();
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
 
