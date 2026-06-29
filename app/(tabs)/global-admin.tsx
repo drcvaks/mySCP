@@ -9,6 +9,7 @@ import {
   Pill,
   Row,
   Screen,
+  SearchField,
   SectionTitle,
   TextArea,
   styles
@@ -47,8 +48,17 @@ export default function GlobalAdminScreen() {
   const [description, setDescription] = useState("");
   const [roleEmail, setRoleEmail] = useState("");
   const [targetRole, setTargetRole] = useState<UserRole>("participant");
+  const [chaburahSearch, setChaburahSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const filteredChaburos = chaburos.filter((chaburah) => {
+    const query = chaburahSearch.trim().toLowerCase();
+    if (!query) return true;
+    return [chaburah.name, chaburah.city, chaburah.country, chaburah.rabbiName, chaburah.address]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
 
   async function createChaburah() {
     if (!profile?.id || !name.trim() || !city.trim()) {
@@ -223,8 +233,20 @@ export default function GlobalAdminScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Chaburos</SectionTitle>
-        {chaburos.map((chaburah) => (
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Chaburos</SectionTitle>
+            <Text style={styles.muted}>Search before activating or deactivating a chaburah.</Text>
+          </View>
+          <Pill label={`${filteredChaburos.length} of ${chaburos.length}`} tone="accent" />
+        </Row>
+        <SearchField
+          onChangeText={setChaburahSearch}
+          placeholder="Search by chaburah, city, address, or rabbi..."
+          value={chaburahSearch}
+        />
+        {filteredChaburos.length === 0 ? <Text style={styles.muted}>No chaburos match that search.</Text> : null}
+        {filteredChaburos.map((chaburah) => (
           <View key={chaburah.id} style={{ gap: 8 }}>
             <Row>
               <View style={{ flex: 1, minWidth: 220 }}>
