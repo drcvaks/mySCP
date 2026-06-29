@@ -10,6 +10,7 @@ import {
   Row,
   Screen,
   SectionTitle,
+  StatusBanner,
   TextArea,
   styles
 } from "../../src/shared/components";
@@ -260,8 +261,22 @@ export default function RabbiHubScreen() {
           </View>
           <Pill label={`${submittedQuestions.length} open`} tone={submittedQuestions.length ? "accent" : "success"} />
         </Row>
-        {message ? <Text style={message.includes("saved") || message.includes("published") ? styles.successText : styles.errorText}>{message}</Text> : null}
       </Card>
+
+      <StatusBanner
+        message={message}
+        tone={
+          message.includes("Editing")
+            ? "info"
+            : message.includes("saved") ||
+                message.includes("published") ||
+                message.includes("updated") ||
+                message.includes("enabled") ||
+                message.includes("disabled")
+              ? "success"
+              : "error"
+        }
+      />
 
       {submittedQuestions.length === 0 ? (
         <Card>

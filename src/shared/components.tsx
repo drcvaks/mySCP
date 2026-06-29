@@ -237,6 +237,37 @@ export function MetaText({ children }: { children: ReactNode }) {
   return <Text style={styles.meta}>{children}</Text>;
 }
 
+export function StatusBanner({
+  message,
+  tone = "info"
+}: {
+  message: string;
+  tone?: "success" | "error" | "info";
+}) {
+  if (!message) return null;
+  return (
+    <View
+      style={[
+        styles.statusBanner,
+        tone === "success" && styles.statusSuccess,
+        tone === "error" && styles.statusError,
+        tone === "info" && styles.statusInfo
+      ]}
+    >
+      <Text
+        style={[
+          styles.statusText,
+          tone === "success" && styles.statusSuccessText,
+          tone === "error" && styles.statusErrorText,
+          tone === "info" && styles.statusInfoText
+        ]}
+      >
+        {message}
+      </Text>
+    </View>
+  );
+}
+
 export function Button({
   label,
   variant = "primary",
@@ -488,6 +519,38 @@ export const styles = StyleSheet.create({
     color: theme.colors.muted,
     fontSize: 13,
     lineHeight: 18
+  },
+  statusBanner: {
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm
+  },
+  statusSuccess: {
+    backgroundColor: theme.colors.successSoft,
+    borderColor: "#86EFAC"
+  },
+  statusError: {
+    backgroundColor: theme.colors.dangerSoft,
+    borderColor: "#FDA29B"
+  },
+  statusInfo: {
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: "#F2D37A"
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "800",
+    lineHeight: 20
+  },
+  statusSuccessText: {
+    color: theme.colors.success
+  },
+  statusErrorText: {
+    color: theme.colors.danger
+  },
+  statusInfoText: {
+    color: theme.colors.primary
   },
   button: {
     alignItems: "center",

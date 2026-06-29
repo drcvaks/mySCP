@@ -10,6 +10,7 @@ import {
   Row,
   Screen,
   SectionTitle,
+  StatusBanner,
   styles
 } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
@@ -244,7 +245,7 @@ export default function ReviewScreen() {
             <MetaText>{submitting ? "Checking answer..." : "Select an answer to continue."}</MetaText>
           )}
 
-          {message ? <Text style={styles.errorText}>{message}</Text> : null}
+          <StatusBanner message={message} tone="error" />
           <Row>
             <View style={{ minWidth: 120 }}>
               <Button

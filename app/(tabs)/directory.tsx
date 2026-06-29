@@ -9,6 +9,7 @@ import {
   Screen,
   SearchField,
   SectionTitle,
+  StatusBanner,
   styles
 } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
@@ -74,7 +75,7 @@ export default function DirectoryScreen() {
         <SectionTitle>{filteredChaburos.length} Chaburos</SectionTitle>
         <Pill label={`Default: ${profile?.city || "Not set"}`} tone="accent" />
       </Row>
-      {message ? <Text style={message.includes("pending") ? styles.muted : styles.successText}>{message}</Text> : null}
+      <StatusBanner message={message} tone={message.includes("pending") ? "info" : "success"} />
 
       {filteredChaburos.length === 0 ? (
         <CompactCard>

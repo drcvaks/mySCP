@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect } from "expo-router";
-import { Button, Card, Screen, SectionTitle, styles } from "../src/shared/components";
+import { Button, Card, Screen, SectionTitle, StatusBanner, styles } from "../src/shared/components";
 import { theme } from "../src/shared/theme";
 import { useAuthState } from "../src/state/AuthState";
 
@@ -71,7 +71,7 @@ export default function AuthScreen() {
             style={authStyles.input}
             value={password}
           />
-          {message ? <Text style={styles.errorText}>{message}</Text> : null}
+          <StatusBanner message={message} tone={message.startsWith("Check your email") ? "info" : "error"} />
           <Button
             disabled={!valid || submitting || authLoading}
             label={submitting ? "Please wait..." : mode === "sign-in" ? "Sign In" : "Create Account"}

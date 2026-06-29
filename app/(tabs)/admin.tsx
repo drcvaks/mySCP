@@ -11,6 +11,7 @@ import {
   Screen,
   SearchField,
   SectionTitle,
+  StatusBanner,
   TextArea,
   styles
 } from "../../src/shared/components";
@@ -241,8 +242,20 @@ export default function AdminScreen() {
           </View>
           <Pill label={`${localFiles.length} files`} tone="accent" />
         </Row>
-        {message ? <Text style={message.includes("saved") || message.includes("published") ? styles.successText : styles.errorText}>{message}</Text> : null}
       </Card>
+
+      <StatusBanner
+        message={message}
+        tone={
+          message.includes("saved") ||
+          message.includes("published") ||
+          message.includes("approved") ||
+          message.includes("rejected") ||
+          message.includes("assigned")
+            ? "success"
+            : "error"
+        }
+      />
 
       {isGlobalAdmin ? (
         <Card>

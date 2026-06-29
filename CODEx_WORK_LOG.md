@@ -31,6 +31,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
   - store review answer keys in the protected `review_question_answers` table
   - review recently answered questions
 - Added a reusable `FormInput` component for admin forms.
+- Added a reusable `StatusBanner` component so success, info, and detailed Supabase errors are easier to find.
 - Extended local Supabase TypeScript types for `review_question_answers` and admin RPCs.
 
 Primary files:

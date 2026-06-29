@@ -8,6 +8,7 @@ import {
   Row,
   Screen,
   SectionTitle,
+  StatusBanner,
   TextArea,
   styles
 } from "../../src/shared/components";
@@ -57,7 +58,7 @@ export default function AskRavScreen() {
           <MetaText>{trimmedDraft.length} characters - minimum 10</MetaText>
           <Pill label="Private draft" tone="accent" />
         </Row>
-        {message ? <Text style={message.startsWith("Please") ? styles.errorText : styles.successText}>{message}</Text> : null}
+        <StatusBanner message={message} tone={message.startsWith("Please") ? "error" : "success"} />
         <Button disabled={trimmedDraft.length === 0} label="Submit Question" onPress={submit} />
       </Card>
 

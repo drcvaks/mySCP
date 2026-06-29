@@ -89,7 +89,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="rabbi-hub"
-        options={{ title: "Rabbi Hub", tabBarIcon: tabIcon("rabbi-hub"), href: showRabbiHub && !compactPhoneNav ? undefined : null }}
+        options={{ title: "Rabbi Hub", tabBarIcon: tabIcon("rabbi-hub"), href: showRabbiHub ? undefined : null }}
       />
       <Tabs.Screen
         name="admin"

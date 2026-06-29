@@ -11,6 +11,7 @@ import {
   Screen,
   SearchField,
   SectionTitle,
+  StatusBanner,
   TextArea,
   styles
 } from "../../src/shared/components";
@@ -157,8 +158,12 @@ export default function GlobalAdminScreen() {
           </View>
           <Pill label={`${chaburos.length} chaburos`} tone="primary" />
         </Row>
-        {message ? <Text style={message.includes("created") || message.includes("activated") || message.includes("now") ? styles.successText : styles.errorText}>{message}</Text> : null}
       </Card>
+
+      <StatusBanner
+        message={message}
+        tone={message.includes("created") || message.includes("activated") || message.includes("deactivated") || message.includes("now") ? "success" : "error"}
+      />
 
       <Card>
         <SectionTitle>Live Overview</SectionTitle>
