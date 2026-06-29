@@ -34,7 +34,7 @@ export default function TabLayout() {
   const { error: dataError, hydrated, loading: dataLoading, refresh } = useAppState();
   const { width } = useWindowDimensions();
   const compactPhoneNav = Platform.OS !== "web" && width < 768;
-  if (loading || (session && (!hydrated || dataLoading))) {
+  if (loading || (session && !hydrated)) {
     return (
       <View style={{ alignItems: "center", flex: 1, justifyContent: "center" }}>
         <ActivityIndicator color={theme.colors.primary} size="large" />

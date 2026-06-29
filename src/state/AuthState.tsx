@@ -1,5 +1,5 @@
 import { Session } from "@supabase/supabase-js";
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
 import { formatSupabaseError } from "../lib/errors";
 import { supabase } from "../lib/supabase";
@@ -21,6 +21,7 @@ const AuthStateContext = createContext<AuthStateValue | null>(null);
 export function AuthStateProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const profileRef = useRef<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +45,10 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       chaburahId: data.current_chaburah_id ?? undefined
     });
   }
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   async function refreshProfile() {
     if (!session?.user.id) return;
@@ -85,7 +90,9 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      setLoading(true);
+      if (profileRef.current?.id !== nextSession.user.id) {
+        setLoading(true);
+      }
       setTimeout(() => {
         loadProfile(nextSession.user.id)
           .catch((profileError) => {
