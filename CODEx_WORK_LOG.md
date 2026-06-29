@@ -39,6 +39,7 @@ Primary files:
 - `src/shared/components.tsx`
 - `src/lib/database.types.ts`
 - `supabase/migrations/202606280001_review_membership_request.sql`
+- `supabase/migrations/202606280002_join_chaburah_switches_membership.sql`
 
 ### Checkpoint 3 Supabase Draft
 

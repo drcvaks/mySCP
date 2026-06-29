@@ -96,6 +96,9 @@ supabase/
     202606220001_initial_schema.sql
     202606220002_rls_and_storage.sql
     202606280001_review_membership_request.sql
+    202606280002_join_chaburah_switches_membership.sql
+    202606280003_recalculate_chaburah_member_counts.sql
+    202606280004_count_distinct_active_members.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
@@ -104,6 +107,7 @@ For a clean test project, apply the reset file first, then the migrations in ord
 
 - Dashboard actions navigate to the relevant workflows.
 - Changing chaburah updates Dashboard, My Chaburah, Files, and Ask Rav through Supabase.
+- Changing chaburah treats the previous participant membership as left, so a participant has one current chaburah.
 - Review sessions use secured RPC calls for answer feedback and server-computed scores.
 - File actions open external URLs or private Storage signed URLs when available.
 - Ask Rav validates and saves questions to Supabase.

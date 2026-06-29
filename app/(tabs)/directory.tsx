@@ -32,7 +32,7 @@ export default function DirectoryScreen() {
         .toLowerCase()
         .includes(query)
     );
-  }, [search]);
+  }, [chaburos, search]);
 
   async function join(chaburahId: string) {
     const result = await joinChaburah(chaburahId);

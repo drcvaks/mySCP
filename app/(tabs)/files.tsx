@@ -29,7 +29,7 @@ export default function FilesScreen() {
   const visibleFiles = useMemo(
     () =>
       learningFiles.filter((file) => file.visibility === "everyone" || file.chaburahId === selectedChaburahId),
-    [selectedChaburahId]
+    [learningFiles, selectedChaburahId]
   );
 
   const filteredFiles = useMemo(() => {
