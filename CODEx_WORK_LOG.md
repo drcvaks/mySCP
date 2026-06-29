@@ -18,6 +18,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
   - assign app roles by user email through the existing admin RPC
   - view live chaburah and review-session counts
 - Replaced the local Admin placeholder with live tools to:
+  - let global admins select which local chaburah the Admin screen manages
   - edit current chaburah address, schedule, Zoom/meeting link, description, discussion setting, and join-approval setting
   - approve or reject pending chaburah join requests
   - publish URL-based learning files with title, topic, week, type, scope, and description

@@ -116,6 +116,7 @@ For a clean test project, apply the reset file first, then the migrations in ord
 ## Checkpoint 4 Behavior
 
 - Global admins can create chaburos, activate/deactivate chaburos, and assign app roles by email.
+- Global admins can choose which chaburah the local Admin screen is managing.
 - Local admins can edit chaburah address, schedule, meeting link, description, discussion setting, and join-approval setting.
 - Local admins and rabbonim can approve or reject pending chaburah join requests.
 - Local admins and global admins can publish URL-based learning files with title, topic, week, file type, scope, and description.

@@ -9,6 +9,7 @@ import {
   Pill,
   Row,
   Screen,
+  SearchField,
   SectionTitle,
   TextArea,
   styles
@@ -31,7 +32,10 @@ export default function AdminScreen() {
     reviewMembershipRequest,
     selectedChaburahId
   } = useAppState();
-  const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
+  const [adminChaburahId, setAdminChaburahId] = useState<string | undefined>(undefined);
+  const [chaburahSearch, setChaburahSearch] = useState("");
+  const isGlobalAdmin = profile?.role === "global_admin";
+  const managedChaburahId = isGlobalAdmin ? adminChaburahId : profile?.chaburahId;
   const chaburah = chaburos.find((item) => item.id === managedChaburahId);
   const [address, setAddress] = useState("");
   const [schedule, setSchedule] = useState("");
@@ -48,6 +52,11 @@ export default function AdminScreen() {
   const [visibility, setVisibility] = useState<Visibility>(profile?.role === "global_admin" ? "everyone" : "chaburah");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!isGlobalAdmin || adminChaburahId || chaburos.length === 0) return;
+    setAdminChaburahId(selectedChaburahId ?? chaburos[0].id);
+  }, [adminChaburahId, chaburos, isGlobalAdmin, selectedChaburahId]);
 
   useEffect(() => {
     if (!chaburah) return;
@@ -68,6 +77,14 @@ export default function AdminScreen() {
       membership.memberRole === "participant" &&
       membership.status === "pending"
   );
+  const filteredAdminChaburos = chaburos.filter((item) => {
+    const query = chaburahSearch.trim().toLowerCase();
+    if (!query) return true;
+    return [item.name, item.city, item.country, item.rabbiName, item.address]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
 
   async function saveChaburah() {
     if (!managedChaburahId) return;
@@ -146,6 +163,36 @@ export default function AdminScreen() {
 
   return (
     <Screen title="Admin" eyebrow="Local chaburah tools">
+      {isGlobalAdmin ? (
+        <Card>
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <SectionTitle>Managing Chaburah</SectionTitle>
+              <Text style={styles.muted}>Choose which local chaburah these admin tools should control.</Text>
+            </View>
+            {chaburah ? <Pill label={chaburah.name} tone="primary" /> : null}
+          </Row>
+          <SearchField
+            onChangeText={setChaburahSearch}
+            placeholder="Search by chaburah, city, address, or rabbi..."
+            value={chaburahSearch}
+          />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {filteredAdminChaburos.map((item) => (
+              <FilterChip
+                key={item.id}
+                label={`${item.name} - ${item.city}`}
+                onPress={() => setAdminChaburahId(item.id)}
+                selected={managedChaburahId === item.id}
+              />
+            ))}
+          </View>
+          {filteredAdminChaburos.length === 0 ? (
+            <Text style={styles.muted}>No chaburos match that search.</Text>
+          ) : null}
+        </Card>
+      ) : null}
+
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
