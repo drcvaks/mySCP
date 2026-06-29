@@ -15,6 +15,7 @@ import {
   styles
 } from "../../src/shared/components";
 import { fileTypeLabel, visibilityLabel } from "../../src/shared/format";
+import { formatSchedule, meridiems, parseSchedule, weekDays } from "../../src/shared/schedule";
 import { FileType, Visibility } from "../../src/shared/types";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
@@ -39,7 +40,10 @@ export default function AdminScreen() {
   const managedChaburahId = isGlobalAdmin ? adminChaburahId : profile?.chaburahId;
   const chaburah = chaburos.find((item) => item.id === managedChaburahId);
   const [address, setAddress] = useState("");
-  const [schedule, setSchedule] = useState("");
+  const [scheduleDay, setScheduleDay] = useState("Sunday");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduleMeridiem, setScheduleMeridiem] = useState("PM");
+  const [contactEmail, setContactEmail] = useState("");
   const [zoomLink, setZoomLink] = useState("");
   const [description, setDescription] = useState("");
   const [discussionEnabled, setDiscussionEnabled] = useState(false);
@@ -63,8 +67,12 @@ export default function AdminScreen() {
 
   useEffect(() => {
     if (!chaburah) return;
+    const parsedSchedule = parseSchedule(chaburah.schedule);
     setAddress(chaburah.address);
-    setSchedule(chaburah.schedule);
+    setScheduleDay(parsedSchedule.day);
+    setScheduleTime(parsedSchedule.time);
+    setScheduleMeridiem(parsedSchedule.meridiem);
+    setContactEmail(chaburah.contactEmail ?? "");
     setZoomLink(chaburah.zoomLink ?? "");
     setDescription(chaburah.description ?? "");
     setDiscussionEnabled(chaburah.discussionEnabled);
@@ -103,7 +111,8 @@ export default function AdminScreen() {
       .from("chaburos")
       .update({
         address: address.trim() || null,
-        schedule_text: schedule.trim() || null,
+        schedule_text: scheduleTime.trim() ? formatSchedule(scheduleDay, scheduleTime, scheduleMeridiem) : null,
+        contact_email: contactEmail.trim() || null,
         zoom_url: zoomLink.trim() || null,
         description: description.trim() || null,
         discussion_enabled: discussionEnabled,
@@ -278,7 +287,30 @@ export default function AdminScreen() {
         ) : (
           <>
             <FormInput onChangeText={setAddress} placeholder="Address" value={address} />
-            <FormInput onChangeText={setSchedule} placeholder="Schedule" value={schedule} />
+            <FormInput keyboardType="email-address" onChangeText={setContactEmail} placeholder="Contact email" value={contactEmail} />
+            <View style={{ gap: 8 }}>
+              <MetaText>Schedule</MetaText>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {weekDays.map((day) => (
+                  <FilterChip key={day} label={day} onPress={() => setScheduleDay(day)} selected={scheduleDay === day} />
+                ))}
+              </View>
+              <Row>
+                <View style={{ flex: 1, minWidth: 160 }}>
+                  <FormInput onChangeText={setScheduleTime} placeholder="Time, e.g. 8:00" value={scheduleTime} />
+                </View>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {meridiems.map((meridiem) => (
+                    <FilterChip
+                      key={meridiem}
+                      label={meridiem}
+                      onPress={() => setScheduleMeridiem(meridiem)}
+                      selected={scheduleMeridiem === meridiem}
+                    />
+                  ))}
+                </View>
+              </Row>
+            </View>
             <FormInput keyboardType="url" onChangeText={setZoomLink} placeholder="Zoom or meeting link" value={zoomLink} />
             <TextArea onChangeText={setDescription} placeholder="Short chaburah description" value={description} />
             <View style={{ gap: 8 }}>

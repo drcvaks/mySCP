@@ -15,6 +15,7 @@ import {
 } from "../../src/shared/components";
 import { roleLabel } from "../../src/shared/format";
 import { UserRole } from "../../src/shared/types";
+import { formatSchedule, meridiems, weekDays } from "../../src/shared/schedule";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
@@ -32,14 +33,17 @@ function slugify(value: string) {
 
 export default function GlobalAdminScreen() {
   const { profile, refreshProfile } = useAuthState();
-  const { chaburos, reviewSessions, refresh } = useAppState();
+  const { chaburos, refresh } = useAppState();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [country, setCountry] = useState("United States");
   const [rabbiName, setRabbiName] = useState("");
-  const [schedule, setSchedule] = useState("");
+  const [scheduleDay, setScheduleDay] = useState("Sunday");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduleMeridiem, setScheduleMeridiem] = useState("PM");
+  const [contactEmail, setContactEmail] = useState("");
   const [description, setDescription] = useState("");
   const [roleEmail, setRoleEmail] = useState("");
   const [targetRole, setTargetRole] = useState<UserRole>("participant");
@@ -61,7 +65,8 @@ export default function GlobalAdminScreen() {
       state: state.trim() || null,
       country: country.trim() || "United States",
       rabbi_name: rabbiName.trim() || null,
-      schedule_text: schedule.trim() || null,
+      schedule_text: scheduleTime.trim() ? formatSchedule(scheduleDay, scheduleTime, scheduleMeridiem) : null,
+      contact_email: contactEmail.trim() || null,
       description: description.trim() || null,
       status: "active",
       discussion_enabled: false,
@@ -79,7 +84,10 @@ export default function GlobalAdminScreen() {
     setState("");
     setCountry("United States");
     setRabbiName("");
-    setSchedule("");
+    setScheduleDay("Sunday");
+    setScheduleTime("");
+    setScheduleMeridiem("PM");
+    setContactEmail("");
     setDescription("");
     setMessage("Chaburah created.");
     await refresh();
@@ -149,10 +157,6 @@ export default function GlobalAdminScreen() {
             <Text style={styles.statNumber}>{chaburos.length}</Text>
             <MetaText>Configured chaburos</MetaText>
           </View>
-          <View style={{ minWidth: 160 }}>
-            <Text style={styles.statNumber}>{reviewSessions.length}</Text>
-            <MetaText>Visible review sessions</MetaText>
-          </View>
         </Row>
       </Card>
 
@@ -170,7 +174,30 @@ export default function GlobalAdminScreen() {
         </Row>
         <FormInput onChangeText={setCountry} placeholder="Country" value={country} />
         <FormInput onChangeText={setRabbiName} placeholder="Rabbi name" value={rabbiName} />
-        <FormInput onChangeText={setSchedule} placeholder="Schedule" value={schedule} />
+        <FormInput keyboardType="email-address" onChangeText={setContactEmail} placeholder="Contact email" value={contactEmail} />
+        <View style={{ gap: 8 }}>
+          <MetaText>Schedule</MetaText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {weekDays.map((day) => (
+              <FilterChip key={day} label={day} onPress={() => setScheduleDay(day)} selected={scheduleDay === day} />
+            ))}
+          </View>
+          <Row>
+            <View style={{ flex: 1, minWidth: 160 }}>
+              <FormInput onChangeText={setScheduleTime} placeholder="Time, e.g. 8:00" value={scheduleTime} />
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {meridiems.map((meridiem) => (
+                <FilterChip
+                  key={meridiem}
+                  label={meridiem}
+                  onPress={() => setScheduleMeridiem(meridiem)}
+                  selected={scheduleMeridiem === meridiem}
+                />
+              ))}
+            </View>
+          </Row>
+        </View>
         <TextArea onChangeText={setDescription} placeholder="Description" value={description} />
         <Button disabled={saving} label={saving ? "Saving..." : "Create Chaburah"} onPress={createChaburah} />
       </Card>

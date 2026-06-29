@@ -23,6 +23,7 @@ export interface Chaburah {
   country: string;
   rabbiName: string;
   schedule: string;
+  contactEmail?: string;
   memberCount: number;
   discussionEnabled: boolean;
   joinRequiresApproval: boolean;

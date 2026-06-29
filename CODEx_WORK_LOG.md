@@ -20,7 +20,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Replaced the local Admin placeholder with live tools to:
   - let global admins select which local chaburah the Admin screen manages
   - let global admins assign rabbis and local admins to the selected chaburah by email
-  - edit current chaburah address, schedule, Zoom/meeting link, description, discussion setting, and join-approval setting
+  - edit current chaburah address, structured schedule, contact email, Zoom/meeting link, description, discussion setting, and join-approval setting
   - approve or reject pending chaburah join requests
   - publish URL-based learning files with title, topic, week, type, scope, and description
   - review recent visible learning files

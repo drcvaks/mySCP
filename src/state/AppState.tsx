@@ -119,6 +119,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           country: row.country,
           rabbiName: row.rabbi_name ?? "Rabbi not assigned",
           schedule: row.schedule_text ?? "Schedule not set",
+          contactEmail: row.contact_email ?? undefined,
           memberCount: row.member_count,
           discussionEnabled: row.discussion_enabled,
           joinRequiresApproval: row.join_requires_approval,
