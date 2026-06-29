@@ -10,17 +10,19 @@ The app now includes:
 - Dashboard
 - My Chaburah
 - Searchable and filterable Files
+- Files filters by search, scope, type, and week
 - Multi-question Review sessions with secured answer checking and saved history
 - Searchable Directory with Supabase-backed Join/Joined behavior
 - Ask the Rav submission form and live question history
-- Rabbi Hub tools for answering questions and publishing review questions
-- Admin tools for local chaburah settings and URL-based learning files
-- Global Admin tools for chaburah creation, chaburah status, and role assignment
+- Rabbi Hub tools for answering questions and creating/editing review questions
+- Admin tools for local chaburah settings, leadership assignment, join requests, and URL-based learning files
+- Global Admin tools for chaburah creation, activation/deactivation, search, and global access
 - Profile screen
 - Settings placeholder
 - Supabase Auth session handling
 - Live Supabase reads and RPC calls for participant workflows
 - Supabase-backed admin/rabbi workflows
+- Shared status banners for success, info, and detailed Supabase/RPC errors
 
 Native file uploads are not implemented yet. Checkpoint 4 supports publishing learning-file records by external URL; Supabase Storage upload UX can be added in a later checkpoint.
 
@@ -65,6 +67,8 @@ src/
     components.tsx
     format.ts
     permissions.ts
+    reviewWeeks.ts
+    schedule.ts
     theme.ts
     types.ts
 ```
@@ -117,13 +121,15 @@ For a clean test project, apply the reset file first, then the migrations in ord
 ## Checkpoint 4 Behavior
 
 - Global admins can create chaburos, activate/deactivate chaburos, promote global admins, and reset users to participant.
+- Global admins can search chaburos before activating/deactivating them.
 - Global admins can choose which chaburah the local Admin screen is managing.
 - Global admins can assign a rabbi or local admin to the selected chaburah by email.
 - Local admins can edit chaburah address, structured schedule, contact email, meeting link, description, discussion setting, and join-approval setting.
 - Local admins and rabbonim can approve or reject pending chaburah join requests.
 - Local admins and global admins can publish URL-based learning files with title, topic, week, file type, scope, and description.
 - Rabbonim and global admins can answer Ask the Rav questions.
-- Rabbonim and global admins can publish review questions while answer keys remain in the protected `review_question_answers` table.
+- Rabbonim and global admins can create, edit, enable, and disable review questions while answer keys remain in the protected `review_question_answers` table.
+- Mobile bottom navigation shows Rabbi Hub for rabbi/global admin accounts.
 
 ## Verification
 

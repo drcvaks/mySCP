@@ -1,6 +1,6 @@
 # Codex Work Log
 
-Last updated: June 26, 2026
+Last updated: June 29, 2026
 
 ## Project State
 
@@ -15,8 +15,9 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Replaced the Global Admin placeholder with live tools to:
   - create chaburos
   - activate/deactivate chaburos
+  - search chaburos before activating/deactivating them
   - promote global admins or reset users to participant by email
-  - view live chaburah and review-session counts
+  - view live chaburah counts
 - Replaced the local Admin placeholder with live tools to:
   - let global admins select which local chaburah the Admin screen manages
   - let global admins assign rabbis and local admins to the selected chaburah by email
@@ -27,12 +28,18 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Replaced the Rabbi Hub placeholder with live tools to:
   - view submitted Ask the Rav questions
   - save answers to Supabase
-  - publish review questions
+  - publish and edit review questions
+  - enable/disable review questions
+  - filter managed review questions by selected week
   - store review answer keys in the protected `review_question_answers` table
   - review recently answered questions
+- Directory now hides inactive chaburos and shows pending approval state for join requests.
+- Files now supports week filtering in addition to search, scope, and type filters.
+- Mobile bottom navigation shows Rabbi Hub for rabbi/global admin accounts.
 - Added a reusable `FormInput` component for admin forms.
 - Added a reusable `StatusBanner` component so success, info, and detailed Supabase errors are easier to find.
-- Extended local Supabase TypeScript types for `review_question_answers` and admin RPCs.
+- Added reusable schedule helpers for structured chaburah day/time/AM-PM fields.
+- Extended local Supabase TypeScript types for memberships, `review_question_answers`, and admin RPCs.
 
 Primary files:
 
@@ -40,9 +47,14 @@ Primary files:
 - `app/(tabs)/admin.tsx`
 - `app/(tabs)/rabbi-hub.tsx`
 - `src/shared/components.tsx`
+- `src/shared/reviewWeeks.ts`
+- `src/shared/schedule.ts`
+- `src/shared/types.ts`
 - `src/lib/database.types.ts`
 - `supabase/migrations/202606280001_review_membership_request.sql`
 - `supabase/migrations/202606280002_join_chaburah_switches_membership.sql`
+- `supabase/migrations/202606280003_recalculate_chaburah_member_counts.sql`
+- `supabase/migrations/202606280004_count_distinct_active_members.sql`
 - `supabase/migrations/202606280005_assign_chaburah_leader.sql`
 
 ### Checkpoint 3 Supabase Draft
@@ -124,10 +136,11 @@ Primary files:
   - My Chaburah
   - Review
   - Files
+- Rabbi/global admin phone layouts also show Rabbi Hub in the bottom navigation.
 - Added an upper-left hamburger menu on Android phone layouts.
 - The mobile menu contains Directory, Rabbi Hub, Admin, Global Admin, Profile, and Settings.
 - Ask Rav remains an existing route but is not currently exposed as a main navigation item.
-- Navigation visibility continues to respect the current mock user's role where applicable.
+- Navigation visibility respects the live Supabase profile role.
 
 Primary file:
 
@@ -145,6 +158,7 @@ Primary file:
   - Compact cards
   - Metadata text
   - Progress bars
+  - Status banners
   - Success and error feedback colors
 - Constrained desktop/tablet content widths to avoid awkwardly stretched layouts.
 
@@ -161,7 +175,7 @@ Primary files:
 - Redesigned quiz choices with readable answer markers and polished selected/correct/incorrect states.
 - Added immediate mock feedback and explanations.
 - Added reset and retry controls.
-- Kept the implementation local and mock-data-based.
+- Review uses live Supabase questions, secured answer RPCs, and saved review results.
 
 Primary file:
 
@@ -171,6 +185,7 @@ Primary file:
 
 - Added working client-side search by title, topic, and file type.
 - Added working filters for scope and file type.
+- Added working filter for week.
 - Organized file cards by title, topic, week, type, uploader, and visibility.
 - Added clear empty-result feedback.
 - Improved card hierarchy and responsive metadata layout.
@@ -196,12 +211,15 @@ Primary file:
 - Keep Checkpoint 4 file management URL-based for now; native file picking/upload should be a separate dependency and UX decision.
 - Use existing Supabase RLS and RPCs for admin actions rather than adding service-role code to the Expo client.
 - Keep review answer keys out of the public `review_questions` table.
+- Keep local rabbi/local admin assignment scoped to a chaburah through Admin, not Global Admin's app-wide role tool.
+- Treat changing chaburah as leaving other participant chaburah memberships for now.
+- Keep detailed Supabase/RPC error text visible during testing, but show it in the shared status banner.
 - Add only one necessary Checkpoint 2 dependency: `@react-native-async-storage/async-storage`, installed through `expo install` for SDK compatibility.
 - Do not copy architecture, API code, authentication, or backend behavior from the Replit project.
 - Preserve the existing Expo Router structure and screen/component organization.
 - Use responsive width and platform checks instead of introducing a new drawer dependency.
 - Keep mobile navigation intentionally limited to four high-frequency destinations.
-- Use mock data and local state until backend work is explicitly started.
+- Keep old mock data only as fallback/reference fixtures; live app workflows now use Supabase.
 - Establish shared design primitives now so later screens do not duplicate styling.
 - Do not add Playwright or another visual-testing dependency yet. The Codex in-app browser integration was present but failed because of a local Windows sandbox/runtime issue.
 
@@ -221,6 +239,7 @@ Primary file:
 - Checkpoint 4 TypeScript validation passed.
 - Checkpoint 4 production web export completed successfully.
 - Checkpoint 4 `expo-doctor` passed all 18 checks.
+- Latest post-Checkpoint 4 iteration TypeScript validation passed.
 
 ## Still To Do
 
@@ -228,16 +247,16 @@ Primary file:
 
 - Add native file picking/upload to Supabase Storage.
 - Add file editing/deleting/replacing flows.
-- Add review question editing/deleting/enable-disable flows.
-- Add member management and join-request approval screens.
+- Add review question delete flow if/when deletion policy is decided.
+- Add broader member management beyond join-request approval and leadership assignment.
 - Add manual refresh controls or Supabase Realtime subscriptions for cross-device changes.
-- Add richer success/error notifications for admin actions.
+- Add Settings functionality.
 
 ### Backend
 
 - Generate official Supabase TypeScript types from the live project when the CLI workflow is ready.
 - Add migrations for any new admin/RPC convenience functions discovered during real use.
-- Decide whether global admins need a dedicated chaburah selector for scoped local admin/rabbi actions.
+- Consider RPCs for additional multi-table admin operations as workflows mature.
 
 ### Product and UI Follow-Up
 
@@ -247,6 +266,7 @@ Primary file:
 - Add accessible disabled/pressed states to shared buttons and filters.
 - Decide whether joined chaburah cards should be visually pinned or sorted first.
 - Add file previews or native sharing once file URLs exist.
+- Add production auth redirect/deep-link configuration for email confirmation/password reset.
 - Add automated interaction tests once a stable browser test environment is available.
 
 ## Useful Commands
