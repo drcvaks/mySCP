@@ -4,6 +4,7 @@ export const chaburos: Chaburah[] = [
   {
     id: "chaburah_ohel_moshe",
     name: "Ohel Moshe",
+    status: "active",
     address: "2808 Smith Avenue, Baltimore, MD 21209",
     city: "Baltimore",
     country: "United States",
@@ -16,6 +17,7 @@ export const chaburos: Chaburah[] = [
   {
     id: "chaburah_shomrei_emunah",
     name: "Shomrei Emunah",
+    status: "active",
     address: "6221 Greenspring Ave, Baltimore, MD 21209",
     city: "Baltimore",
     country: "United States",
@@ -28,6 +30,7 @@ export const chaburos: Chaburah[] = [
   {
     id: "chaburah_suburban_orthodox",
     name: "Suburban Orthodox Congregation Toras Chaim",
+    status: "active",
     address: "7504 Seven Mile Lane, Baltimore, MD 21208",
     city: "Baltimore",
     country: "United States",
@@ -40,6 +43,7 @@ export const chaburos: Chaburah[] = [
   {
     id: "chaburah_vaks_test",
     name: "Vaks Test Chaburah",
+    status: "active",
     address: "Wonderful Place, Baltimore, MD 21208",
     city: "Baltimore",
     country: "United States",

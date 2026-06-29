@@ -25,8 +25,9 @@ export default function DirectoryScreen() {
 
   const filteredChaburos = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return chaburos;
-    return chaburos.filter((chaburah) =>
+    const activeChaburos = chaburos.filter((chaburah) => chaburah.status === "active");
+    if (!query) return activeChaburos;
+    return activeChaburos.filter((chaburah) =>
       [chaburah.name, chaburah.city, chaburah.country, chaburah.rabbiName, chaburah.address]
         .join(" ")
         .toLowerCase()

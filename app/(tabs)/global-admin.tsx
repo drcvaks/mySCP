@@ -231,13 +231,24 @@ export default function GlobalAdminScreen() {
                 <Text style={styles.body}>{chaburah.name}</Text>
                 <MetaText>{chaburah.city}, {chaburah.country} - {chaburah.memberCount} members</MetaText>
               </View>
+              <Pill label={chaburah.status === "active" ? "Active" : "Inactive"} tone={chaburah.status === "active" ? "success" : "danger"} />
               <Pill label={chaburah.rabbiName} tone="accent" />
             </Row>
             <Row>
               <MetaText>{chaburah.schedule}</MetaText>
               <View style={{ flexDirection: "row", gap: 8 }}>
-                <Button disabled={saving} label="Activate" onPress={() => setChaburahStatus(chaburah.id, "active")} variant="secondary" />
-                <Button disabled={saving} label="Deactivate" onPress={() => setChaburahStatus(chaburah.id, "inactive")} variant="ghost" />
+                <Button
+                  disabled={saving || chaburah.status === "active"}
+                  label="Activate"
+                  onPress={() => setChaburahStatus(chaburah.id, "active")}
+                  variant="secondary"
+                />
+                <Button
+                  disabled={saving || chaburah.status === "inactive"}
+                  label="Deactivate"
+                  onPress={() => setChaburahStatus(chaburah.id, "inactive")}
+                  variant="ghost"
+                />
               </View>
             </Row>
           </View>

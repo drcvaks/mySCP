@@ -114,6 +114,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         (chaburosResult.data ?? []).map((row) => ({
           id: row.id,
           name: row.name,
+          status: row.status,
           address: row.address ?? "",
           city: row.city,
           country: row.country,

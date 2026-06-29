@@ -18,6 +18,7 @@ export interface UserProfile {
 export interface Chaburah {
   id: string;
   name: string;
+  status: "pending" | "active" | "inactive";
   address: string;
   city: string;
   country: string;
