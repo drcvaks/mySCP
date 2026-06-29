@@ -99,6 +99,7 @@ supabase/
     202606280002_join_chaburah_switches_membership.sql
     202606280003_recalculate_chaburah_member_counts.sql
     202606280004_count_distinct_active_members.sql
+    202606280005_assign_chaburah_leader.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
@@ -115,8 +116,9 @@ For a clean test project, apply the reset file first, then the migrations in ord
 
 ## Checkpoint 4 Behavior
 
-- Global admins can create chaburos, activate/deactivate chaburos, and assign app roles by email.
+- Global admins can create chaburos, activate/deactivate chaburos, promote global admins, and reset users to participant.
 - Global admins can choose which chaburah the local Admin screen is managing.
+- Global admins can assign a rabbi or local admin to the selected chaburah by email.
 - Local admins can edit chaburah address, schedule, meeting link, description, discussion setting, and join-approval setting.
 - Local admins and rabbonim can approve or reject pending chaburah join requests.
 - Local admins and global admins can publish URL-based learning files with title, topic, week, file type, scope, and description.

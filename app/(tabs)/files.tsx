@@ -24,12 +24,17 @@ export default function FilesScreen() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<FileType | "all">("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
+  const [selectedWeek, setSelectedWeek] = useState<number | "all">("all");
   const { learningFiles, selectedChaburahId } = useAppState();
 
   const visibleFiles = useMemo(
     () =>
       learningFiles.filter((file) => file.visibility === "everyone" || file.chaburahId === selectedChaburahId),
     [learningFiles, selectedChaburahId]
+  );
+  const fileWeeks = useMemo(
+    () => Array.from(new Set(visibleFiles.map((file) => file.week))).sort((a, b) => a - b),
+    [visibleFiles]
   );
 
   const filteredFiles = useMemo(() => {
@@ -42,9 +47,10 @@ export default function FilesScreen() {
         fileTypeLabel(file.fileType).toLowerCase().includes(query);
       const matchesType = selectedType === "all" || file.fileType === selectedType;
       const matchesScope = selectedScope === "all" || file.visibility === selectedScope;
-      return matchesSearch && matchesType && matchesScope;
+      const matchesWeek = selectedWeek === "all" || file.week === selectedWeek;
+      return matchesSearch && matchesType && matchesScope && matchesWeek;
     });
-  }, [search, selectedScope, selectedType, visibleFiles]);
+  }, [search, selectedScope, selectedType, selectedWeek, visibleFiles]);
 
   async function openFile(fileId: string) {
     const file = learningFiles.find((item) => item.id === fileId);
@@ -110,11 +116,33 @@ export default function FilesScreen() {
             ))}
           </View>
         </View>
+
+        <View style={{ gap: 8 }}>
+          <MetaText>Week</MetaText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <FilterChip
+              label="All Weeks"
+              onPress={() => setSelectedWeek("all")}
+              selected={selectedWeek === "all"}
+            />
+            {fileWeeks.map((week) => (
+              <FilterChip
+                key={week}
+                label={`Week ${week}`}
+                onPress={() => setSelectedWeek(week)}
+                selected={selectedWeek === week}
+              />
+            ))}
+          </View>
+        </View>
       </Card>
 
       <Row>
         <SectionTitle>{filteredFiles.length} Files</SectionTitle>
-        <Pill label={selectedScope === "all" ? "All scopes" : visibilityLabel(selectedScope)} tone="accent" />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <Pill label={selectedScope === "all" ? "All scopes" : visibilityLabel(selectedScope)} tone="accent" />
+          <Pill label={selectedWeek === "all" ? "All weeks" : `Week ${selectedWeek}`} tone="primary" />
+        </View>
       </Row>
 
       {filteredFiles.length === 0 ? (

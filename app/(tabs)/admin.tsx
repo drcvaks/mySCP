@@ -21,6 +21,7 @@ import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
 const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "pdf", "link"];
+type LeadershipRole = "rabbi" | "admin";
 
 export default function AdminScreen() {
   const { profile } = useAuthState();
@@ -50,6 +51,8 @@ export default function AdminScreen() {
   const [fileDescription, setFileDescription] = useState("");
   const [fileType, setFileType] = useState<FileType>("source_sheet");
   const [visibility, setVisibility] = useState<Visibility>(profile?.role === "global_admin" ? "everyone" : "chaburah");
+  const [leaderEmail, setLeaderEmail] = useState("");
+  const [leaderRole, setLeaderRole] = useState<LeadershipRole>("rabbi");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -76,6 +79,12 @@ export default function AdminScreen() {
       membership.chaburahId === managedChaburahId &&
       membership.memberRole === "participant" &&
       membership.status === "pending"
+  );
+  const assignedLeaders = memberships.filter(
+    (membership) =>
+      membership.chaburahId === managedChaburahId &&
+      membership.status === "active" &&
+      (membership.memberRole === "rabbi" || membership.memberRole === "admin")
   );
   const filteredAdminChaburos = chaburos.filter((item) => {
     const query = chaburahSearch.trim().toLowerCase();
@@ -161,6 +170,28 @@ export default function AdminScreen() {
     setMessage(result ?? "Membership request updated.");
   }
 
+  async function assignLeader() {
+    if (!managedChaburahId || !leaderEmail.trim().includes("@")) {
+      setMessage("Choose a chaburah and enter a valid user email.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    const { error } = await supabase.rpc("assign_chaburah_leader", {
+      target_chaburah_id: managedChaburahId,
+      target_user_email: leaderEmail.trim(),
+      target_member_role: leaderRole
+    });
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setLeaderEmail("");
+    setMessage(`${leaderRole === "rabbi" ? "Rabbi" : "Local admin"} assigned.`);
+    await refresh();
+  }
+
   return (
     <Screen title="Admin" eyebrow="Local chaburah tools">
       {isGlobalAdmin ? (
@@ -203,6 +234,42 @@ export default function AdminScreen() {
         </Row>
         {message ? <Text style={message.includes("saved") || message.includes("published") ? styles.successText : styles.errorText}>{message}</Text> : null}
       </Card>
+
+      {isGlobalAdmin ? (
+        <Card>
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <SectionTitle>Assign Local Leadership</SectionTitle>
+              <Text style={styles.muted}>Assign a rabbi or local admin to the selected chaburah by user email.</Text>
+            </View>
+            <Pill label={`${assignedLeaders.length} assigned`} tone="accent" />
+          </Row>
+          <FormInput
+            keyboardType="email-address"
+            onChangeText={setLeaderEmail}
+            placeholder="leader@example.com"
+            value={leaderEmail}
+          />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <FilterChip label="Rabbi" onPress={() => setLeaderRole("rabbi")} selected={leaderRole === "rabbi"} />
+            <FilterChip label="Local Admin" onPress={() => setLeaderRole("admin")} selected={leaderRole === "admin"} />
+          </View>
+          <Button disabled={saving || !managedChaburahId} label={saving ? "Saving..." : "Assign Leader"} onPress={assignLeader} />
+          {assignedLeaders.length === 0 ? (
+            <Text style={styles.muted}>No rabbi or local admin has been assigned here yet.</Text>
+          ) : (
+            assignedLeaders.map((membership) => (
+              <Row key={membership.id}>
+                <View style={{ flex: 1, minWidth: 220 }}>
+                  <Text style={styles.body}>{membership.fullName ?? "Unnamed user"}</Text>
+                  <MetaText>{membership.email ?? membership.userId}</MetaText>
+                </View>
+                <Pill label={membership.memberRole === "rabbi" ? "Rabbi" : "Local Admin"} tone="primary" />
+              </Row>
+            ))
+          )}
+        </Card>
+      ) : null}
 
       <Card>
         <SectionTitle>Chaburah Settings</SectionTitle>

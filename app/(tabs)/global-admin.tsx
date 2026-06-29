@@ -19,7 +19,7 @@ import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
-const assignableRoles: UserRole[] = ["participant", "local_admin", "local_rabbi", "global_admin"];
+const assignableRoles: UserRole[] = ["global_admin", "participant"];
 
 function slugify(value: string) {
   return value
@@ -135,7 +135,7 @@ export default function GlobalAdminScreen() {
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Leadership Console</SectionTitle>
-            <Text style={styles.muted}>Create chaburos, manage active status, and assign app roles.</Text>
+            <Text style={styles.muted}>Create chaburos, manage active status, and manage global app access.</Text>
           </View>
           <Pill label={`${chaburos.length} chaburos`} tone="primary" />
         </Row>
@@ -176,14 +176,23 @@ export default function GlobalAdminScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Assign User Role</SectionTitle>
+        <SectionTitle>Global Access</SectionTitle>
+        <Text style={styles.muted}>
+          Use Admin to assign local rabbis and local admins to a specific chaburah. This tool is only for global admin
+          access or resetting a user back to participant.
+        </Text>
         <FormInput keyboardType="email-address" onChangeText={setRoleEmail} placeholder="user@example.com" value={roleEmail} />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {assignableRoles.map((role) => (
-            <FilterChip key={role} label={roleLabel(role)} onPress={() => setTargetRole(role)} selected={targetRole === role} />
+            <FilterChip
+              key={role}
+              label={role === "participant" ? "Reset to Participant" : roleLabel(role)}
+              onPress={() => setTargetRole(role)}
+              selected={targetRole === role}
+            />
           ))}
         </View>
-        <Button disabled={saving} label={saving ? "Saving..." : "Assign Role"} onPress={assignRole} />
+        <Button disabled={saving} label={saving ? "Saving..." : targetRole === "participant" ? "Reset User" : "Promote to Global Admin"} onPress={assignRole} />
       </Card>
 
       <Card>

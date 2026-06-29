@@ -15,10 +15,11 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Replaced the Global Admin placeholder with live tools to:
   - create chaburos
   - activate/deactivate chaburos
-  - assign app roles by user email through the existing admin RPC
+  - promote global admins or reset users to participant by email
   - view live chaburah and review-session counts
 - Replaced the local Admin placeholder with live tools to:
   - let global admins select which local chaburah the Admin screen manages
+  - let global admins assign rabbis and local admins to the selected chaburah by email
   - edit current chaburah address, schedule, Zoom/meeting link, description, discussion setting, and join-approval setting
   - approve or reject pending chaburah join requests
   - publish URL-based learning files with title, topic, week, type, scope, and description
@@ -41,6 +42,7 @@ Primary files:
 - `src/lib/database.types.ts`
 - `supabase/migrations/202606280001_review_membership_request.sql`
 - `supabase/migrations/202606280002_join_chaburah_switches_membership.sql`
+- `supabase/migrations/202606280005_assign_chaburah_leader.sql`
 
 ### Checkpoint 3 Supabase Draft
 

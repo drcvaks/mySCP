@@ -192,6 +192,14 @@ export interface Database {
         Args: { target_membership_id: string; approve_request: boolean };
         Returns: ChaburahMemberRow;
       };
+      assign_chaburah_leader: {
+        Args: {
+          target_chaburah_id: string;
+          target_user_email: string;
+          target_member_role: Database["public"]["Enums"]["membership_role"];
+        };
+        Returns: ChaburahMemberRow;
+      };
     };
     Enums: {
       app_role: "participant" | "local_rabbi" | "local_admin" | "global_admin";
