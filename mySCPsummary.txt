@@ -1,0 +1,353 @@
+mySCP Project Summary
+Last updated: June 29, 2026
+
+Purpose
+-------
+mySCP is a cross-platform Expo app for a Semichas Chaver Program-style learning community. The goal is to help participants join a local chaburah, access source sheets and review material, submit questions to their Rav, and review for bechinos. It also needs practical tools for rabbis, local admins, and global admins to manage the program without touching Supabase manually.
+
+The app should feel polished, calm, professional, and easy to scan. The visual direction is based on the cleaner ReplitSCP reference, but mySCPcodex remains the source of truth. The current palette is restrained navy, gold, white, and light gray, with compact cards, clear hierarchy, readable typography, and mobile-friendly tap targets.
+
+Current Tech Stack
+------------------
+- Expo SDK 54
+- Expo Router
+- TypeScript
+- React Native / React Native Web
+- Supabase Auth
+- Supabase Postgres
+- Supabase Row Level Security
+- Supabase RPC functions for sensitive workflows
+- Supabase Storage bucket planned/partly configured for learning files
+
+Important dependency notes:
+- Keep Expo SDK 54.
+- Do not introduce package changes unless necessary.
+- `@supabase/supabase-js` is installed.
+- `react-native-url-polyfill` is installed and imported in the Supabase client for Expo/React Native compatibility.
+- `.env` is local and ignored.
+- `.env.example` is tracked with placeholders only.
+- Never put service-role keys, database passwords, or direct Postgres connection strings in the Expo app.
+
+Environment Variables
+---------------------
+The Expo client reads:
+
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+
+Use the Supabase publishable/anon key only. The service role key must never be exposed in the app.
+
+Product Roles
+-------------
+Participant:
+- signs in/signs up
+- joins or requests to join one chaburah
+- views Dashboard, My Chaburah, Files, Review, Directory, Ask Rav, Profile, Settings
+- submits Ask the Rav questions
+- reviews published questions
+
+Local Rabbi:
+- belongs to a specific chaburah through `chaburah_members.member_role = 'rabbi'`
+- has `profiles.role = 'local_rabbi'`
+- sees Rabbi Hub
+- answers Ask the Rav questions for their chaburah
+- creates/edits/enables/disables review questions for their chaburah
+- sees Rabbi Hub in mobile bottom navigation
+
+Local Admin:
+- belongs to a specific chaburah through `chaburah_members.member_role = 'admin'`
+- has `profiles.role = 'local_admin'`
+- manages local chaburah settings, join requests, and URL-based files
+
+Global Admin:
+- has `profiles.role = 'global_admin'`
+- can create/activate/deactivate chaburos
+- can search chaburos in Global Admin
+- can promote another global admin or reset a user to participant
+- can select which chaburah the Admin screen is managing
+- can assign local rabbis/admins to a selected chaburah by email
+- can see Rabbi Hub in mobile bottom navigation
+
+Role Design Decision
+--------------------
+Local rabbi/admin assignment belongs in Admin because it must be tied to a specific chaburah. Global Admin's app-wide role tool should only promote Global Admin or reset to Participant. Local Rabbi/Local Admin should not be assigned from Global Admin's role selector.
+
+Navigation
+----------
+Web/tablet:
+- left-side compact navigation
+
+Android/iOS phone:
+- compact bottom navigation
+- participants see: Dashboard, My Chaburah, Review, Files
+- rabbi/global admin users also see Rabbi Hub at the bottom
+- hamburger menu in upper left contains remaining sections such as Directory, Admin, Global Admin, Profile, Settings, etc., depending on role
+
+Screens
+-------
+Dashboard:
+- overview of current chaburah, source sheet/review prompts, Ask Rav action, etc.
+
+My Chaburah:
+- selected/current chaburah details
+- local announcements
+- source sheets/recordings
+- review assigned count
+- Ask Rav entry
+
+Directory:
+- searchable active chaburah directory
+- shows only chaburos with `status = active`
+- shows Join / Request Join / Pending / Joined
+- if join requires approval, user sees that approval is required
+- changing chaburah means leaving prior participant memberships
+
+Files:
+- searchable and filterable
+- filters: Scope, Type, Week
+- opens external URLs or signed Supabase Storage URLs
+- current file publishing is URL-based only; native upload is future work
+
+Review:
+- week selector is generated from current week plus future range and from actual published question weeks
+- current review week is stored in `src/shared/reviewWeeks.ts`
+- questions are loaded from Supabase
+- answer checking uses RPC so answer keys are not exposed
+- review sessions/results are saved to Supabase
+
+Ask Rav:
+- participant submits questions for current chaburah
+- local questions/history show in the screen
+
+Rabbi Hub:
+- answers submitted Ask the Rav questions
+- publishes review questions
+- edits existing review questions
+- enables/disables review questions
+- filters managed review questions by selected week
+- question form:
+  - defaults to current week
+  - week chips extend three weeks beyond current week
+  - supports True/False and Multiple Choice
+  - Multiple Choice asks how many options, then shows one input per option
+  - correct-answer buttons remain compact as A/B/C/D instead of showing long answer text
+  - topic is hidden from form but saved as `Week X Review`
+- answer keys live in protected `review_question_answers`
+
+Admin:
+- local chaburah tools
+- for Global Admin, top selector chooses which chaburah Admin controls
+- local admin/rabbi users manage only their assigned/current chaburah
+- structured chaburah settings:
+  - address
+  - contact email
+  - day of week
+  - time
+  - AM/PM
+  - meeting/Zoom link
+  - description
+  - discussion setting
+  - join approval setting
+- join request review:
+  - approve
+  - reject
+- assign local leadership:
+  - Global Admin only
+  - enter user email
+  - choose Rabbi or Local Admin
+  - RPC creates/updates membership and profile role
+- publish URL-based learning files
+- recent files list
+
+Global Admin:
+- create chaburah
+- structured schedule and contact email on create
+- search chaburos before activating/deactivating
+- active/inactive badges
+- promote global admin
+- reset user to participant
+- live overview currently only shows configured chaburos count
+- confusing review-session analytics count was removed until better analytics exists
+
+Settings:
+- placeholder
+
+Status Messages
+---------------
+Use the shared `StatusBanner` component for success, info, and error messages. Detailed Supabase/RPC/error text should remain visible during testing so it can be pasted into Codex for debugging. The improvement is presentation, not hiding errors.
+
+Supabase Schema Overview
+------------------------
+Important public tables:
+- profiles
+- chaburos
+- chaburah_members
+- role_requests
+- announcements
+- learning_files
+- review_questions
+- review_question_answers
+- review_sessions
+- review_session_answers
+- ask_rav_questions
+
+Important private/helper functions:
+- private.is_global_admin()
+- private.can_manage_chaburah()
+- private.can_view_profile()
+- private.can_read_content()
+- private.refresh_chaburah_member_count()
+
+Important public RPCs:
+- join_chaburah
+- leave_chaburah
+- set_current_chaburah
+- check_review_answer
+- complete_review_session
+- admin_set_user_role
+- review_role_request
+- review_membership_request
+- assign_chaburah_leader
+
+Security Requirements
+---------------------
+- RLS must remain enabled.
+- Client uses publishable/anon key only.
+- Service role key never goes into Expo/web/mobile code.
+- Review answer keys must not be exposed in `review_questions`.
+- Review answers are checked by RPC.
+- `review_question_answers` access is restricted to managers/global admins.
+- Local rabbi/admin permissions come from `chaburah_members`, not just text fields.
+- `chaburos.rabbi_name` is display text only and does not grant permissions.
+- Assigning a rabbi/admin requires membership row plus profile role.
+- Global Admin should not impersonate local admins; instead, Admin screen scopes tools to selected chaburah.
+- Inactive chaburos should not appear in Directory.
+
+Supabase Migrations
+-------------------
+Apply migrations in order:
+
+supabase/migrations/202606220001_initial_schema.sql
+supabase/migrations/202606220002_rls_and_storage.sql
+supabase/migrations/202606280001_review_membership_request.sql
+supabase/migrations/202606280002_join_chaburah_switches_membership.sql
+supabase/migrations/202606280003_recalculate_chaburah_member_counts.sql
+supabase/migrations/202606280004_count_distinct_active_members.sql
+supabase/migrations/202606280005_assign_chaburah_leader.sql
+
+For a fully clean test project:
+1. run `supabase/reset_app_schema.sql`
+2. run migrations in order
+3. create/authenticate first user
+4. promote first user to global_admin
+5. run `supabase/seed.sql` if test data is needed
+
+Seed Data Notes
+---------------
+`supabase/seed.sql` includes test chaburos, announcements, learning files, review questions, and answer keys. It expects at least one global admin profile because seeded content needs an author.
+
+Known Supabase Setup Notes
+--------------------------
+- If a verification email redirects to `http://localhost:3000`, update Supabase Authentication URL Configuration.
+- During development, email confirmation can be disabled or users can be manually confirmed.
+- Production should configure proper web URL and/or mobile deep links.
+- If Supabase says an RPC cannot be found in schema cache after running SQL, try:
+  notify pgrst, 'reload schema';
+
+Checkpoint History
+------------------
+Checkpoint 1: Initial app shell and visual structure
+- Expo Router/TypeScript app
+- main screens created
+- role-aware navigation using mock data
+- shared visual system and mock fixtures
+
+Checkpoint 2: Local functional workflows
+- local persisted state with AsyncStorage
+- dashboard buttons wired
+- chaburah join/change locally
+- review flow with scoring/history
+- Ask Rav local submission history
+- file open behavior for URLs
+- improved responsive navigation and mobile button sizing
+
+Checkpoint 3: Supabase foundation and app connection
+- schema/RLS migrations
+- Auth and profiles
+- Supabase client and env setup
+- live data loading
+- participant workflows connected to Supabase
+- join_chaburah RPC
+- Ask Rav insert
+- Review answer checking and completion RPCs
+- Files external/signed URL handling
+- React Native URL polyfill
+
+Checkpoint 4: Admin/Rabbi workflows
+- Global Admin create/activate/deactivate chaburos
+- Global Admin global access tool
+- Admin selected chaburah management
+- Admin structured settings and contact email
+- join approval loop
+- local leadership assignment
+- URL-based file publishing
+- Rabbi Hub Ask Rav answering
+- Rabbi Hub review question create/edit/enable/disable
+- StatusBanner
+- mobile Rabbi Hub bottom tab for rabbi/global admin
+- Directory active-only filtering and pending state
+- Files week filter
+
+What Still Needs To Be Done
+---------------------------
+High priority:
+- Native file upload to Supabase Storage.
+- File editing/deleting/replacing.
+- Broader member management beyond join requests and leadership assignment.
+- Settings screen functionality.
+- Production auth redirect/deep-link setup.
+- Manual refresh controls or Supabase Realtime for cross-device sync.
+- Generate official Supabase TypeScript types from the live project when CLI workflow is ready.
+
+Medium priority:
+- Review question delete flow if deletion policy is approved.
+- Better analytics for Global Admin:
+  - review attempts
+  - active users
+  - chaburah participation
+  - weak topics/weeks
+- More polished admin reporting.
+- Better empty/loading states after real-world testing.
+- File previews or native sharing.
+
+Later:
+- Automated interaction tests once stable browser testing is available.
+- Realtime subscriptions for profile/chaburah/file/review updates.
+- Rabbi request workflow for suggesting local admins if Global Admin approval is desired.
+- More complete Settings/Profile editing.
+
+Verification Commands
+---------------------
+Useful local commands:
+
+npm.cmd install
+npx.cmd expo start
+npm.cmd run web
+npm.cmd run typecheck
+npx.cmd expo-doctor
+npx.cmd expo export --platform web --output-dir .tmp-checkpoint4-web
+
+Current Caveats
+---------------
+- Native file upload is not built yet.
+- Storage bucket/policies exist, but most file flow is URL-based.
+- Admin/Rabbi workflows are functional MVP, not final polished enterprise admin.
+- No service role code should be added to the app.
+- Some old mock data remains as fallback/reference fixtures, but live workflows use Supabase.
+- `check.txt` currently appears as an untracked local file and should be ignored or reviewed separately if needed.
+
+Fresh Codex Window Instructions
+-------------------------------
+If continuing in a new Codex window, start with:
+
+Please read README.md, CODEx_WORK_LOG.md, and mySCPsummary.txt first. Continue from the current mySCPcodex state. Do not restart from scratch. Preserve Expo SDK 54, existing routing, Supabase setup, and current screen/component organization.
