@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import {
   Announcement,
   ChaburahMembership,
+  ChaburahMemberDirectoryItem,
   AskRavQuestion,
   Chaburah,
   LearningFile,
@@ -29,6 +30,7 @@ interface AppStateValue {
   selectedChaburahId?: string;
   chaburos: Chaburah[];
   memberships: ChaburahMembership[];
+  chaburahMemberDirectory: ChaburahMemberDirectoryItem[];
   announcements: Announcement[];
   learningFiles: LearningFile[];
   reviewQuestions: ReviewQuestion[];
@@ -52,6 +54,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const { session, profile, refreshProfile } = useAuthState();
   const [chaburos, setChaburos] = useState<Chaburah[]>([]);
   const [memberships, setMemberships] = useState<ChaburahMembership[]>([]);
+  const [chaburahMemberDirectory, setChaburahMemberDirectory] = useState<ChaburahMemberDirectoryItem[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [learningFiles, setLearningFiles] = useState<LearningFile[]>([]);
   const [reviewQuestions, setReviewQuestions] = useState<ReviewQuestion[]>([]);
@@ -65,6 +68,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     if (!session) {
       setChaburos([]);
       setMemberships([]);
+      setChaburahMemberDirectory([]);
       setAnnouncements([]);
       setLearningFiles([]);
       setReviewQuestions([]);
@@ -86,7 +90,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         filesResult,
         questionsResult,
         sessionsResult,
-        askRavResult
+        askRavResult,
+        memberDirectoryResult
       ] = await Promise.all([
         supabase.from("chaburos").select("*").order("name"),
         supabase.from("chaburah_members").select("*").order("updated_at", { ascending: false }),
@@ -95,7 +100,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         supabase.from("learning_files").select("*").order("created_at", { ascending: false }),
         supabase.from("review_questions").select("*").order("week").order("created_at"),
         supabase.from("review_sessions").select("*").order("completed_at", { ascending: false }).limit(25),
-        supabase.from("ask_rav_questions").select("*").order("submitted_at", { ascending: false })
+        supabase.from("ask_rav_questions").select("*").order("submitted_at", { ascending: false }),
+        profile?.chaburahId
+          ? supabase.rpc("list_chaburah_member_directory", {
+              target_chaburah_id: profile.chaburahId
+            })
+          : Promise.resolve({ data: [], error: null })
       ]);
 
       const firstError = [
@@ -106,7 +116,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         filesResult.error,
         questionsResult.error,
         sessionsResult.error,
-        askRavResult.error
+        askRavResult.error,
+        memberDirectoryResult.error
       ].find(Boolean);
 
       if (firstError) {
@@ -154,6 +165,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             email: memberProfile?.email
           };
         })
+      );
+
+      setChaburahMemberDirectory(
+        (memberDirectoryResult.data ?? []).map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          chaburahId: row.chaburah_id,
+          memberRole: row.member_role,
+          joinedAt: row.joined_at,
+          fullName: row.full_name ?? undefined
+        }))
       );
 
       setAnnouncements(
@@ -229,7 +251,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setHydrated(true);
     }
-  }, [session]);
+  }, [profile?.chaburahId, session]);
 
   useEffect(() => {
     refresh();
@@ -243,6 +265,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       selectedChaburahId: profile?.chaburahId,
       chaburos,
       memberships,
+      chaburahMemberDirectory,
       announcements,
       learningFiles,
       reviewQuestions,
@@ -327,6 +350,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       announcements,
       askRavQuestions,
       chaburos,
+      chaburahMemberDirectory,
       error,
       hydrated,
       learningFiles,

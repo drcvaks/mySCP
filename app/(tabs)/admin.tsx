@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import {
   Button,
   Card,
@@ -25,6 +27,7 @@ import { useAppState } from "../../src/state/AppState";
 const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "pdf", "link"];
 type LeadershipRole = "rabbi" | "admin";
 type MemberStatusFilter = ChaburahMembership["status"] | "all";
+type FilePublishMode = "upload" | "link";
 const memberStatusFilters: MemberStatusFilter[] = ["all", "active", "pending", "suspended", "left"];
 
 export default function AdminScreen() {
@@ -58,6 +61,8 @@ export default function AdminScreen() {
   const [fileUrl, setFileUrl] = useState("");
   const [fileDescription, setFileDescription] = useState("");
   const [fileType, setFileType] = useState<FileType>("source_sheet");
+  const [filePublishMode, setFilePublishMode] = useState<FilePublishMode>("upload");
+  const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [visibility, setVisibility] = useState<Visibility>(profile?.role === "global_admin" ? "everyone" : "chaburah");
   const [leaderEmail, setLeaderEmail] = useState("");
   const [leaderRole, setLeaderRole] = useState<LeadershipRole>("rabbi");
@@ -150,8 +155,16 @@ export default function AdminScreen() {
   async function publishFile() {
     if (!profile?.id) return;
     const parsedWeek = Number(fileWeek);
-    if (!fileTitle.trim() || !fileTopic.trim() || !fileUrl.trim()) {
-      setMessage("Add a file title, topic, and URL.");
+    if (!fileTitle.trim() || !fileTopic.trim()) {
+      setMessage("Add a file title and topic.");
+      return;
+    }
+    if (filePublishMode === "link" && !fileUrl.trim()) {
+      setMessage("Add a URL for this learning file.");
+      return;
+    }
+    if (filePublishMode === "upload" && !selectedFile) {
+      setMessage("Choose a file to upload.");
       return;
     }
     if (!Number.isInteger(parsedWeek) || parsedWeek < 1 || parsedWeek > 52) {
@@ -165,7 +178,13 @@ export default function AdminScreen() {
 
     setSaving(true);
     setMessage("");
-    const { error } = await supabase.from("learning_files").insert({
+    const storagePath =
+      filePublishMode === "upload" && selectedFile
+        ? buildStoragePath(visibility, managedChaburahId, selectedFile.name || fileTitle.trim())
+        : null;
+    const { data: createdFile, error } = await supabase
+      .from("learning_files")
+      .insert({
       chaburah_id: visibility === "chaburah" ? managedChaburahId : null,
       title: fileTitle.trim(),
       description: fileDescription.trim() || null,
@@ -173,21 +192,66 @@ export default function AdminScreen() {
       week: parsedWeek,
       file_type: fileType,
       visibility,
-      external_url: fileUrl.trim(),
+      external_url: filePublishMode === "link" ? fileUrl.trim() : null,
+      storage_path: storagePath,
       uploaded_by: profile.id
-    });
-    setSaving(false);
+      })
+      .select("id")
+      .single();
     if (error) {
+      setSaving(false);
       setMessage(error.message);
       return;
     }
+
+    if (filePublishMode === "upload" && selectedFile && storagePath) {
+      try {
+        const uploadBody = await readDocumentForUpload(selectedFile);
+        const { error: uploadError } = await supabase.storage.from("learning-files").upload(storagePath, uploadBody, {
+          contentType: selectedFile.mimeType ?? "application/octet-stream",
+          upsert: false
+        });
+        if (uploadError) {
+          if (createdFile?.id) {
+            await supabase.from("learning_files").delete().eq("id", createdFile.id);
+          }
+          setSaving(false);
+          setMessage(uploadError.message);
+          return;
+        }
+      } catch (uploadError) {
+        if (createdFile?.id) {
+          await supabase.from("learning_files").delete().eq("id", createdFile.id);
+        }
+        setSaving(false);
+        setMessage(uploadError instanceof Error ? uploadError.message : "Could not read or upload the selected file.");
+        return;
+      }
+    }
+
+    setSaving(false);
     setFileTitle("");
     setFileTopic("");
     setFileWeek("1");
     setFileUrl("");
     setFileDescription("");
-    setMessage("File published.");
+    setSelectedFile(null);
+    setMessage(filePublishMode === "upload" ? "File uploaded." : "File published.");
     await refresh();
+  }
+
+  async function chooseFile() {
+    const result = await DocumentPicker.getDocumentAsync({
+      copyToCacheDirectory: true,
+      multiple: false,
+      type: "*/*"
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setSelectedFile(asset);
+    if (!fileTitle.trim()) {
+      setFileTitle(asset.name.replace(/\.[^/.]+$/, ""));
+    }
   }
 
   async function handleMembershipRequest(membershipId: string, approve: boolean) {
@@ -255,6 +319,26 @@ export default function AdminScreen() {
     return parsed.toLocaleDateString();
   }
 
+  function buildStoragePath(scope: Visibility, chaburahId: string | undefined, fileName: string) {
+    const owner = scope === "everyone" ? "everyone" : chaburahId ?? "unassigned";
+    const safeFileName = sanitizeFileName(fileName);
+    return `${scope}/${owner}/${Date.now()}-${safeFileName}`;
+  }
+
+  function sanitizeFileName(fileName: string) {
+    return fileName
+      .trim()
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 90) || "learning-file";
+  }
+
+  function formatFileSize(size: number) {
+    if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    if (size >= 1024) return `${Math.round(size / 1024)} KB`;
+    return `${size} bytes`;
+  }
+
   return (
     <Screen title="Admin" eyebrow="Local chaburah tools">
       {isGlobalAdmin ? (
@@ -307,7 +391,8 @@ export default function AdminScreen() {
           message.includes("assigned") ||
           message.includes("reactivated") ||
           message.includes("suspended") ||
-          message.includes("removed")
+          message.includes("removed") ||
+          message.includes("uploaded")
             ? "success"
             : "error"
         }
@@ -531,6 +616,10 @@ export default function AdminScreen() {
           </View>
         ) : null}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <FilterChip label="Upload File" onPress={() => setFilePublishMode("upload")} selected={filePublishMode === "upload"} />
+          <FilterChip label="External Link" onPress={() => setFilePublishMode("link")} selected={filePublishMode === "link"} />
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {fileTypes.map((type) => (
             <FilterChip key={type} label={fileTypeLabel(type)} onPress={() => setFileType(type)} selected={fileType === type} />
           ))}
@@ -538,9 +627,32 @@ export default function AdminScreen() {
         <FormInput onChangeText={setFileTitle} placeholder="Title" value={fileTitle} />
         <FormInput onChangeText={setFileTopic} placeholder="Topic" value={fileTopic} />
         <FormInput keyboardType="numeric" onChangeText={setFileWeek} placeholder="Week" value={fileWeek} />
-        <FormInput keyboardType="url" onChangeText={setFileUrl} placeholder="https://..." value={fileUrl} />
+        {filePublishMode === "upload" ? (
+          <View style={{ gap: 8 }}>
+            <Button
+              disabled={saving}
+              label={selectedFile ? "Change Selected File" : "Choose File"}
+              onPress={chooseFile}
+              variant="secondary"
+            />
+            {selectedFile ? (
+              <MetaText>
+                {selectedFile.name}
+                {selectedFile.size ? ` - ${formatFileSize(selectedFile.size)}` : ""}
+              </MetaText>
+            ) : (
+              <Text style={styles.muted}>Choose a PDF, document, audio file, or source sheet from this device.</Text>
+            )}
+          </View>
+        ) : (
+          <FormInput keyboardType="url" onChangeText={setFileUrl} placeholder="https://..." value={fileUrl} />
+        )}
         <TextArea onChangeText={setFileDescription} placeholder="Description" value={fileDescription} />
-        <Button disabled={saving} label={saving ? "Publishing..." : "Publish File"} onPress={publishFile} />
+        <Button
+          disabled={saving}
+          label={saving ? (filePublishMode === "upload" ? "Uploading..." : "Publishing...") : "Publish File"}
+          onPress={publishFile}
+        />
       </Card>
 
       <Card>
@@ -558,4 +670,51 @@ export default function AdminScreen() {
       </Card>
     </Screen>
   );
+}
+
+function readDocumentAsBlob(uri: string) {
+  return new Promise<Blob>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.onload = () => resolve(request.response);
+    request.onerror = () => reject(new Error("Could not read the selected file from this device."));
+    request.responseType = "blob";
+    request.open("GET", uri, true);
+    request.send(null);
+  });
+}
+
+async function readDocumentForUpload(asset: DocumentPicker.DocumentPickerAsset) {
+  if (Platform.OS === "web") {
+    if (asset.file) return asset.file;
+    return readDocumentAsBlob(asset.uri);
+  }
+
+  const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+    encoding: FileSystem.EncodingType.Base64
+  });
+  return base64ToArrayBuffer(base64);
+}
+
+function base64ToArrayBuffer(base64: string) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const clean = base64.replace(/=+$/, "");
+  const byteLength = Math.floor((clean.length * 3) / 4);
+  const bytes = new Uint8Array(byteLength);
+  let buffer = 0;
+  let bits = 0;
+  let index = 0;
+
+  for (const character of clean) {
+    const value = chars.indexOf(character);
+    if (value < 0) continue;
+    buffer = (buffer << 6) | value;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes[index] = (buffer >> bits) & 0xff;
+      index += 1;
+    }
+  }
+
+  return bytes.buffer;
 }

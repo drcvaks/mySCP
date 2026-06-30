@@ -1,6 +1,6 @@
 # mySCP
 
-Checkpoint 4 for a cross-platform Expo app for a Semichas Chaver Program-style learning community.
+Checkpoint 5 in progress for a cross-platform Expo app for a Semichas Chaver Program-style learning community.
 
 The app now includes:
 
@@ -9,6 +9,7 @@ The app now includes:
 - Responsive, role-aware navigation
 - Dashboard
 - My Chaburah
+- My Chaburah active member roster
 - Searchable and filterable Files
 - Files filters by search, scope, type, and week
 - Multi-question Review sessions with secured answer checking and saved history
@@ -24,7 +25,7 @@ The app now includes:
 - Supabase-backed admin/rabbi workflows
 - Shared status banners for success, info, and detailed Supabase/RPC errors
 
-Native file uploads are not implemented yet. Checkpoint 4 supports publishing learning-file records by external URL; Supabase Storage upload UX can be added in a later checkpoint.
+Checkpoint 4 supported publishing learning-file records by external URL. Checkpoint 5 adds the My Chaburah roster and begins native Supabase Storage uploads from the Admin publishing form.
 
 Checkpoint 3 Supabase schema and RLS migrations are available in `supabase/`. The Expo app reads Supabase credentials from `.env` and uses Supabase Auth plus live database/RPC calls.
 
@@ -105,6 +106,7 @@ supabase/
     202606280004_count_distinct_active_members.sql
     202606280005_assign_chaburah_leader.sql
     202606300001_update_membership_status.sql
+    202606300002_list_chaburah_member_directory.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
@@ -133,12 +135,19 @@ For a clean test project, apply the reset file first, then the migrations in ord
 - Rabbonim and global admins can create, edit, enable, and disable review questions while answer keys remain in the protected `review_question_answers` table.
 - Mobile bottom navigation shows Rabbi Hub for rabbi/global admin accounts.
 
+## Checkpoint 5 Behavior
+
+- My Chaburah shows a read-only active member roster with names, roles, and joined dates.
+- The roster is loaded through a display-safe RPC that does not expose member email addresses to regular participants.
+- Admin file publishing supports either native file upload through `expo-document-picker`/`expo-file-system` or an external URL.
+- Uploaded files are saved to the private `learning-files` Supabase Storage bucket and opened later through signed URLs.
+
 ## Verification
 
 Recently verified commands:
 
 ```bash
 npm run typecheck
-npx expo export --platform web --output-dir .tmp-checkpoint4-web
 npx expo-doctor
+npx expo export --platform web --output-dir .tmp-checkpoint4-web
 ```

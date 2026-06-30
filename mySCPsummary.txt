@@ -23,6 +23,8 @@ Important dependency notes:
 - Keep Expo SDK 54.
 - Do not introduce package changes unless necessary.
 - `@supabase/supabase-js` is installed.
+- `expo-document-picker` is installed for native file selection/upload.
+- `expo-file-system` is installed so native uploads can read selected files before sending them to Supabase Storage.
 - `react-native-url-polyfill` is installed and imported in the Supabase client for Expo/React Native compatibility.
 - `.env` is local and ignored.
 - `.env.example` is tracked with placeholders only.
@@ -90,6 +92,7 @@ Dashboard:
 
 My Chaburah:
 - selected/current chaburah details
+- read-only active member roster with names, roles, and joined dates
 - local announcements
 - source sheets/recordings
 - review assigned count
@@ -106,7 +109,7 @@ Files:
 - searchable and filterable
 - filters: Scope, Type, Week
 - opens external URLs or signed Supabase Storage URLs
-- current file publishing is URL-based only; native upload is future work
+- Admin publishing supports either external URLs or native upload to the private Supabase Storage bucket
 
 Review:
 - week selector is generated from current week plus future range and from actual published question weeks
@@ -215,6 +218,7 @@ Important public RPCs:
 - review_membership_request
 - assign_chaburah_leader
 - update_membership_status
+- list_chaburah_member_directory
 
 Security Requirements
 ---------------------
@@ -242,6 +246,7 @@ supabase/migrations/202606280003_recalculate_chaburah_member_counts.sql
 supabase/migrations/202606280004_count_distinct_active_members.sql
 supabase/migrations/202606280005_assign_chaburah_leader.sql
 supabase/migrations/202606300001_update_membership_status.sql
+supabase/migrations/202606300002_list_chaburah_member_directory.sql
 
 For a fully clean test project:
 1. run `supabase/reset_app_schema.sql`
@@ -307,10 +312,17 @@ Checkpoint 4: Admin/Rabbi workflows
 - Directory active-only filtering and pending state
 - Files week filter
 
+Checkpoint 5: Community usability and file upload
+- My Chaburah active member roster
+- Privacy-safe roster RPC that avoids exposing email addresses to regular participants
+- Admin native file picker through `expo-document-picker`
+- Admin reads selected native files with `expo-file-system` and uploads them to the private `learning-files` Supabase Storage bucket
+- External URL publishing remains available
+
 What Still Needs To Be Done
 ---------------------------
 High priority:
-- Native file upload to Supabase Storage.
+- Test native upload on real Android/iOS devices and confirm signed URL opening on each platform.
 - File editing/deleting/replacing.
 - Deeper member-management history/auditing and leadership removal/demotion flows.
 - Settings screen functionality.
@@ -348,8 +360,8 @@ npx.cmd expo export --platform web --output-dir .tmp-checkpoint4-web
 
 Current Caveats
 ---------------
-- Native file upload is not built yet.
-- Storage bucket/policies exist, but most file flow is URL-based.
+- Native file upload is implemented in Admin, but still needs real-device testing.
+- Storage bucket/policies exist; uploaded files should open through signed URLs.
 - Admin/Rabbi workflows are functional MVP, not final polished enterprise admin.
 - No service role code should be added to the app.
 - Some old mock data remains as fallback/reference fixtures, but live workflows use Supabase.

@@ -43,6 +43,15 @@ export interface ChaburahMembership {
   email?: string;
 }
 
+export interface ChaburahMemberDirectoryItem {
+  id: string;
+  userId: string;
+  chaburahId: string;
+  memberRole: "participant" | "rabbi" | "admin";
+  joinedAt: string;
+  fullName?: string;
+}
+
 export interface Announcement {
   id: string;
   chaburahId?: string;

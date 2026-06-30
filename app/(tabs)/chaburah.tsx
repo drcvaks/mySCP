@@ -1,14 +1,16 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { fileTypeLabel } from "../../src/shared/format";
 import { currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAppState } from "../../src/state/AppState";
 
 export default function MyChaburahScreen() {
   const router = useRouter();
-  const { announcements, chaburos, learningFiles, reviewQuestions, selectedChaburahId } = useAppState();
+  const { announcements, chaburahMemberDirectory, chaburos, learningFiles, reviewQuestions, selectedChaburahId } =
+    useAppState();
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
+  const activeMembers = chaburahMemberDirectory.filter((member) => member.chaburahId === selectedChaburahId);
   const localAnnouncements = announcements.filter((item) => item.chaburahId === selectedChaburahId);
   const localFiles = learningFiles.filter(
     (item) => item.visibility === "everyone" || item.chaburahId === selectedChaburahId
@@ -40,6 +42,29 @@ export default function MyChaburahScreen() {
         <Text style={styles.body}>{chaburah?.schedule}</Text>
         <Text style={styles.muted}>{chaburah?.address}</Text>
         <Button label="Join or Change Chaburah" onPress={() => router.push("/(tabs)/directory")} variant="secondary" />
+      </Card>
+
+      <Card>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Members</SectionTitle>
+            <Text style={styles.muted}>Active people in this chaburah.</Text>
+          </View>
+          <Pill label={`${activeMembers.length} active`} tone="success" />
+        </Row>
+        {activeMembers.length === 0 ? (
+          <Text style={styles.muted}>No active members are listed yet.</Text>
+        ) : (
+          activeMembers.map((member) => (
+            <Row key={member.id}>
+              <View style={{ flex: 1, minWidth: 180 }}>
+                <Text style={styles.body}>{member.fullName ?? "Member"}</Text>
+                <MetaText>Joined {formatMemberDate(member.joinedAt)}</MetaText>
+              </View>
+              <Pill label={memberRoleLabel(member.memberRole)} tone={member.memberRole === "participant" ? "neutral" : "primary"} />
+            </Row>
+          ))
+        )}
       </Card>
 
       <Card>
@@ -80,4 +105,16 @@ export default function MyChaburahScreen() {
       </Card>
     </Screen>
   );
+}
+
+function memberRoleLabel(role: "participant" | "rabbi" | "admin") {
+  if (role === "rabbi") return "Rabbi";
+  if (role === "admin") return "Local Admin";
+  return "Participant";
+}
+
+function formatMemberDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Unknown";
+  return parsed.toLocaleDateString();
 }

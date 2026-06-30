@@ -4,11 +4,34 @@ Last updated: June 30, 2026
 
 ## Project State
 
-`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 4 adds the first real admin/rabbi management workflows on top of the Checkpoint 3 Supabase integration.
+`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 5 is now underway after the Checkpoint 4 admin/rabbi management workflows.
 
 The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used only as a visual reference.
 
 ## Changes Completed
+
+### Checkpoint 5 Community Usability and Uploads
+
+- Added a read-only active member roster to My Chaburah.
+- Kept the participant-facing roster privacy-light: names, roles, and joined dates only.
+- Added a display-safe Supabase RPC so regular participants can see active roster entries without receiving member email addresses.
+- Added `expo-document-picker` with the SDK-compatible Expo install flow.
+- Added `expo-file-system` explicitly so native uploads can read selected files reliably.
+- Added native file selection to the Admin publishing form.
+- Admin file publishing now supports either native upload to the private `learning-files` Supabase Storage bucket or an external URL.
+- Upload publishing creates the `learning_files` row first, uploads to the matching `storage_path`, and removes the row if upload fails.
+- Hardened native uploads after a `Network request failed` error by reading selected files as base64 with FileSystem and uploading an ArrayBuffer to Supabase Storage.
+
+Primary files:
+
+- `app/(tabs)/chaburah.tsx`
+- `app/(tabs)/admin.tsx`
+- `src/state/AppState.tsx`
+- `src/shared/types.ts`
+- `src/lib/database.types.ts`
+- `package.json`
+- `package-lock.json`
+- `supabase/migrations/202606300002_list_chaburah_member_directory.sql`
 
 ### Checkpoint 4 Admin Workflows
 
@@ -243,12 +266,15 @@ Primary file:
 - Checkpoint 4 production web export completed successfully.
 - Checkpoint 4 `expo-doctor` passed all 18 checks.
 - Latest post-Checkpoint 4 iteration TypeScript validation passed.
+- Checkpoint 5 member roster TypeScript validation passed.
+- Checkpoint 5 upload iteration TypeScript validation passed.
+- Checkpoint 5 upload iteration `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
 ### Functional Behavior
 
-- Add native file picking/upload to Supabase Storage.
+- Test native upload on a real Android/iOS device and confirm signed URL opening on each platform.
 - Add file editing/deleting/replacing flows.
 - Add review question delete flow if/when deletion policy is decided.
 - Add deeper member-management history/auditing and leadership removal/demotion flows.

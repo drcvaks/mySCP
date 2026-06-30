@@ -60,6 +60,15 @@ type ChaburahMemberRow = {
   updated_at: string;
 };
 
+type ChaburahMemberDirectoryRow = {
+  id: string;
+  user_id: string;
+  chaburah_id: string;
+  member_role: Database["public"]["Enums"]["membership_role"];
+  joined_at: string;
+  full_name: string | null;
+};
+
 type AnnouncementRow = {
   id: string;
   chaburah_id: string | null;
@@ -206,6 +215,10 @@ export interface Database {
           new_status: Database["public"]["Enums"]["membership_status"];
         };
         Returns: ChaburahMemberRow;
+      };
+      list_chaburah_member_directory: {
+        Args: { target_chaburah_id: string };
+        Returns: ChaburahMemberDirectoryRow[];
       };
     };
     Enums: {
