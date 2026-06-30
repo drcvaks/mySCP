@@ -15,7 +15,7 @@ The app now includes:
 - Searchable Directory with Supabase-backed Join/Joined behavior
 - Ask the Rav submission form and live question history
 - Rabbi Hub tools for answering questions and creating/editing review questions
-- Admin tools for local chaburah settings, leadership assignment, join requests, and URL-based learning files
+- Admin tools for local chaburah settings, leadership assignment, join requests, member management, and URL-based learning files
 - Global Admin tools for chaburah creation, activation/deactivation, search, and global access
 - Profile screen
 - Settings placeholder
@@ -104,6 +104,7 @@ supabase/
     202606280003_recalculate_chaburah_member_counts.sql
     202606280004_count_distinct_active_members.sql
     202606280005_assign_chaburah_leader.sql
+    202606300001_update_membership_status.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
@@ -126,6 +127,7 @@ For a clean test project, apply the reset file first, then the migrations in ord
 - Global admins can assign a rabbi or local admin to the selected chaburah by email.
 - Local admins can edit chaburah address, structured schedule, contact email, meeting link, description, discussion setting, and join-approval setting.
 - Local admins and rabbonim can approve or reject pending chaburah join requests.
+- Local admins, rabbonim, and global admins can search/filter local members and suspend, reactivate, or remove participant memberships.
 - Local admins and global admins can publish URL-based learning files with title, topic, week, file type, scope, and description.
 - Rabbonim and global admins can answer Ask the Rav questions.
 - Rabbonim and global admins can create, edit, enable, and disable review questions while answer keys remain in the protected `review_question_answers` table.

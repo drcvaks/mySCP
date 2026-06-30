@@ -1,6 +1,6 @@
 # Codex Work Log
 
-Last updated: June 29, 2026
+Last updated: June 30, 2026
 
 ## Project State
 
@@ -23,6 +23,8 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
   - let global admins assign rabbis and local admins to the selected chaburah by email
   - edit current chaburah address, structured schedule, contact email, Zoom/meeting link, description, discussion setting, and join-approval setting
   - approve or reject pending chaburah join requests
+  - search/filter local members by name, email, role, or status
+  - suspend, reactivate, or remove participant memberships through an RLS-protected RPC
   - publish URL-based learning files with title, topic, week, type, scope, and description
   - review recent visible learning files
 - Replaced the Rabbi Hub placeholder with live tools to:
@@ -56,6 +58,7 @@ Primary files:
 - `supabase/migrations/202606280003_recalculate_chaburah_member_counts.sql`
 - `supabase/migrations/202606280004_count_distinct_active_members.sql`
 - `supabase/migrations/202606280005_assign_chaburah_leader.sql`
+- `supabase/migrations/202606300001_update_membership_status.sql`
 
 ### Checkpoint 3 Supabase Draft
 
@@ -248,14 +251,14 @@ Primary file:
 - Add native file picking/upload to Supabase Storage.
 - Add file editing/deleting/replacing flows.
 - Add review question delete flow if/when deletion policy is decided.
-- Add broader member management beyond join-request approval and leadership assignment.
+- Add deeper member-management history/auditing and leadership removal/demotion flows.
 - Add manual refresh controls or Supabase Realtime subscriptions for cross-device changes.
 - Add Settings functionality.
 
 ### Backend
 
 - Generate official Supabase TypeScript types from the live project when the CLI workflow is ready.
-- Add migrations for any new admin/RPC convenience functions discovered during real use.
+- Keep adding migrations for any new admin/RPC convenience functions discovered during real use.
 - Consider RPCs for additional multi-table admin operations as workflows mature.
 
 ### Product and UI Follow-Up

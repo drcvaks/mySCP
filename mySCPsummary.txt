@@ -1,5 +1,5 @@
 mySCP Project Summary
-Last updated: June 29, 2026
+Last updated: June 30, 2026
 
 Purpose
 -------
@@ -57,7 +57,7 @@ Local Rabbi:
 Local Admin:
 - belongs to a specific chaburah through `chaburah_members.member_role = 'admin'`
 - has `profiles.role = 'local_admin'`
-- manages local chaburah settings, join requests, and URL-based files
+- manages local chaburah settings, join requests, members, and URL-based files
 
 Global Admin:
 - has `profiles.role = 'global_admin'`
@@ -151,6 +151,12 @@ Admin:
 - join request review:
   - approve
   - reject
+- member management:
+  - search by name, email, role, or status
+  - filter by all/active/pending/suspended/left
+  - suspend active members
+  - reactivate suspended/left participant memberships
+  - remove participant memberships by marking them left
 - assign local leadership:
   - Global Admin only
   - enter user email
@@ -208,6 +214,7 @@ Important public RPCs:
 - review_role_request
 - review_membership_request
 - assign_chaburah_leader
+- update_membership_status
 
 Security Requirements
 ---------------------
@@ -234,6 +241,7 @@ supabase/migrations/202606280002_join_chaburah_switches_membership.sql
 supabase/migrations/202606280003_recalculate_chaburah_member_counts.sql
 supabase/migrations/202606280004_count_distinct_active_members.sql
 supabase/migrations/202606280005_assign_chaburah_leader.sql
+supabase/migrations/202606300001_update_membership_status.sql
 
 For a fully clean test project:
 1. run `supabase/reset_app_schema.sql`
@@ -290,6 +298,7 @@ Checkpoint 4: Admin/Rabbi workflows
 - Admin structured settings and contact email
 - join approval loop
 - local leadership assignment
+- local member search/filter/suspend/reactivate/remove MVP
 - URL-based file publishing
 - Rabbi Hub Ask Rav answering
 - Rabbi Hub review question create/edit/enable/disable
@@ -303,7 +312,7 @@ What Still Needs To Be Done
 High priority:
 - Native file upload to Supabase Storage.
 - File editing/deleting/replacing.
-- Broader member management beyond join requests and leadership assignment.
+- Deeper member-management history/auditing and leadership removal/demotion flows.
 - Settings screen functionality.
 - Production auth redirect/deep-link setup.
 - Manual refresh controls or Supabase Realtime for cross-device sync.

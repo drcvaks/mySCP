@@ -200,6 +200,13 @@ export interface Database {
         };
         Returns: ChaburahMemberRow;
       };
+      update_membership_status: {
+        Args: {
+          target_membership_id: string;
+          new_status: Database["public"]["Enums"]["membership_status"];
+        };
+        Returns: ChaburahMemberRow;
+      };
     };
     Enums: {
       app_role: "participant" | "local_rabbi" | "local_admin" | "global_admin";

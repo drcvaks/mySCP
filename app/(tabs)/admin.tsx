@@ -17,13 +17,15 @@ import {
 } from "../../src/shared/components";
 import { fileTypeLabel, visibilityLabel } from "../../src/shared/format";
 import { formatSchedule, meridiems, parseSchedule, weekDays } from "../../src/shared/schedule";
-import { FileType, Visibility } from "../../src/shared/types";
+import { ChaburahMembership, FileType, Visibility } from "../../src/shared/types";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
 const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "pdf", "link"];
 type LeadershipRole = "rabbi" | "admin";
+type MemberStatusFilter = ChaburahMembership["status"] | "all";
+const memberStatusFilters: MemberStatusFilter[] = ["all", "active", "pending", "suspended", "left"];
 
 export default function AdminScreen() {
   const { profile } = useAuthState();
@@ -33,7 +35,8 @@ export default function AdminScreen() {
     memberships,
     refresh,
     reviewMembershipRequest,
-    selectedChaburahId
+    selectedChaburahId,
+    updateMembershipStatus
   } = useAppState();
   const [adminChaburahId, setAdminChaburahId] = useState<string | undefined>(undefined);
   const [chaburahSearch, setChaburahSearch] = useState("");
@@ -58,6 +61,8 @@ export default function AdminScreen() {
   const [visibility, setVisibility] = useState<Visibility>(profile?.role === "global_admin" ? "everyone" : "chaburah");
   const [leaderEmail, setLeaderEmail] = useState("");
   const [leaderRole, setLeaderRole] = useState<LeadershipRole>("rabbi");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberStatusFilter, setMemberStatusFilter] = useState<MemberStatusFilter>("active");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -103,6 +108,19 @@ export default function AdminScreen() {
       .toLowerCase()
       .includes(query);
   });
+  const chaburahMembers = memberships.filter((membership) => membership.chaburahId === managedChaburahId);
+  const filteredMembers = chaburahMembers.filter((membership) => {
+    const query = memberSearch.trim().toLowerCase();
+    const matchesStatus = memberStatusFilter === "all" || membership.status === memberStatusFilter;
+    const matchesSearch =
+      query.length === 0 ||
+      [membership.fullName ?? "", membership.email ?? "", membership.userId, membership.memberRole, membership.status]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    return matchesStatus && matchesSearch;
+  });
+  const activeMemberCount = chaburahMembers.filter((membership) => membership.status === "active").length;
 
   async function saveChaburah() {
     if (!managedChaburahId) return;
@@ -202,6 +220,41 @@ export default function AdminScreen() {
     await refresh();
   }
 
+  async function changeMembershipStatus(membershipId: string, status: ChaburahMembership["status"]) {
+    setSaving(true);
+    setMessage("");
+    const result = await updateMembershipStatus(membershipId, status);
+    setSaving(false);
+    setMessage(result ?? "Membership updated.");
+  }
+
+  function statusTone(status: ChaburahMembership["status"]): "neutral" | "primary" | "accent" | "success" | "danger" {
+    if (status === "active") return "success";
+    if (status === "pending") return "accent";
+    if (status === "suspended") return "danger";
+    return "neutral";
+  }
+
+  function memberStatusLabel(status: MemberStatusFilter) {
+    if (status === "all") return "All";
+    if (status === "active") return "Active";
+    if (status === "pending") return "Pending";
+    if (status === "suspended") return "Suspended";
+    return "Left";
+  }
+
+  function roleLabel(role: ChaburahMembership["memberRole"]) {
+    if (role === "rabbi") return "Rabbi";
+    if (role === "admin") return "Local Admin";
+    return "Participant";
+  }
+
+  function formatDate(value: string) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "Unknown";
+    return parsed.toLocaleDateString();
+  }
+
   return (
     <Screen title="Admin" eyebrow="Local chaburah tools">
       {isGlobalAdmin ? (
@@ -251,7 +304,10 @@ export default function AdminScreen() {
           message.includes("published") ||
           message.includes("approved") ||
           message.includes("rejected") ||
-          message.includes("assigned")
+          message.includes("assigned") ||
+          message.includes("reactivated") ||
+          message.includes("suspended") ||
+          message.includes("removed")
             ? "success"
             : "error"
         }
@@ -383,6 +439,85 @@ export default function AdminScreen() {
               </View>
             </Row>
           ))
+        )}
+      </Card>
+
+      <Card>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Members</SectionTitle>
+            <Text style={styles.muted}>Search and manage the active roster for this chaburah.</Text>
+          </View>
+          <Pill label={`${activeMemberCount} active`} tone="success" />
+        </Row>
+        {!managedChaburahId ? (
+          <Text style={styles.muted}>Select a chaburah before managing members.</Text>
+        ) : (
+          <>
+            <SearchField
+              onChangeText={setMemberSearch}
+              placeholder="Search by name, email, role, or status..."
+              value={memberSearch}
+            />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {memberStatusFilters.map((status) => (
+                <FilterChip
+                  key={status}
+                  label={memberStatusLabel(status)}
+                  onPress={() => setMemberStatusFilter(status)}
+                  selected={memberStatusFilter === status}
+                />
+              ))}
+            </View>
+            {filteredMembers.length === 0 ? (
+              <Text style={styles.muted}>No members match those filters.</Text>
+            ) : (
+              filteredMembers.map((membership) => {
+                const canRemove = membership.memberRole === "participant" && membership.status !== "left";
+                const canSuspend = membership.memberRole === "participant" && membership.status === "active";
+                const canReactivate =
+                  membership.memberRole === "participant" &&
+                  (membership.status === "suspended" || membership.status === "left");
+                return (
+                  <Row key={membership.id}>
+                    <View style={{ flex: 1, minWidth: 220 }}>
+                      <Text style={styles.body}>{membership.fullName ?? "Unnamed user"}</Text>
+                      <MetaText>{membership.email ?? membership.userId}</MetaText>
+                      <MetaText>Joined {formatDate(membership.joinedAt)}</MetaText>
+                    </View>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                      <Pill label={roleLabel(membership.memberRole)} tone="primary" />
+                      <Pill label={memberStatusLabel(membership.status)} tone={statusTone(membership.status)} />
+                      {canReactivate ? (
+                        <Button
+                          disabled={saving}
+                          label="Reactivate"
+                          onPress={() => changeMembershipStatus(membership.id, "active")}
+                          variant="secondary"
+                        />
+                      ) : null}
+                      {canSuspend ? (
+                        <Button
+                          disabled={saving}
+                          label="Suspend"
+                          onPress={() => changeMembershipStatus(membership.id, "suspended")}
+                          variant="ghost"
+                        />
+                      ) : null}
+                      {canRemove ? (
+                        <Button
+                          disabled={saving}
+                          label="Remove"
+                          onPress={() => changeMembershipStatus(membership.id, "left")}
+                          variant="ghost"
+                        />
+                      ) : null}
+                    </View>
+                  </Row>
+                );
+              })
+            )}
+          </>
         )}
       </Card>
 

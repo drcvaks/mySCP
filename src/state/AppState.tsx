@@ -37,6 +37,10 @@ interface AppStateValue {
   refresh: () => Promise<void>;
   joinChaburah: (chaburahId: string) => Promise<string | null>;
   reviewMembershipRequest: (membershipId: string, approve: boolean) => Promise<string | null>;
+  updateMembershipStatus: (
+    membershipId: string,
+    status: ChaburahMembership["status"]
+  ) => Promise<string | null>;
   checkReviewAnswer: (questionId: string, choiceIndex: number) => Promise<ReviewFeedback>;
   saveReviewSession: (week: number | "all", answers: ReviewAnswer[]) => Promise<string | null>;
   submitAskRavQuestion: (question: string) => Promise<string | null>;
@@ -266,6 +270,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (membershipError) return membershipError.message;
         await refresh();
         return approve ? "Membership approved." : "Membership request rejected.";
+      },
+      updateMembershipStatus: async (membershipId, status) => {
+        const { error: membershipError } = await supabase.rpc("update_membership_status", {
+          target_membership_id: membershipId,
+          new_status: status
+        });
+        if (membershipError) return membershipError.message;
+        await refresh();
+        if (status === "active") return "Membership reactivated.";
+        if (status === "suspended") return "Member suspended.";
+        if (status === "left") return "Member removed.";
+        return "Membership updated.";
       },
       checkReviewAnswer: async (questionId, choiceIndex) => {
         const { data, error: answerError } = await supabase.rpc("check_review_answer", {
