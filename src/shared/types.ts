@@ -1,6 +1,7 @@
 export type UserRole = "participant" | "local_rabbi" | "local_admin" | "global_admin";
 export type FileType = "source_sheet" | "review_sheet" | "recording" | "pdf" | "link";
 export type Visibility = "everyone" | "chaburah";
+export type FileCoverage = "week" | "bechina_review" | "entire_zman";
 
 export interface UserProfile {
   id: string;
@@ -66,7 +67,8 @@ export interface Announcement {
 export interface LearningFile {
   id: string;
   title: string;
-  week: number;
+  coverage: FileCoverage;
+  week: number | null;
   topic: string;
   visibility: Visibility;
   chaburahId?: string;

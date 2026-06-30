@@ -6,13 +6,14 @@ These files are the Checkpoint 3 database and RLS draft for a clean Supabase pro
 
 - `migrations/202606220001_initial_schema.sql`: enums, tables, indexes, triggers, profile synchronization, and member-count maintenance.
 - `migrations/202606220002_rls_and_storage.sql`: helper functions, RPC functions, grants, RLS policies, and the private `learning-files` Storage bucket.
+- Later migrations add membership approvals, chaburah switching/count fixes, leadership assignment, member management, the My Chaburah roster RPC, and learning-file coverage.
 - `seed.sql`: optional development chaburah records matching the current app mock data.
 
 ## Recommended Setup
 
 Use a new Supabase project because the current project contains only disposable test data. Do not run the older starter SQL before these migrations.
 
-Apply the migrations in filename order with the Supabase CLI or paste them into the SQL editor one at a time. Apply `seed.sql` only after both migrations succeed.
+Apply the migrations in filename order with the Supabase CLI or paste them into the SQL editor one at a time. Apply `seed.sql` only after the migrations succeed.
 
 Do not put the service-role key in the Expo application or in a committed file.
 

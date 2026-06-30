@@ -19,6 +19,9 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added `expo-file-system` explicitly so native uploads can read selected files reliably.
 - Added native file selection to the Admin publishing form.
 - Admin file publishing now supports either native upload to the private `learning-files` Supabase Storage bucket or an external URL.
+- Replaced the Admin file week text input with Coverage choices: Week, Bechina Review, and Entire Zman.
+- Week coverage shows week chips that default to the current week; Bechina Review and Entire Zman files have no week number.
+- Added `learning_files.coverage` and a database check constraint so week numbers are only used for weekly files.
 - Upload publishing creates the `learning_files` row first, uploads to the matching `storage_path`, and removes the row if upload fails.
 - Hardened native uploads after a `Network request failed` error by reading selected files as base64 with FileSystem and uploading an ArrayBuffer to Supabase Storage.
 
@@ -32,6 +35,8 @@ Primary files:
 - `package.json`
 - `package-lock.json`
 - `supabase/migrations/202606300002_list_chaburah_member_directory.sql`
+- `supabase/migrations/202606300003_allow_all_week_learning_files.sql`
+- `supabase/migrations/202606300004_add_learning_file_coverage.sql`
 
 ### Checkpoint 4 Admin Workflows
 
@@ -269,6 +274,7 @@ Primary file:
 - Checkpoint 5 member roster TypeScript validation passed.
 - Checkpoint 5 upload iteration TypeScript validation passed.
 - Checkpoint 5 upload iteration `expo-doctor` passed all 18 checks.
+- Checkpoint 5 file coverage selector TypeScript validation passed.
 
 ## Still To Do
 

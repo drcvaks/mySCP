@@ -17,9 +17,10 @@ import {
   TextArea,
   styles
 } from "../../src/shared/components";
-import { fileTypeLabel, visibilityLabel } from "../../src/shared/format";
+import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLabel } from "../../src/shared/format";
+import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { formatSchedule, meridiems, parseSchedule, weekDays } from "../../src/shared/schedule";
-import { ChaburahMembership, FileType, Visibility } from "../../src/shared/types";
+import { ChaburahMembership, FileCoverage, FileType, Visibility } from "../../src/shared/types";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
@@ -29,6 +30,8 @@ type LeadershipRole = "rabbi" | "admin";
 type MemberStatusFilter = ChaburahMembership["status"] | "all";
 type FilePublishMode = "upload" | "link";
 const memberStatusFilters: MemberStatusFilter[] = ["all", "active", "pending", "suspended", "left"];
+const fileCoverages: FileCoverage[] = ["week", "bechina_review", "entire_zman"];
+const fileWeekSelections = buildReviewWeeks();
 
 export default function AdminScreen() {
   const { profile } = useAuthState();
@@ -57,7 +60,8 @@ export default function AdminScreen() {
   const [joinRequiresApproval, setJoinRequiresApproval] = useState(false);
   const [fileTitle, setFileTitle] = useState("");
   const [fileTopic, setFileTopic] = useState("");
-  const [fileWeek, setFileWeek] = useState("1");
+  const [fileCoverage, setFileCoverage] = useState<FileCoverage>("week");
+  const [fileWeek, setFileWeek] = useState(currentReviewWeek);
   const [fileUrl, setFileUrl] = useState("");
   const [fileDescription, setFileDescription] = useState("");
   const [fileType, setFileType] = useState<FileType>("source_sheet");
@@ -154,7 +158,6 @@ export default function AdminScreen() {
 
   async function publishFile() {
     if (!profile?.id) return;
-    const parsedWeek = Number(fileWeek);
     if (!fileTitle.trim() || !fileTopic.trim()) {
       setMessage("Add a file title and topic.");
       return;
@@ -165,10 +168,6 @@ export default function AdminScreen() {
     }
     if (filePublishMode === "upload" && !selectedFile) {
       setMessage("Choose a file to upload.");
-      return;
-    }
-    if (!Number.isInteger(parsedWeek) || parsedWeek < 1 || parsedWeek > 52) {
-      setMessage("Week must be a number from 1 to 52.");
       return;
     }
     if (visibility === "chaburah" && !managedChaburahId) {
@@ -189,7 +188,8 @@ export default function AdminScreen() {
       title: fileTitle.trim(),
       description: fileDescription.trim() || null,
       topic: fileTopic.trim(),
-      week: parsedWeek,
+      coverage: fileCoverage,
+      week: fileCoverage === "week" ? fileWeek : null,
       file_type: fileType,
       visibility,
       external_url: filePublishMode === "link" ? fileUrl.trim() : null,
@@ -232,7 +232,8 @@ export default function AdminScreen() {
     setSaving(false);
     setFileTitle("");
     setFileTopic("");
-    setFileWeek("1");
+    setFileCoverage("week");
+    setFileWeek(currentReviewWeek);
     setFileUrl("");
     setFileDescription("");
     setSelectedFile(null);
@@ -608,7 +609,7 @@ export default function AdminScreen() {
 
       <Card>
         <SectionTitle>Publish Learning File</SectionTitle>
-        <Text style={styles.muted}>Checkpoint 4 supports external URLs. Native upload can come after the admin flows settle.</Text>
+        <Text style={styles.muted}>Publish weekly files, bechina review material, or resources for the entire zman.</Text>
         {profile?.role === "global_admin" ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <FilterChip label="Everyone" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
@@ -626,7 +627,34 @@ export default function AdminScreen() {
         </View>
         <FormInput onChangeText={setFileTitle} placeholder="Title" value={fileTitle} />
         <FormInput onChangeText={setFileTopic} placeholder="Topic" value={fileTopic} />
-        <FormInput keyboardType="numeric" onChangeText={setFileWeek} placeholder="Week" value={fileWeek} />
+        <View style={{ gap: 8 }}>
+          <MetaText>Coverage</MetaText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {fileCoverages.map((coverage) => (
+              <FilterChip
+                key={coverage}
+                label={coverage === "week" ? "Week" : fileCoverageLabel(coverage)}
+                onPress={() => setFileCoverage(coverage)}
+                selected={fileCoverage === coverage}
+              />
+            ))}
+          </View>
+        </View>
+        {fileCoverage === "week" ? (
+          <View style={{ gap: 8 }}>
+            <MetaText>Current week is Week {currentReviewWeek}</MetaText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {fileWeekSelections.map((week) => (
+                <FilterChip
+                  key={week}
+                  label={`Week ${week}`}
+                  onPress={() => setFileWeek(week)}
+                  selected={fileWeek === week}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
         {filePublishMode === "upload" ? (
           <View style={{ gap: 8 }}>
             <Button
@@ -661,7 +689,7 @@ export default function AdminScreen() {
           <Row key={file.id}>
             <View style={{ flex: 1, minWidth: 190 }}>
               <Text style={styles.body}>{file.title}</Text>
-              <MetaText>Week {file.week} - {file.topic}</MetaText>
+              <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</MetaText>
             </View>
             <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
           </Row>

@@ -87,7 +87,8 @@ type LearningFileRow = {
   title: string;
   description: string | null;
   topic: string;
-  week: number;
+  coverage: Database["public"]["Enums"]["file_coverage"];
+  week: number | null;
   file_type: Database["public"]["Enums"]["learning_file_type"];
   visibility: Database["public"]["Enums"]["content_visibility"];
   storage_path: string | null;
@@ -227,6 +228,7 @@ export interface Database {
       membership_role: "participant" | "rabbi" | "admin";
       membership_status: "pending" | "active" | "suspended" | "left";
       content_visibility: "everyone" | "chaburah";
+      file_coverage: "week" | "bechina_review" | "entire_zman";
       learning_file_type: "source_sheet" | "review_sheet" | "recording" | "pdf" | "link";
       review_question_kind: "multiple_choice" | "true_false";
       ask_rav_status: "submitted" | "answered" | "archived";

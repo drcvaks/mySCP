@@ -105,6 +105,7 @@ export const learningFiles: LearningFile[] = [
   {
     id: "file_week_1_source",
     title: "Week 1 Source Sheet: Nat Bar Nat Foundations",
+    coverage: "week",
     week: 1,
     topic: "Nat Bar Nat & Kitchen Kashrus",
     visibility: "everyone",
@@ -114,6 +115,7 @@ export const learningFiles: LearningFile[] = [
   {
     id: "file_week_1_review",
     title: "Week 1 Review Summary",
+    coverage: "week",
     week: 1,
     topic: "Nat Bar Nat & Kitchen Kashrus",
     visibility: "everyone",
@@ -123,6 +125,7 @@ export const learningFiles: LearningFile[] = [
   {
     id: "file_ohel_recording",
     title: "Ohel Moshe Week 1 Recording",
+    coverage: "week",
     week: 1,
     topic: "Nat Bar Nat & Kitchen Kashrus",
     visibility: "chaburah",
@@ -133,6 +136,7 @@ export const learningFiles: LearningFile[] = [
   {
     id: "file_wine_intro",
     title: "Stam Yeinam Intro Link",
+    coverage: "week",
     week: 7,
     topic: "Stam Yeinam & Wine",
     visibility: "everyone",

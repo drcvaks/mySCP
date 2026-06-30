@@ -1,4 +1,4 @@
-import { FileType, UserRole, Visibility } from "./types";
+import { FileCoverage, FileType, UserRole, Visibility } from "./types";
 
 export function roleLabel(role: UserRole) {
   const labels: Record<UserRole, string> = {
@@ -23,4 +23,17 @@ export function fileTypeLabel(type: FileType) {
 
 export function visibilityLabel(visibility: Visibility) {
   return visibility === "everyone" ? "Everyone" : "My Chaburah";
+}
+
+export function fileCoverageLabel(coverage: FileCoverage) {
+  const labels: Record<FileCoverage, string> = {
+    week: "Weekly",
+    bechina_review: "Bechina Review",
+    entire_zman: "Entire Zman"
+  };
+  return labels[coverage];
+}
+
+export function fileCoverageDetailLabel(coverage: FileCoverage, week: number | null) {
+  return coverage === "week" && week !== null ? `Week ${week}` : fileCoverageLabel(coverage);
 }

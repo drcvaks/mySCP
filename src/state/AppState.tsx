@@ -196,6 +196,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           id: row.id,
           chaburahId: row.chaburah_id ?? undefined,
           title: row.title,
+          coverage: row.coverage ?? (row.week === null ? "entire_zman" : "week"),
           week: row.week,
           topic: row.topic,
           visibility: row.visibility,

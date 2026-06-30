@@ -12,19 +12,22 @@ import {
   SectionTitle,
   styles
 } from "../../src/shared/components";
-import { fileTypeLabel, visibilityLabel } from "../../src/shared/format";
-import { FileType, Visibility } from "../../src/shared/types";
+import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLabel } from "../../src/shared/format";
+import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
+import { FileCoverage, FileType, Visibility } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
 import { supabase } from "../../src/lib/supabase";
 
 const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "pdf", "link"];
 const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
+const coverages: Array<FileCoverage | "all"> = ["all", "week", "bechina_review", "entire_zman"];
 
 export default function FilesScreen() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<FileType | "all">("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
-  const [selectedWeek, setSelectedWeek] = useState<number | "all">("all");
+  const [selectedCoverage, setSelectedCoverage] = useState<FileCoverage | "all">("all");
+  const [selectedWeek, setSelectedWeek] = useState(currentReviewWeek);
   const { learningFiles, selectedChaburahId } = useAppState();
 
   const visibleFiles = useMemo(
@@ -33,7 +36,15 @@ export default function FilesScreen() {
     [learningFiles, selectedChaburahId]
   );
   const fileWeeks = useMemo(
-    () => Array.from(new Set(visibleFiles.map((file) => file.week))).sort((a, b) => a - b),
+    () =>
+      buildReviewWeeks(
+        Math.max(
+          0,
+          ...visibleFiles
+            .filter((file) => file.coverage === "week")
+            .map((file) => file.week ?? 0)
+        )
+      ),
     [visibleFiles]
   );
 
@@ -47,10 +58,21 @@ export default function FilesScreen() {
         fileTypeLabel(file.fileType).toLowerCase().includes(query);
       const matchesType = selectedType === "all" || file.fileType === selectedType;
       const matchesScope = selectedScope === "all" || file.visibility === selectedScope;
-      const matchesWeek = selectedWeek === "all" || file.week === selectedWeek;
-      return matchesSearch && matchesType && matchesScope && matchesWeek;
+      const matchesCoverage =
+        selectedCoverage === "all" ||
+        (selectedCoverage === "week"
+          ? file.coverage === "week" && file.week === selectedWeek
+          : file.coverage === selectedCoverage);
+      return matchesSearch && matchesType && matchesScope && matchesCoverage;
     });
-  }, [search, selectedScope, selectedType, selectedWeek, visibleFiles]);
+  }, [search, selectedCoverage, selectedScope, selectedType, selectedWeek, visibleFiles]);
+
+  function selectCoverage(coverage: FileCoverage | "all") {
+    setSelectedCoverage(coverage);
+    if (coverage === "week") {
+      setSelectedWeek(currentReviewWeek);
+    }
+  }
 
   async function openFile(fileId: string) {
     const file = learningFiles.find((item) => item.id === fileId);
@@ -118,30 +140,50 @@ export default function FilesScreen() {
         </View>
 
         <View style={{ gap: 8 }}>
-          <MetaText>Week</MetaText>
+          <MetaText>Coverage</MetaText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip
-              label="All Weeks"
-              onPress={() => setSelectedWeek("all")}
-              selected={selectedWeek === "all"}
-            />
-            {fileWeeks.map((week) => (
+            {coverages.map((coverage) => (
               <FilterChip
-                key={week}
-                label={`Week ${week}`}
-                onPress={() => setSelectedWeek(week)}
-                selected={selectedWeek === week}
+                key={coverage}
+                label={coverage === "all" ? "All Files" : coverage === "week" ? "Week" : fileCoverageLabel(coverage)}
+                onPress={() => selectCoverage(coverage)}
+                selected={selectedCoverage === coverage}
               />
             ))}
           </View>
         </View>
+
+        {selectedCoverage === "week" ? (
+          <View style={{ gap: 8 }}>
+            <MetaText>Current week is Week {currentReviewWeek}</MetaText>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {fileWeeks.map((week) => (
+                <FilterChip
+                  key={week}
+                  label={`Week ${week}`}
+                  onPress={() => setSelectedWeek(week)}
+                  selected={selectedWeek === week}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
       </Card>
 
       <Row>
         <SectionTitle>{filteredFiles.length} Files</SectionTitle>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <Pill label={selectedScope === "all" ? "All scopes" : visibilityLabel(selectedScope)} tone="accent" />
-          <Pill label={selectedWeek === "all" ? "All weeks" : `Week ${selectedWeek}`} tone="primary" />
+          <Pill
+            label={
+              selectedCoverage === "all"
+                ? "All files"
+                : selectedCoverage === "week"
+                  ? `Week ${selectedWeek}`
+                  : fileCoverageLabel(selectedCoverage)
+            }
+            tone="primary"
+          />
         </View>
       </Row>
 
@@ -156,7 +198,7 @@ export default function FilesScreen() {
             <Row>
               <View style={{ flex: 1, minWidth: 220 }}>
                 <Text style={styles.sectionTitle}>{file.title}</Text>
-                <Text style={styles.muted}>Week {file.week} - {file.topic}</Text>
+                <Text style={styles.muted}>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</Text>
               </View>
               <Pill label={fileTypeLabel(file.fileType)} tone="accent" />
             </Row>
@@ -167,7 +209,7 @@ export default function FilesScreen() {
             </View>
 
             <Row>
-              <MetaText>Organized by title, topic, week, type, and scope.</MetaText>
+              <MetaText>Organized by title, topic, coverage, type, and scope.</MetaText>
               <View style={{ minWidth: 112 }}>
                 <Button
                   label={file.url || file.storagePath ? "Open" : "Details"}

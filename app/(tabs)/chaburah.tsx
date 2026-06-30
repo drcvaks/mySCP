@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
-import { fileTypeLabel } from "../../src/shared/format";
+import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
 import { currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAppState } from "../../src/state/AppState";
 
@@ -85,7 +85,7 @@ export default function MyChaburahScreen() {
           <Row key={file.id}>
             <View style={{ flex: 1 }}>
               <Text style={styles.body}>{file.title}</Text>
-              <Text style={styles.muted}>Week {file.week} - {fileTypeLabel(file.fileType)}</Text>
+              <Text style={styles.muted}>{fileCoverageDetailLabel(file.coverage, file.week)} - {fileTypeLabel(file.fileType)}</Text>
             </View>
             <Pill label={file.visibility === "everyone" ? "Everyone" : "Local"} />
           </Row>
