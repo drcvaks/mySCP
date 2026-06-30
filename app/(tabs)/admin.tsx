@@ -158,8 +158,8 @@ export default function AdminScreen() {
 
   async function publishFile() {
     if (!profile?.id) return;
-    if (!fileTitle.trim() || !fileTopic.trim()) {
-      setMessage("Add a file title and topic.");
+    if (!fileTitle.trim()) {
+      setMessage("Add a file title.");
       return;
     }
     if (filePublishMode === "link" && !fileUrl.trim()) {
@@ -187,7 +187,7 @@ export default function AdminScreen() {
       chaburah_id: visibility === "chaburah" ? managedChaburahId : null,
       title: fileTitle.trim(),
       description: fileDescription.trim() || null,
-      topic: fileTopic.trim(),
+      topic: fileTopic.trim() || defaultFileTopic(fileCoverage, fileWeek),
       coverage: fileCoverage,
       week: fileCoverage === "week" ? fileWeek : null,
       file_type: fileType,
@@ -338,6 +338,11 @@ export default function AdminScreen() {
     if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
     if (size >= 1024) return `${Math.round(size / 1024)} KB`;
     return `${size} bytes`;
+  }
+
+  function defaultFileTopic(coverage: FileCoverage, week: number) {
+    if (coverage === "week") return `Week ${week}`;
+    return fileCoverageLabel(coverage);
   }
 
   return (
@@ -626,7 +631,7 @@ export default function AdminScreen() {
           ))}
         </View>
         <FormInput onChangeText={setFileTitle} placeholder="Title" value={fileTitle} />
-        <FormInput onChangeText={setFileTopic} placeholder="Topic" value={fileTopic} />
+        <FormInput onChangeText={setFileTopic} placeholder="Topic (optional)" value={fileTopic} />
         <View style={{ gap: 8 }}>
           <MetaText>Coverage</MetaText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
