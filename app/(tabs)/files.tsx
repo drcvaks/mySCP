@@ -29,7 +29,7 @@ export default function FilesScreen() {
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
   const [selectedCoverage, setSelectedCoverage] = useState<FileCoverage | "all">("all");
   const [selectedWeek, setSelectedWeek] = useState(currentReviewWeek);
-  const { learningFiles, selectedChaburahId } = useAppState();
+  const { chaburos, learningFiles, selectedChaburahId } = useAppState();
   const { profile } = useAuthState();
   const isGlobalAdmin = profile?.role === "global_admin";
 
@@ -209,7 +209,14 @@ export default function FilesScreen() {
             </Row>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
+              {isGlobalAdmin ? (
+                <Pill
+                  label={file.visibility === "everyone" ? "Everyone" : chaburahFileLabel(file.chaburahId, chaburos)}
+                  tone={file.visibility === "everyone" ? "primary" : "neutral"}
+                />
+              ) : (
+                <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
+              )}
               <Pill label={`By ${file.uploadedBy}`} />
             </View>
 
@@ -234,4 +241,9 @@ function scopeLabel(scope: Visibility | "all", isGlobalAdmin: boolean) {
   if (scope === "all") return "All";
   if (scope === "chaburah" && isGlobalAdmin) return "Chaburah Files";
   return visibilityLabel(scope);
+}
+
+function chaburahFileLabel(chaburahId: string | undefined, chaburos: { id: string; name: string }[]) {
+  if (!chaburahId) return "Unassigned Chaburah";
+  return chaburos.find((chaburah) => chaburah.id === chaburahId)?.name ?? "Unknown Chaburah";
 }
