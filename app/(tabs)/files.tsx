@@ -16,6 +16,7 @@ import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLa
 import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { FileCoverage, FileType, Visibility } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
+import { useAuthState } from "../../src/state/AuthState";
 import { supabase } from "../../src/lib/supabase";
 
 const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "pdf", "link"];
@@ -29,11 +30,15 @@ export default function FilesScreen() {
   const [selectedCoverage, setSelectedCoverage] = useState<FileCoverage | "all">("all");
   const [selectedWeek, setSelectedWeek] = useState(currentReviewWeek);
   const { learningFiles, selectedChaburahId } = useAppState();
+  const { profile } = useAuthState();
+  const isGlobalAdmin = profile?.role === "global_admin";
 
   const visibleFiles = useMemo(
     () =>
-      learningFiles.filter((file) => file.visibility === "everyone" || file.chaburahId === selectedChaburahId),
-    [learningFiles, selectedChaburahId]
+      isGlobalAdmin
+        ? learningFiles
+        : learningFiles.filter((file) => file.visibility === "everyone" || file.chaburahId === selectedChaburahId),
+    [isGlobalAdmin, learningFiles, selectedChaburahId]
   );
   const fileWeeks = useMemo(
     () =>
@@ -117,7 +122,7 @@ export default function FilesScreen() {
             {scopes.map((scope) => (
               <FilterChip
                 key={scope}
-                label={scope === "all" ? "All" : visibilityLabel(scope)}
+                label={scopeLabel(scope, isGlobalAdmin)}
                 onPress={() => setSelectedScope(scope)}
                 selected={selectedScope === scope}
               />
@@ -173,7 +178,7 @@ export default function FilesScreen() {
       <Row>
         <SectionTitle>{filteredFiles.length} Files</SectionTitle>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          <Pill label={selectedScope === "all" ? "All scopes" : visibilityLabel(selectedScope)} tone="accent" />
+          <Pill label={scopeLabel(selectedScope, isGlobalAdmin)} tone="accent" />
           <Pill
             label={
               selectedCoverage === "all"
@@ -223,4 +228,10 @@ export default function FilesScreen() {
       )}
     </Screen>
   );
+}
+
+function scopeLabel(scope: Visibility | "all", isGlobalAdmin: boolean) {
+  if (scope === "all") return "All";
+  if (scope === "chaburah" && isGlobalAdmin) return "Chaburah Files";
+  return visibilityLabel(scope);
 }
