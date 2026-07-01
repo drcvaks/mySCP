@@ -102,12 +102,14 @@ export default function FilesScreen() {
       return;
     }
 
-    const supported = await Linking.canOpenURL(targetUrl);
-    if (!supported) {
-      Alert.alert("Cannot Open File", "This device cannot open the file URL.");
-      return;
+    try {
+      await Linking.openURL(targetUrl);
+    } catch (openError) {
+      Alert.alert(
+        "Cannot Open File",
+        openError instanceof Error ? openError.message : "This device could not open the file URL."
+      );
     }
-    await Linking.openURL(targetUrl);
   }
 
   return (
