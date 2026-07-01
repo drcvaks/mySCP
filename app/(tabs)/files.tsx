@@ -227,7 +227,7 @@ export default function FilesScreen() {
               ) : (
                 <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
               )}
-              <Pill label={`By ${file.uploadedByName ?? file.uploadedBy}`} />
+              <Pill label={`By ${uploaderLabel(file, isGlobalAdmin, profile)}`} />
             </View>
 
           </Card>
@@ -246,4 +246,15 @@ function scopeLabel(scope: Visibility | "all", isGlobalAdmin: boolean) {
 function chaburahFileLabel(chaburahId: string | undefined, chaburos: { id: string; name: string }[]) {
   if (!chaburahId) return "Unassigned Chaburah";
   return chaburos.find((chaburah) => chaburah.id === chaburahId)?.name ?? "Unknown Chaburah";
+}
+
+function uploaderLabel(
+  file: { uploadedBy: string; uploadedByName?: string; visibility: Visibility },
+  isGlobalAdmin: boolean,
+  profile: { id: string; fullName?: string; email?: string } | null
+) {
+  if (file.uploadedByName) return file.uploadedByName;
+  if (profile?.id === file.uploadedBy) return profile.fullName || profile.email || "You";
+  if (isGlobalAdmin) return file.uploadedBy;
+  return file.visibility === "everyone" ? "Program" : "Local Admin";
 }
