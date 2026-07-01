@@ -114,6 +114,7 @@ export default function FilesScreen() {
     <Screen title="Files" eyebrow="Source sheets, review sheets, recordings">
       <Card>
         <SectionTitle>Find Learning Materials</SectionTitle>
+        <Text style={styles.muted}>Organized by title, topic, coverage, type, and scope.</Text>
         <SearchField onChangeText={setSearch} placeholder="Search by title, topic, or type..." value={search} />
 
         <View style={{ gap: 8 }}>
@@ -205,7 +206,16 @@ export default function FilesScreen() {
                 <Text style={styles.sectionTitle}>{file.title}</Text>
                 <Text style={styles.muted}>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</Text>
               </View>
-              <Pill label={fileTypeLabel(file.fileType)} tone="accent" />
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <Pill label={fileTypeLabel(file.fileType)} tone="accent" />
+                <View style={{ minWidth: 112 }}>
+                  <Button
+                    label={file.url || file.storagePath ? "Open" : "Details"}
+                    onPress={() => openFile(file.id)}
+                    variant="secondary"
+                  />
+                </View>
+              </View>
             </Row>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -217,19 +227,9 @@ export default function FilesScreen() {
               ) : (
                 <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
               )}
-              <Pill label={`By ${file.uploadedBy}`} />
+              <Pill label={`By ${file.uploadedByName ?? file.uploadedBy}`} />
             </View>
 
-            <Row>
-              <MetaText>Organized by title, topic, coverage, type, and scope.</MetaText>
-              <View style={{ minWidth: 112 }}>
-                <Button
-                  label={file.url || file.storagePath ? "Open" : "Details"}
-                  onPress={() => openFile(file.id)}
-                  variant="secondary"
-                />
-              </View>
-            </Row>
           </Card>
         ))
       )}

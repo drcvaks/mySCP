@@ -192,20 +192,24 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       );
 
       setLearningFiles(
-        (filesResult.data ?? []).map((row) => ({
-          id: row.id,
-          chaburahId: row.chaburah_id ?? undefined,
-          title: row.title,
-          coverage: row.coverage ?? (row.week === null ? "entire_zman" : "week"),
-          week: row.week,
-          topic: row.topic,
-          visibility: row.visibility,
-          uploadedBy: row.uploaded_by,
-          fileType: row.file_type,
-          url: row.external_url ?? undefined,
-          storagePath: row.storage_path ?? undefined,
-          description: row.description ?? undefined
-        }))
+        (filesResult.data ?? []).map((row) => {
+          const uploaderProfile = profileById.get(row.uploaded_by);
+          return {
+            id: row.id,
+            chaburahId: row.chaburah_id ?? undefined,
+            title: row.title,
+            coverage: row.coverage ?? (row.week === null ? "entire_zman" : "week"),
+            week: row.week,
+            topic: row.topic,
+            visibility: row.visibility,
+            uploadedBy: row.uploaded_by,
+            uploadedByName: uploaderProfile?.fullName ?? uploaderProfile?.email,
+            fileType: row.file_type,
+            url: row.external_url ?? undefined,
+            storagePath: row.storage_path ?? undefined,
+            description: row.description ?? undefined
+          };
+        })
       );
 
       setReviewQuestions(

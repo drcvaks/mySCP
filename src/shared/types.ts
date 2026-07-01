@@ -73,6 +73,7 @@ export interface LearningFile {
   visibility: Visibility;
   chaburahId?: string;
   uploadedBy: string;
+  uploadedByName?: string;
   fileType: FileType;
   url?: string;
   storagePath?: string;
