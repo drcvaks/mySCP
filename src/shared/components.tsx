@@ -1,5 +1,5 @@
-import { ReactNode, useState } from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -244,6 +244,18 @@ export function StatusBanner({
   message: string;
   tone?: "success" | "error" | "info";
 }) {
+  const lastAlertedMessage = useRef("");
+
+  useEffect(() => {
+    if (!message || tone !== "error" || lastAlertedMessage.current === message) return;
+    lastAlertedMessage.current = message;
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      window.alert(`Action Failed\n\n${message}`);
+      return;
+    }
+    Alert.alert("Action Failed", message);
+  }, [message, tone]);
+
   if (!message) return null;
   return (
     <View

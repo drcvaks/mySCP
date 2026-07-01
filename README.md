@@ -24,6 +24,7 @@ The app now includes:
 - Live Supabase reads and RPC calls for participant workflows
 - Supabase-backed admin/rabbi workflows
 - Shared status banners for success, info, and detailed Supabase/RPC errors
+- Error status messages also trigger cross-platform alert popups
 
 Checkpoint 4 supported publishing learning-file records by external URL. Checkpoint 5 adds the My Chaburah roster and begins native Supabase Storage uploads from the Admin publishing form.
 

@@ -24,12 +24,14 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added `learning_files.coverage` and a database check constraint so week numbers are only used for weekly files.
 - Upload publishing creates the `learning_files` row first, uploads to the matching `storage_path`, and removes the row if upload fails.
 - Hardened native uploads after a `Network request failed` error by reading selected files as base64 with FileSystem and uploading an ArrayBuffer to Supabase Storage.
+- Updated `StatusBanner` so error messages still appear inline but also trigger a cross-platform alert popup.
 
 Primary files:
 
 - `app/(tabs)/chaburah.tsx`
 - `app/(tabs)/admin.tsx`
 - `src/state/AppState.tsx`
+- `src/shared/components.tsx`
 - `src/shared/types.ts`
 - `src/lib/database.types.ts`
 - `package.json`

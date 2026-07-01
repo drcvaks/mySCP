@@ -185,6 +185,7 @@ Settings:
 Status Messages
 ---------------
 Use the shared `StatusBanner` component for success, info, and error messages. Detailed Supabase/RPC/error text should remain visible during testing so it can be pasted into Codex for debugging. The improvement is presentation, not hiding errors.
+Error status messages also trigger a cross-platform alert popup so failures are visible on long screens. Success/info messages remain banner-only.
 
 Supabase Schema Overview
 ------------------------
