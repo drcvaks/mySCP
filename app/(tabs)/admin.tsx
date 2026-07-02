@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { Alert, Platform, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import {
@@ -20,12 +20,12 @@ import {
 import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLabel } from "../../src/shared/format";
 import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { formatSchedule, meridiems, parseSchedule, weekDays } from "../../src/shared/schedule";
-import { ChaburahMembership, FileCoverage, FileType, Visibility } from "../../src/shared/types";
+import { ChaburahMembership, FileCoverage, FileType, LearningFile, Visibility } from "../../src/shared/types";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
-const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "pdf", "link"];
+const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "video", "pdf", "other"];
 type LeadershipRole = "rabbi" | "admin";
 type MemberStatusFilter = ChaburahMembership["status"] | "all";
 type FilePublishMode = "upload" | "link";
@@ -67,6 +67,7 @@ export default function AdminScreen() {
   const [fileType, setFileType] = useState<FileType>("source_sheet");
   const [filePublishMode, setFilePublishMode] = useState<FilePublishMode>("upload");
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [editingFile, setEditingFile] = useState<LearningFile | null>(null);
   const [visibility, setVisibility] = useState<Visibility>(profile?.role === "global_admin" ? "everyone" : "chaburah");
   const [leaderEmail, setLeaderEmail] = useState("");
   const [leaderRole, setLeaderRole] = useState<LeadershipRole>("rabbi");
@@ -166,7 +167,7 @@ export default function AdminScreen() {
       setMessage("Add a URL for this learning file.");
       return;
     }
-    if (filePublishMode === "upload" && !selectedFile) {
+    if (filePublishMode === "upload" && !selectedFile && !editingFile?.storagePath) {
       setMessage("Choose a file to upload.");
       return;
     }
@@ -177,13 +178,20 @@ export default function AdminScreen() {
 
     setSaving(true);
     setMessage("");
+    const wasEditing = Boolean(editingFile);
     const storagePath =
-      filePublishMode === "upload" && selectedFile
-        ? buildStoragePath(visibility, managedChaburahId, selectedFile.name || fileTitle.trim())
+      filePublishMode === "upload"
+        ? editingFile?.storagePath ?? buildStoragePath(visibility, managedChaburahId, selectedFile?.name || fileTitle.trim())
         : null;
-    const { data: createdFile, error } = await supabase
-      .from("learning_files")
-      .insert({
+    if (editingFile?.storagePath && filePublishMode === "link") {
+      const { error: storageRemoveError } = await supabase.storage.from("learning-files").remove([editingFile.storagePath]);
+      if (storageRemoveError) {
+        setSaving(false);
+        setMessage(storageRemoveError.message);
+        return;
+      }
+    }
+    const filePayload = {
       chaburah_id: visibility === "chaburah" ? managedChaburahId : null,
       title: fileTitle.trim(),
       description: fileDescription.trim() || null,
@@ -193,14 +201,27 @@ export default function AdminScreen() {
       file_type: fileType,
       visibility,
       external_url: filePublishMode === "link" ? fileUrl.trim() : null,
-      storage_path: storagePath,
-      uploaded_by: profile.id
-      })
-      .select("id")
-      .single();
-    if (error) {
+      storage_path: storagePath
+    };
+
+    const fileResult = editingFile
+      ? await supabase
+          .from("learning_files")
+          .update(filePayload)
+          .eq("id", editingFile.id)
+          .select("id")
+          .single()
+      : await supabase
+          .from("learning_files")
+          .insert({
+            ...filePayload,
+            uploaded_by: profile.id
+          })
+          .select("id")
+          .single();
+    if (fileResult.error) {
       setSaving(false);
-      setMessage(error.message);
+      setMessage(fileResult.error.message);
       return;
     }
 
@@ -209,19 +230,23 @@ export default function AdminScreen() {
         const uploadBody = await readDocumentForUpload(selectedFile);
         const { error: uploadError } = await supabase.storage.from("learning-files").upload(storagePath, uploadBody, {
           contentType: selectedFile.mimeType ?? "application/octet-stream",
-          upsert: false
+          upsert: Boolean(editingFile)
         });
         if (uploadError) {
-          if (createdFile?.id) {
-            await supabase.from("learning_files").delete().eq("id", createdFile.id);
+          if (!editingFile && fileResult.data?.id) {
+            await supabase.from("learning_files").delete().eq("id", fileResult.data.id);
+          } else if (editingFile) {
+            await restoreFileRecord(editingFile);
           }
           setSaving(false);
           setMessage(uploadError.message);
           return;
         }
       } catch (uploadError) {
-        if (createdFile?.id) {
-          await supabase.from("learning_files").delete().eq("id", createdFile.id);
+        if (!editingFile && fileResult.data?.id) {
+          await supabase.from("learning_files").delete().eq("id", fileResult.data.id);
+        } else if (editingFile) {
+          await restoreFileRecord(editingFile);
         }
         setSaving(false);
         setMessage(uploadError instanceof Error ? uploadError.message : "Could not read or upload the selected file.");
@@ -230,14 +255,8 @@ export default function AdminScreen() {
     }
 
     setSaving(false);
-    setFileTitle("");
-    setFileTopic("");
-    setFileCoverage("week");
-    setFileWeek(currentReviewWeek);
-    setFileUrl("");
-    setFileDescription("");
-    setSelectedFile(null);
-    setMessage(filePublishMode === "upload" ? "File uploaded." : "File published.");
+    resetFileForm();
+    setMessage(wasEditing ? "File updated." : filePublishMode === "upload" ? "File uploaded." : "File published.");
     await refresh();
   }
 
@@ -253,6 +272,97 @@ export default function AdminScreen() {
     if (!fileTitle.trim()) {
       setFileTitle(asset.name.replace(/\.[^/.]+$/, ""));
     }
+  }
+
+  function resetFileForm() {
+    setEditingFile(null);
+    setFileTitle("");
+    setFileTopic("");
+    setFileCoverage("week");
+    setFileWeek(currentReviewWeek);
+    setFileUrl("");
+    setFileDescription("");
+    setFileType("source_sheet");
+    setFilePublishMode("upload");
+    setSelectedFile(null);
+  }
+
+  function startEditFile(file: LearningFile) {
+    setEditingFile(file);
+    setFileTitle(file.title);
+    setFileTopic(file.topic);
+    setFileCoverage(file.coverage);
+    setFileWeek(file.week ?? currentReviewWeek);
+    setFileUrl(file.url ?? "");
+    setFileDescription(file.description ?? "");
+    setFileType(file.fileType === "link" ? "source_sheet" : file.fileType);
+    setFilePublishMode(file.storagePath ? "upload" : "link");
+    setVisibility(file.visibility);
+    setSelectedFile(null);
+    setMessage("Editing file.");
+  }
+
+  async function restoreFileRecord(file: LearningFile) {
+    await supabase
+      .from("learning_files")
+      .update({
+        chaburah_id: file.chaburahId ?? null,
+        title: file.title,
+        description: file.description ?? null,
+        topic: file.topic,
+        coverage: file.coverage,
+        week: file.week,
+        file_type: file.fileType,
+        visibility: file.visibility,
+        external_url: file.url ?? null,
+        storage_path: file.storagePath ?? null
+      })
+      .eq("id", file.id);
+  }
+
+  function confirmDeleteFile(file: LearningFile) {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm(`Delete "${file.title}"? This cannot be undone.`)) {
+        void deleteFile(file);
+      }
+      return;
+    }
+
+    Alert.alert("Delete File", `Delete "${file.title}"? This cannot be undone.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void deleteFile(file);
+        }
+      }
+    ]);
+  }
+
+  async function deleteFile(file: LearningFile) {
+    setSaving(true);
+    setMessage("");
+    if (file.storagePath) {
+      const { error: storageError } = await supabase.storage.from("learning-files").remove([file.storagePath]);
+      if (storageError) {
+        setSaving(false);
+        setMessage(storageError.message);
+        return;
+      }
+    }
+
+    const { error } = await supabase.from("learning_files").delete().eq("id", file.id);
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    if (editingFile?.id === file.id) {
+      resetFileForm();
+    }
+    setMessage("File deleted.");
+    await refresh();
   }
 
   async function handleMembershipRequest(membershipId: string, approve: boolean) {
@@ -398,7 +508,10 @@ export default function AdminScreen() {
           message.includes("reactivated") ||
           message.includes("suspended") ||
           message.includes("removed") ||
-          message.includes("uploaded")
+          message.includes("uploaded") ||
+          message.includes("updated") ||
+          message.includes("deleted") ||
+          message.includes("Editing")
             ? "success"
             : "error"
         }
@@ -613,8 +726,13 @@ export default function AdminScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Publish Learning File</SectionTitle>
-        <Text style={styles.muted}>Publish weekly files, bechina review material, or resources for the entire zman.</Text>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>{editingFile ? "Edit Learning File" : "Publish Learning File"}</SectionTitle>
+            <Text style={styles.muted}>Publish weekly files, bechina review material, or resources for the entire zman.</Text>
+          </View>
+          {editingFile ? <Pill label="Editing" tone="accent" /> : null}
+        </Row>
         {profile?.role === "global_admin" ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <FilterChip label="Everyone" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
@@ -664,7 +782,7 @@ export default function AdminScreen() {
           <View style={{ gap: 8 }}>
             <Button
               disabled={saving}
-              label={selectedFile ? "Change Selected File" : "Choose File"}
+              label={selectedFile ? "Change Selected File" : editingFile?.storagePath ? "Replace Uploaded File" : "Choose File"}
               onPress={chooseFile}
               variant="secondary"
             />
@@ -673,6 +791,8 @@ export default function AdminScreen() {
                 {selectedFile.name}
                 {selectedFile.size ? ` - ${formatFileSize(selectedFile.size)}` : ""}
               </MetaText>
+            ) : editingFile?.storagePath ? (
+              <Text style={styles.muted}>Current uploaded file will stay unless you choose a replacement.</Text>
             ) : (
               <Text style={styles.muted}>Choose a PDF, document, audio file, or source sheet from this device.</Text>
             )}
@@ -681,22 +801,37 @@ export default function AdminScreen() {
           <FormInput keyboardType="url" onChangeText={setFileUrl} placeholder="https://..." value={fileUrl} />
         )}
         <TextArea onChangeText={setFileDescription} placeholder="Description" value={fileDescription} />
-        <Button
-          disabled={saving}
-          label={saving ? (filePublishMode === "upload" ? "Uploading..." : "Publishing...") : "Publish File"}
-          onPress={publishFile}
-        />
+        <Row>
+          <Button
+            disabled={saving}
+            label={
+              saving
+                ? filePublishMode === "upload"
+                  ? "Uploading..."
+                  : "Saving..."
+                : editingFile
+                  ? "Save File Changes"
+                  : "Publish File"
+            }
+            onPress={publishFile}
+          />
+          {editingFile ? <Button disabled={saving} label="Cancel Edit" onPress={resetFileForm} variant="ghost" /> : null}
+        </Row>
       </Card>
 
       <Card>
-        <SectionTitle>Recent Files</SectionTitle>
-        {localFiles.slice(0, 5).map((file) => (
+        <SectionTitle>Manage Files</SectionTitle>
+        {localFiles.map((file) => (
           <Row key={file.id}>
             <View style={{ flex: 1, minWidth: 190 }}>
               <Text style={styles.body}>{file.title}</Text>
               <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</MetaText>
             </View>
-            <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
+              <Button disabled={saving} label="Edit" onPress={() => startEditFile(file)} variant="secondary" />
+              <Button disabled={saving} label="Delete" onPress={() => confirmDeleteFile(file)} variant="ghost" />
+            </View>
           </Row>
         ))}
         {localFiles.length === 0 ? <Text style={styles.muted}>No files have been published yet.</Text> : null}

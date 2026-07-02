@@ -15,7 +15,9 @@ export function fileTypeLabel(type: FileType) {
     source_sheet: "Source Sheet",
     review_sheet: "Review Sheet",
     recording: "Recording",
+    video: "Video",
     pdf: "PDF",
+    other: "Other",
     link: "Link"
   };
   return labels[type];

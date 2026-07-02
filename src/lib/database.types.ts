@@ -229,7 +229,7 @@ export interface Database {
       membership_status: "pending" | "active" | "suspended" | "left";
       content_visibility: "everyone" | "chaburah";
       file_coverage: "week" | "bechina_review" | "entire_zman";
-      learning_file_type: "source_sheet" | "review_sheet" | "recording" | "pdf" | "link";
+      learning_file_type: "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link";
       review_question_kind: "multiple_choice" | "true_false";
       ask_rav_status: "submitted" | "answered" | "archived";
     };

@@ -19,7 +19,7 @@ import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { supabase } from "../../src/lib/supabase";
 
-const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "pdf", "link"];
+const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "video", "pdf", "other"];
 const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
 const coverages: Array<FileCoverage | "all"> = ["all", "week", "bechina_review", "entire_zman"];
 

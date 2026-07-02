@@ -25,6 +25,9 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added `learning_files.coverage` and a database check constraint so week numbers are only used for weekly files.
 - Upload publishing creates the `learning_files` row first, uploads to the matching `storage_path`, and removes the row if upload fails.
 - Hardened native uploads after a `Network request failed` error by reading selected files as base64 with FileSystem and uploading an ArrayBuffer to Supabase Storage.
+- Added Admin file management: edit file metadata, replace uploaded storage objects, switch uploaded files to external links, and delete files/storage objects.
+- Removed `Link` from visible material type choices because External Link is now handled by publish mode; existing link-typed records remain supported.
+- Added Video and Other material types for uploaded files and external links.
 - Updated `StatusBanner` so error messages still appear inline but also trigger a cross-platform alert popup.
 
 Primary files:
@@ -41,6 +44,7 @@ Primary files:
 - `supabase/migrations/202606300003_allow_all_week_learning_files.sql`
 - `supabase/migrations/202606300004_add_learning_file_coverage.sql`
 - `supabase/migrations/202606300005_capture_signup_city.sql`
+- `supabase/migrations/202607020001_add_video_other_file_types.sql`
 
 ### Checkpoint 4 Admin Workflows
 
@@ -285,7 +289,7 @@ Primary file:
 ### Functional Behavior
 
 - Test native upload on a real Android/iOS device and confirm signed URL opening on each platform.
-- Add file editing/deleting/replacing flows.
+- Test file editing/deleting/replacing on real Android/iOS devices.
 - Add review question delete flow if/when deletion policy is decided.
 - Add deeper member-management history/auditing and leadership removal/demotion flows.
 - Add manual refresh controls or Supabase Realtime subscriptions for cross-device changes.
