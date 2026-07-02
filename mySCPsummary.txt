@@ -42,7 +42,7 @@ Use the Supabase publishable/anon key only. The service role key must never be e
 Product Roles
 -------------
 Participant:
-- signs in/signs up
+- signs in/signs up with first name, last name, optional city, email, and password
 - joins or requests to join one chaburah
 - views Dashboard, My Chaburah, Files, Review, Directory, Ask Rav, Profile, Settings
 - submits Ask the Rav questions
@@ -251,6 +251,7 @@ supabase/migrations/202606300001_update_membership_status.sql
 supabase/migrations/202606300002_list_chaburah_member_directory.sql
 supabase/migrations/202606300003_allow_all_week_learning_files.sql
 supabase/migrations/202606300004_add_learning_file_coverage.sql
+supabase/migrations/202606300005_capture_signup_city.sql
 
 For a fully clean test project:
 1. run `supabase/reset_app_schema.sql`
@@ -319,6 +320,7 @@ Checkpoint 4: Admin/Rabbi workflows
 Checkpoint 5: Community usability and file upload
 - My Chaburah active member roster
 - Privacy-safe roster RPC that avoids exposing email addresses to regular participants
+- Signup collects first name, last name, and optional city for cleaner profiles
 - Admin native file picker through `expo-document-picker`
 - Admin reads selected native files with `expo-file-system` and uploads them to the private `learning-files` Supabase Storage bucket
 - Admin file publishing has Coverage choices: Week, Bechina Review, and Entire Zman

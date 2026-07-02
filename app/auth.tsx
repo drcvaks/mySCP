@@ -8,7 +8,9 @@ import { useAuthState } from "../src/state/AuthState";
 export default function AuthScreen() {
   const { loading: authLoading, session, signIn, signUp } = useAuthState();
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [city, setCity] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -22,7 +24,7 @@ export default function AuthScreen() {
     const result =
       mode === "sign-in"
         ? await signIn(email.trim(), password)
-        : await signUp(email.trim(), password, fullName.trim());
+        : await signUp(email.trim(), password, `${firstName.trim()} ${lastName.trim()}`.trim(), city.trim());
     if (result) setMessage(result);
     setSubmitting(false);
   }
@@ -30,7 +32,7 @@ export default function AuthScreen() {
   const valid =
     email.includes("@") &&
     password.length >= 6 &&
-    (mode === "sign-in" || fullName.trim().length >= 2);
+    (mode === "sign-in" || (firstName.trim().length >= 1 && lastName.trim().length >= 1));
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
@@ -43,13 +45,34 @@ export default function AuthScreen() {
               : "Create an account to join a chaburah and access learning materials."}
           </Text>
           {mode === "sign-up" ? (
-            <TextInput
-              onChangeText={setFullName}
-              placeholder="Full name"
-              placeholderTextColor={theme.colors.muted}
-              style={authStyles.input}
-              value={fullName}
-            />
+            <>
+              <View style={authStyles.nameRow}>
+                <TextInput
+                  autoComplete="given-name"
+                  onChangeText={setFirstName}
+                  placeholder="First name"
+                  placeholderTextColor={theme.colors.muted}
+                  style={[authStyles.input, authStyles.nameInput]}
+                  value={firstName}
+                />
+                <TextInput
+                  autoComplete="family-name"
+                  onChangeText={setLastName}
+                  placeholder="Last name"
+                  placeholderTextColor={theme.colors.muted}
+                  style={[authStyles.input, authStyles.nameInput]}
+                  value={lastName}
+                />
+              </View>
+              <TextInput
+                autoComplete="address-line2"
+                onChangeText={setCity}
+                placeholder="City (optional)"
+                placeholderTextColor={theme.colors.muted}
+                style={authStyles.input}
+                value={city}
+              />
+            </>
           ) : null}
           <TextInput
             autoCapitalize="none"
@@ -101,5 +124,14 @@ const authStyles = StyleSheet.create({
     fontSize: 16,
     minHeight: 50,
     paddingHorizontal: theme.spacing.md
+  },
+  nameRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm
+  },
+  nameInput: {
+    flex: 1,
+    minWidth: 140
   }
 });

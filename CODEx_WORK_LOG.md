@@ -15,6 +15,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added a read-only active member roster to My Chaburah.
 - Kept the participant-facing roster privacy-light: names, roles, and joined dates only.
 - Added a display-safe Supabase RPC so regular participants can see active roster entries without receiving member email addresses.
+- Updated signup to collect first name, last name, and optional city, saving full name/city into the profile.
 - Added `expo-document-picker` with the SDK-compatible Expo install flow.
 - Added `expo-file-system` explicitly so native uploads can read selected files reliably.
 - Added native file selection to the Admin publishing form.
@@ -39,6 +40,7 @@ Primary files:
 - `supabase/migrations/202606300002_list_chaburah_member_directory.sql`
 - `supabase/migrations/202606300003_allow_all_week_learning_files.sql`
 - `supabase/migrations/202606300004_add_learning_file_coverage.sql`
+- `supabase/migrations/202606300005_capture_signup_city.sql`
 
 ### Checkpoint 4 Admin Workflows
 

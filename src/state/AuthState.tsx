@@ -11,7 +11,7 @@ interface AuthStateValue {
   loading: boolean;
   error: string | null;
   signIn: (email: string, password: string) => Promise<string | null>;
-  signUp: (email: string, password: string, fullName: string) => Promise<string | null>;
+  signUp: (email: string, password: string, fullName: string, city: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -132,13 +132,13 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
           return formatSupabaseError(signInError);
         }
       },
-      signUp: async (email, password, fullName) => {
+      signUp: async (email, password, fullName, city) => {
         setError(null);
         try {
           const { data, error: signUpError } = await supabase.auth.signUp({
             email,
             password,
-            options: { data: { full_name: fullName } }
+            options: { data: { full_name: fullName, city } }
           });
           if (signUpError) return formatSupabaseError(signUpError);
           if (!data.session) return "Check your email to confirm the account, then sign in.";

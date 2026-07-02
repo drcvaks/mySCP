@@ -110,6 +110,7 @@ supabase/
     202606300002_list_chaburah_member_directory.sql
     202606300003_allow_all_week_learning_files.sql
     202606300004_add_learning_file_coverage.sql
+    202606300005_capture_signup_city.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
@@ -142,6 +143,7 @@ For a clean test project, apply the reset file first, then the migrations in ord
 
 - My Chaburah shows a read-only active member roster with names, roles, and joined dates.
 - The roster is loaded through a display-safe RPC that does not expose member email addresses to regular participants.
+- Signup collects first name, last name, and optional city, then stores full name/city in the profile.
 - Admin file publishing supports either native file upload through `expo-document-picker`/`expo-file-system` or an external URL.
 - Admin file publishing uses Coverage: Week, Bechina Review, or Entire Zman. Week files show a week selector with the current week selected by default.
 - Uploaded files are saved to the private `learning-files` Supabase Storage bucket and opened later through signed URLs.
