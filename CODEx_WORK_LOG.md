@@ -30,6 +30,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Removed `Link` from visible material type choices because External Link is now handled by publish mode; existing link-typed records remain supported.
 - Added Video and Other material types for uploaded files and external links.
 - Updated `StatusBanner` so error messages still appear inline but also trigger a cross-platform alert popup.
+- Added a reusable header refresh button and enabled it on the main Supabase-backed screens for manual cross-device sync during testing.
 
 Primary files:
 
@@ -294,7 +295,7 @@ Primary file:
 - Test file editing/deleting/replacing on real Android/iOS devices.
 - Add review question delete flow if/when deletion policy is decided.
 - Add deeper member-management history/auditing and leadership removal/demotion flows.
-- Add manual refresh controls or Supabase Realtime subscriptions for cross-device changes.
+- Add Supabase Realtime subscriptions for automatic cross-device changes.
 - Add Settings functionality.
 
 ### Backend

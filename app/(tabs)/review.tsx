@@ -32,6 +32,8 @@ export default function ReviewScreen() {
   const [message, setMessage] = useState("");
   const {
     checkReviewAnswer,
+    loading,
+    refresh,
     reviewQuestions,
     reviewSessions,
     saveReviewSession
@@ -120,7 +122,12 @@ export default function ReviewScreen() {
   if (complete) {
     const percentage = Math.round((score / currentQuestions.length) * 100);
     return (
-      <Screen title="Review Complete" eyebrow={selectedWeek === "all" ? "All weeks" : `Week ${selectedWeek}`}>
+      <Screen
+        title="Review Complete"
+        eyebrow={selectedWeek === "all" ? "All weeks" : `Week ${selectedWeek}`}
+        onRefresh={refresh}
+        refreshing={loading}
+      >
         <Card>
           <Pill label={percentage >= 80 ? "Strong result" : "Keep reviewing"} tone={percentage >= 80 ? "success" : "accent"} />
           <Text style={[styles.statNumber, { fontSize: 44 }]}>{percentage}%</Text>
@@ -150,7 +157,7 @@ export default function ReviewScreen() {
   }
 
   return (
-    <Screen title="Review Questions" eyebrow="Bechina prep">
+    <Screen title="Review Questions" eyebrow="Bechina prep" onRefresh={refresh} refreshing={loading}>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>

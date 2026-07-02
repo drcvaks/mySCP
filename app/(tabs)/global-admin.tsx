@@ -35,7 +35,7 @@ function slugify(value: string) {
 
 export default function GlobalAdminScreen() {
   const { profile, refreshProfile } = useAuthState();
-  const { chaburos, refresh } = useAppState();
+  const { chaburos, loading, refresh } = useAppState();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -149,7 +149,7 @@ export default function GlobalAdminScreen() {
   }
 
   return (
-    <Screen title="Global Admin" eyebrow="SCP headquarters">
+    <Screen title="Global Admin" eyebrow="SCP headquarters" onRefresh={refresh} refreshing={loading}>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>

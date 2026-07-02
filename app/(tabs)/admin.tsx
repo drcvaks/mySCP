@@ -38,6 +38,7 @@ export default function AdminScreen() {
   const {
     chaburos,
     learningFiles,
+    loading,
     memberships,
     refresh,
     reviewMembershipRequest,
@@ -456,7 +457,7 @@ export default function AdminScreen() {
   }
 
   return (
-    <Screen title="Admin" eyebrow="Local chaburah tools">
+    <Screen title="Admin" eyebrow="Local chaburah tools" onRefresh={refresh} refreshing={loading}>
       {isGlobalAdmin ? (
         <Card>
           <Row>

@@ -29,7 +29,7 @@ export default function FilesScreen() {
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
   const [selectedCoverage, setSelectedCoverage] = useState<FileCoverage | "all">("all");
   const [selectedWeek, setSelectedWeek] = useState(currentReviewWeek);
-  const { chaburos, learningFiles, selectedChaburahId } = useAppState();
+  const { chaburos, learningFiles, loading, refresh, selectedChaburahId } = useAppState();
   const { profile } = useAuthState();
   const isGlobalAdmin = profile?.role === "global_admin";
 
@@ -113,7 +113,7 @@ export default function FilesScreen() {
   }
 
   return (
-    <Screen title="Files" eyebrow="Source sheets, review sheets, recordings">
+    <Screen title="Files" eyebrow="Source sheets, review sheets, recordings" onRefresh={refresh} refreshing={loading}>
       <Card>
         <SectionTitle>Find Learning Materials</SectionTitle>
         <Text style={styles.muted}>Organized by title, topic, coverage, type, and scope.</Text>

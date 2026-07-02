@@ -10,9 +10,11 @@ interface ScreenProps {
   title: string;
   eyebrow?: string;
   children: ReactNode;
+  onRefresh?: () => void | Promise<void>;
+  refreshing?: boolean;
 }
 
-export function Screen({ title, eyebrow, children }: ScreenProps) {
+export function Screen({ title, eyebrow, children, onRefresh, refreshing = false }: ScreenProps) {
   const router = useRouter();
   const { profile } = useAuthState();
   const { width } = useWindowDimensions();
@@ -69,6 +71,17 @@ export function Screen({ title, eyebrow, children }: ScreenProps) {
             {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
             <Text style={globalStyles.title}>{title}</Text>
           </View>
+          {onRefresh ? (
+            <Pressable
+              accessibilityLabel="Refresh"
+              accessibilityRole="button"
+              disabled={refreshing}
+              onPress={onRefresh}
+              style={[styles.menuButton, refreshing && styles.disabledButton]}
+            >
+              <Ionicons name="refresh" color={refreshing ? theme.colors.muted : theme.colors.primary} size={22} />
+            </Pressable>
+          ) : null}
         </View>
         {children}
       </ScrollView>
@@ -352,6 +365,9 @@ export const styles = StyleSheet.create({
     height: 44,
     justifyContent: "center",
     width: 44
+  },
+  disabledButton: {
+    opacity: 0.55
   },
   drawerBackdrop: {
     backgroundColor: "rgba(31, 41, 51, 0.35)",

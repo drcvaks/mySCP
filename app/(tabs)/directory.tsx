@@ -20,7 +20,7 @@ export default function DirectoryScreen() {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const { width } = useWindowDimensions();
-  const { chaburos, joinChaburah, memberships, selectedChaburahId } = useAppState();
+  const { chaburos, joinChaburah, loading, memberships, refresh, selectedChaburahId } = useAppState();
   const { profile } = useAuthState();
   const cardWidth = width >= 900 ? "48%" : "100%";
 
@@ -60,7 +60,7 @@ export default function DirectoryScreen() {
   }
 
   return (
-    <Screen title="Directory" eyebrow="Find SCP locations">
+        <Screen title="Directory" eyebrow="Find SCP locations" onRefresh={refresh} refreshing={loading}>
       <CompactCard>
         <SectionTitle>Find a Chaburah</SectionTitle>
         <Text style={styles.muted}>Search by chaburah name, city, address, or rabbi.</Text>

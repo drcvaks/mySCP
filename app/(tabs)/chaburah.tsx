@@ -7,7 +7,7 @@ import { useAppState } from "../../src/state/AppState";
 
 export default function MyChaburahScreen() {
   const router = useRouter();
-  const { announcements, chaburahMemberDirectory, chaburos, learningFiles, reviewQuestions, selectedChaburahId } =
+  const { announcements, chaburahMemberDirectory, chaburos, learningFiles, loading, refresh, reviewQuestions, selectedChaburahId } =
     useAppState();
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
   const activeMembers = chaburahMemberDirectory.filter((member) => member.chaburahId === selectedChaburahId);
@@ -19,7 +19,7 @@ export default function MyChaburahScreen() {
 
   if (!chaburah) {
     return (
-      <Screen title="My Chaburah" eyebrow="Membership">
+      <Screen title="My Chaburah" eyebrow="Membership" onRefresh={refresh} refreshing={loading}>
         <Card>
           <SectionTitle>No Chaburah Selected</SectionTitle>
           <Text style={styles.muted}>Join a chaburah to see its schedule, files, announcements, and rabbi.</Text>
@@ -30,7 +30,7 @@ export default function MyChaburahScreen() {
   }
 
   return (
-    <Screen title="My Chaburah" eyebrow={chaburah?.name}>
+    <Screen title="My Chaburah" eyebrow={chaburah?.name} onRefresh={refresh} refreshing={loading}>
       <Card>
         <Row>
           <View>

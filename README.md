@@ -150,6 +150,7 @@ For a clean test project, apply the reset file first, then the migrations in ord
 - Admin file publishing uses Coverage: Week, Bechina Review, or Entire Zman. Week files show a week selector with the current week selected by default.
 - Admins can edit file metadata, replace uploaded files, change a file to an external link, and delete file records/storage objects.
 - Uploaded files are saved to the private `learning-files` Supabase Storage bucket and opened later through signed URLs.
+- Main Supabase-backed screens include a header refresh button for manual cross-device sync while testing.
 
 ## Verification
 

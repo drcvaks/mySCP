@@ -8,7 +8,7 @@ import { useAuthState } from "../../src/state/AuthState";
 
 export default function ProfileScreen() {
   const { chaburos } = useAppState();
-  const { profile, refreshProfile, signOut } = useAuthState();
+  const { loading, profile, refreshProfile, signOut } = useAuthState();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [city, setCity] = useState("");
@@ -58,7 +58,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Screen title="Profile" eyebrow="Settings">
+    <Screen title="Profile" eyebrow="Settings" onRefresh={refreshProfile} refreshing={loading}>
       <Card>
         <SectionTitle>{profile.fullName || "Name not set"}</SectionTitle>
         <Text style={styles.muted}>{roleLabel(profile.role)}</Text>

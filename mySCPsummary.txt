@@ -334,6 +334,7 @@ Checkpoint 5: Community usability and file upload
 - Week coverage shows week chips and defaults to the current week
 - Admin can edit file metadata, replace uploaded files, switch uploaded files to external links, and delete file records/storage objects
 - External URL publishing remains available
+- Main Supabase-backed screens have a header refresh button for manual cross-device sync
 
 What Still Needs To Be Done
 ---------------------------
@@ -343,7 +344,7 @@ High priority:
 - Deeper member-management history/auditing and leadership removal/demotion flows.
 - Settings screen functionality.
 - Production auth redirect/deep-link setup.
-- Manual refresh controls or Supabase Realtime for cross-device sync.
+- Supabase Realtime for automatic cross-device sync.
 - Generate official Supabase TypeScript types from the live project when CLI workflow is ready.
 
 Medium priority:

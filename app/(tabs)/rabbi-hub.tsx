@@ -26,7 +26,7 @@ type QuestionKind = "true_false" | "multiple_choice";
 
 export default function RabbiHubScreen() {
   const { profile } = useAuthState();
-  const { askRavQuestions, chaburos, refresh, reviewQuestions, selectedChaburahId } = useAppState();
+  const { askRavQuestions, chaburos, loading, refresh, reviewQuestions, selectedChaburahId } = useAppState();
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
@@ -250,7 +250,7 @@ export default function RabbiHubScreen() {
   }
 
   return (
-    <Screen title="Rabbi Hub" eyebrow="Questions and review library">
+    <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading}>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>

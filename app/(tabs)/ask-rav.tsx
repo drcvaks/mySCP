@@ -17,7 +17,7 @@ import { useAppState } from "../../src/state/AppState";
 export default function AskRavScreen() {
   const [draft, setDraft] = useState("");
   const [message, setMessage] = useState("");
-  const { askRavQuestions, chaburos, selectedChaburahId, submitAskRavQuestion } = useAppState();
+  const { askRavQuestions, chaburos, loading, refresh, selectedChaburahId, submitAskRavQuestion } = useAppState();
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
   const localQuestions = useMemo(
     () => askRavQuestions.filter((question) => question.chaburahId === selectedChaburahId),
@@ -40,7 +40,7 @@ export default function AskRavScreen() {
   }
 
   return (
-    <Screen title="Ask the Rav" eyebrow={chaburah?.rabbiName}>
+    <Screen title="Ask the Rav" eyebrow={chaburah?.rabbiName} onRefresh={refresh} refreshing={loading}>
       <Card>
         <SectionTitle>Submit a Question</SectionTitle>
         <Text style={styles.muted}>

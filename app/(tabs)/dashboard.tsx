@@ -9,6 +9,8 @@ export default function DashboardScreen() {
     announcements,
     chaburos,
     learningFiles,
+    loading,
+    refresh,
     reviewQuestions,
     reviewSessions,
     selectedChaburahId
@@ -24,7 +26,7 @@ export default function DashboardScreen() {
     : 0;
 
   return (
-    <Screen title="This Week in SCP" eyebrow="Practical Kashrus">
+    <Screen title="This Week in SCP" eyebrow="Practical Kashrus" onRefresh={refresh} refreshing={loading}>
       <Card>
         <Pill label="Current Topic" tone="primary" />
         <Text style={styles.sectionTitle}>Practical Kashrus: Kitchen, Food & Wine</Text>
