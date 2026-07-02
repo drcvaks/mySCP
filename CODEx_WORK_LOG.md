@@ -16,6 +16,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Kept the participant-facing roster privacy-light: names, roles, and joined dates only.
 - Added a display-safe Supabase RPC so regular participants can see active roster entries without receiving member email addresses.
 - Updated signup to collect first name, last name, and optional city, saving full name/city into the profile.
+- Added Profile editing for first name, last name, and city while keeping email, role, and current chaburah read-only.
 - Added `expo-document-picker` with the SDK-compatible Expo install flow.
 - Added `expo-file-system` explicitly so native uploads can read selected files reliably.
 - Added native file selection to the Admin publishing form.
@@ -34,6 +35,7 @@ Primary files:
 
 - `app/(tabs)/chaburah.tsx`
 - `app/(tabs)/admin.tsx`
+- `app/(tabs)/profile.tsx`
 - `src/state/AppState.tsx`
 - `src/shared/components.tsx`
 - `src/shared/types.ts`

@@ -179,6 +179,10 @@ Global Admin:
 - live overview currently only shows configured chaburos count
 - confusing review-session analytics count was removed until better analytics exists
 
+Profile:
+- users can edit first name, last name, and city
+- email, role, and current chaburah are shown read-only
+
 Settings:
 - placeholder
 
@@ -322,6 +326,7 @@ Checkpoint 5: Community usability and file upload
 - My Chaburah active member roster
 - Privacy-safe roster RPC that avoids exposing email addresses to regular participants
 - Signup collects first name, last name, and optional city for cleaner profiles
+- Profile editing for first name, last name, and city
 - Admin native file picker through `expo-document-picker`
 - Admin reads selected native files with `expo-file-system` and uploads them to the private `learning-files` Supabase Storage bucket
 - Material types are Source Sheet, Review Sheet, Recording, Video, PDF, and Other; old Link records remain supported but Link is not shown as a new type choice
@@ -356,7 +361,7 @@ Later:
 - Automated interaction tests once stable browser testing is available.
 - Realtime subscriptions for profile/chaburah/file/review updates.
 - Rabbi request workflow for suggesting local admins if Global Admin approval is desired.
-- More complete Settings/Profile editing.
+- More complete Settings functionality.
 
 Verification Commands
 ---------------------

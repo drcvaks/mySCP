@@ -145,6 +145,7 @@ For a clean test project, apply the reset file first, then the migrations in ord
 - My Chaburah shows a read-only active member roster with names, roles, and joined dates.
 - The roster is loaded through a display-safe RPC that does not expose member email addresses to regular participants.
 - Signup collects first name, last name, and optional city, then stores full name/city in the profile.
+- Profile lets users edit first name, last name, and city while email, role, and current chaburah remain read-only.
 - Admin file publishing supports either native file upload through `expo-document-picker`/`expo-file-system` or an external URL, with material types such as Source Sheet, Review Sheet, Recording, Video, PDF, and Other.
 - Admin file publishing uses Coverage: Week, Bechina Review, or Entire Zman. Week files show a week selector with the current week selected by default.
 - Admins can edit file metadata, replace uploaded files, change a file to an external link, and delete file records/storage objects.
