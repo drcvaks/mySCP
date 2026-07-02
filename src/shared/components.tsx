@@ -22,6 +22,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const [menuOpen, setMenuOpen] = useState(false);
   const drawerItems = [
     { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" as const, show: true },
+    { label: "Ask Rav", href: "/(tabs)/ask-rav", icon: "chatbubble-ellipses-outline" as const, show: true },
     {
       label: "Rabbi Hub",
       href: "/(tabs)/rabbi-hub",
