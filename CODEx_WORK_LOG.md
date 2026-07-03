@@ -53,6 +53,7 @@ Primary files:
 - `supabase/migrations/202606300005_capture_signup_city.sql`
 - `supabase/migrations/202607020001_add_video_other_file_types.sql`
 - `supabase/migrations/202607020002_restrict_ask_rav_to_rabbi.sql`
+- `supabase/migrations/202607030001_allow_pending_member_profile_visibility.sql`
 
 ### Checkpoint 4 Admin Workflows
 
@@ -127,6 +128,7 @@ Primary files:
 - Directory now joins chaburos through `join_chaburah`.
 - Ask Rav now inserts protected Supabase rows.
 - Ask Rav privacy now limits question visibility to the asker and the assigned active rabbi; local admins no longer see participant questions.
+- Local admins/rabbonim can now see names and emails for pending join requests in their own chaburah.
 - Review now checks answers through `check_review_answer` and saves sessions through `complete_review_session`.
 - Files now open external URLs or private Storage signed URLs.
 - Added live loading/error handling for Supabase data failures.
@@ -297,6 +299,7 @@ Primary file:
 - Checkpoint 5 QA closeout `expo-doctor` passed all 18 checks.
 - Ask Rav privacy pass TypeScript validation passed.
 - Ask Rav privacy pass `expo-doctor` passed all 18 checks.
+- Pending join-request profile visibility TypeScript validation passed.
 
 ## Still To Do
 

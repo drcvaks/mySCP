@@ -6,7 +6,7 @@ These files are the Checkpoint 3 database and RLS draft for a clean Supabase pro
 
 - `migrations/202606220001_initial_schema.sql`: enums, tables, indexes, triggers, profile synchronization, and member-count maintenance.
 - `migrations/202606220002_rls_and_storage.sql`: helper functions, RPC functions, grants, RLS policies, and the private `learning-files` Storage bucket.
-- Later migrations add membership approvals, chaburah switching/count fixes, leadership assignment, member management, the My Chaburah roster RPC, and learning-file coverage.
+- Later migrations add membership approvals, chaburah switching/count fixes, leadership assignment, member management, the My Chaburah roster RPC, learning-file coverage, and pending-request profile visibility for local managers.
 - `pilot_cleanup.sql`: optional cleanup script for removing disposable test content/history before creating real pilot material.
 - `seed.sql`: optional development chaburah records matching the current app mock data.
 
@@ -99,6 +99,7 @@ Test with separate participant, rabbi, local-admin, and global-admin accounts.
 - A participant can read active chaburos and join one through the RPC.
 - A participant cannot directly promote a membership role.
 - A participant sees everyone content and content for active memberships only.
+- A rabbi/admin can see profile basics for active and pending members in their own chaburah.
 - A participant cannot select rows from `review_question_answers`.
 - `check_review_answer()` returns feedback only for an accessible enabled question.
 - `complete_review_session()` rejects inaccessible, duplicate, or invalid answers.

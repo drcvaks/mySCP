@@ -238,6 +238,7 @@ Security Requirements
 - `review_question_answers` access is restricted to managers/global admins.
 - Ask Rav questions must be visible only to the asker and the assigned active rabbi for that chaburah.
 - Local rabbi/admin permissions come from `chaburah_members`, not just text fields.
+- Local rabbi/admin users can see profile basics for active and pending members in their own chaburah so join approvals show a useful name/email.
 - `chaburos.rabbi_name` is display text only and does not grant permissions.
 - Assigning a rabbi/admin requires membership row plus profile role.
 - Global Admin should not impersonate local admins; instead, Admin screen scopes tools to selected chaburah.
@@ -261,6 +262,7 @@ supabase/migrations/202606300004_add_learning_file_coverage.sql
 supabase/migrations/202606300005_capture_signup_city.sql
 supabase/migrations/202607020001_add_video_other_file_types.sql
 supabase/migrations/202607020002_restrict_ask_rav_to_rabbi.sql
+supabase/migrations/202607030001_allow_pending_member_profile_visibility.sql
 
 For a fully clean test project:
 1. run `supabase/reset_app_schema.sql`

@@ -114,6 +114,7 @@ supabase/
     202606300005_capture_signup_city.sql
     202607020001_add_video_other_file_types.sql
     202607020002_restrict_ask_rav_to_rabbi.sql
+    202607030001_allow_pending_member_profile_visibility.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
