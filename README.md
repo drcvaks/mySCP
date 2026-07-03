@@ -1,6 +1,6 @@
 # mySCP
 
-Checkpoint 5 in progress for a cross-platform Expo app for a Semichas Chaver Program-style learning community.
+Checkpoint 5 QA-ready for a cross-platform Expo app for a Semichas Chaver Program-style learning community.
 
 The app now includes:
 
@@ -97,6 +97,7 @@ The Supabase SQL files live under `supabase/`:
 ```text
 supabase/
   reset_app_schema.sql
+  pilot_cleanup.sql
   seed.sql
   migrations/
     202606220001_initial_schema.sql
@@ -112,9 +113,12 @@ supabase/
     202606300004_add_learning_file_coverage.sql
     202606300005_capture_signup_city.sql
     202607020001_add_video_other_file_types.sql
+    202607020002_restrict_ask_rav_to_rabbi.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
+
+For pilot testing, use `CHECKPOINT_5_QA.md` as the manual test checklist. When ready to remove disposable test content, review and run `supabase/pilot_cleanup.sql`.
 
 ## Checkpoint 3 Behavior
 
@@ -136,7 +140,8 @@ For a clean test project, apply the reset file first, then the migrations in ord
 - Local admins and rabbonim can approve or reject pending chaburah join requests.
 - Local admins, rabbonim, and global admins can search/filter local members and suspend, reactivate, or remove participant memberships.
 - Local admins and global admins can publish URL-based learning files with title, topic, week, file type, scope, and description.
-- Rabbonim and global admins can answer Ask the Rav questions.
+- Ask the Rav questions are visible to the asker and the assigned active rabbi for that chaburah.
+- Assigned rabbonim can answer Ask the Rav questions.
 - Rabbonim and global admins can create, edit, enable, and disable review questions while answer keys remain in the protected `review_question_answers` table.
 - Mobile bottom navigation shows Rabbi Hub for rabbi/global admin accounts.
 
@@ -151,6 +156,7 @@ For a clean test project, apply the reset file first, then the migrations in ord
 - Admins can edit file metadata, replace uploaded files, change a file to an external link, and delete file records/storage objects.
 - Uploaded files are saved to the private `learning-files` Supabase Storage bucket and opened later through signed URLs.
 - Main Supabase-backed screens include a header refresh button for manual cross-device sync while testing.
+- Checkpoint 5 has a manual QA checklist and pilot cleanup SQL draft.
 
 ## Verification
 

@@ -1,5 +1,5 @@
 mySCP Project Summary
-Last updated: June 30, 2026
+Last updated: July 2, 2026
 
 Purpose
 -------
@@ -122,9 +122,10 @@ Review:
 Ask Rav:
 - participant submits questions for current chaburah
 - local questions/history show in the screen
+- question visibility is private to the asker and the chaburah's assigned active rabbi
 
 Rabbi Hub:
-- answers submitted Ask the Rav questions
+- answers submitted Ask the Rav questions when the signed-in user is the assigned active rabbi
 - publishes review questions
 - edits existing review questions
 - enables/disables review questions
@@ -209,6 +210,7 @@ Important public tables:
 Important private/helper functions:
 - private.is_global_admin()
 - private.can_manage_chaburah()
+- private.can_answer_ask_rav()
 - private.can_view_profile()
 - private.can_read_content()
 - private.refresh_chaburah_member_count()
@@ -234,6 +236,7 @@ Security Requirements
 - Review answer keys must not be exposed in `review_questions`.
 - Review answers are checked by RPC.
 - `review_question_answers` access is restricted to managers/global admins.
+- Ask Rav questions must be visible only to the asker and the assigned active rabbi for that chaburah.
 - Local rabbi/admin permissions come from `chaburah_members`, not just text fields.
 - `chaburos.rabbi_name` is display text only and does not grant permissions.
 - Assigning a rabbi/admin requires membership row plus profile role.
@@ -257,6 +260,7 @@ supabase/migrations/202606300003_allow_all_week_learning_files.sql
 supabase/migrations/202606300004_add_learning_file_coverage.sql
 supabase/migrations/202606300005_capture_signup_city.sql
 supabase/migrations/202607020001_add_video_other_file_types.sql
+supabase/migrations/202607020002_restrict_ask_rav_to_rabbi.sql
 
 For a fully clean test project:
 1. run `supabase/reset_app_schema.sql`
@@ -268,6 +272,7 @@ For a fully clean test project:
 Seed Data Notes
 ---------------
 `supabase/seed.sql` includes test chaburos, announcements, learning files, review questions, and answer keys. It expects at least one global admin profile because seeded content needs an author.
+`supabase/pilot_cleanup.sql` is a draft cleanup script for removing disposable test content/history before creating real pilot content. It does not remove Auth users, profiles, chaburos, memberships, or roles.
 
 Known Supabase Setup Notes
 --------------------------
@@ -335,12 +340,15 @@ Checkpoint 5: Community usability and file upload
 - Admin can edit file metadata, replace uploaded files, switch uploaded files to external links, and delete file records/storage objects
 - External URL publishing remains available
 - Main Supabase-backed screens have a header refresh button for manual cross-device sync
+- Checkpoint 5 has `CHECKPOINT_5_QA.md` and `supabase/pilot_cleanup.sql` for tester-readiness closeout
 
 What Still Needs To Be Done
 ---------------------------
 High priority:
 - Test native upload on real Android/iOS devices and confirm signed URL opening on each platform.
 - Test file editing/deleting/replacing on real Android/iOS devices.
+- Run the Checkpoint 5 QA checklist before inviting testers.
+- Replace disposable test content with real pilot material after QA passes.
 - Deeper member-management history/auditing and leadership removal/demotion flows.
 - Settings screen functionality.
 - Production auth redirect/deep-link setup.

@@ -7,6 +7,7 @@ These files are the Checkpoint 3 database and RLS draft for a clean Supabase pro
 - `migrations/202606220001_initial_schema.sql`: enums, tables, indexes, triggers, profile synchronization, and member-count maintenance.
 - `migrations/202606220002_rls_and_storage.sql`: helper functions, RPC functions, grants, RLS policies, and the private `learning-files` Storage bucket.
 - Later migrations add membership approvals, chaburah switching/count fixes, leadership assignment, member management, the My Chaburah roster RPC, and learning-file coverage.
+- `pilot_cleanup.sql`: optional cleanup script for removing disposable test content/history before creating real pilot material.
 - `seed.sql`: optional development chaburah records matching the current app mock data.
 
 ## Recommended Setup
@@ -77,7 +78,7 @@ select public.review_role_request(
 - Announcements and files: everyone content is global-admin managed. Chaburah content is managed by that chaburah's rabbi/admin.
 - Review questions: prompts and choices are readable when authorized. Correct answers are stored separately and checked through `check_review_answer()`.
 - Review history: `complete_review_session()` computes scores on the server and stores per-question results.
-- Ask Rav: only the asker, global admins, and the chaburah's active rabbi/admin can read a question.
+- Ask Rav: only the asker and the chaburah's active assigned rabbi can read a question.
 - Storage: the `learning-files` bucket is private. Object access is allowed only when a matching `learning_files.storage_path` row grants access.
 
 ## Learning File Upload Order
@@ -102,7 +103,8 @@ Test with separate participant, rabbi, local-admin, and global-admin accounts.
 - `check_review_answer()` returns feedback only for an accessible enabled question.
 - `complete_review_session()` rejects inaccessible, duplicate, or invalid answers.
 - An Ask Rav question is visible to its asker but not unrelated participants.
-- A rabbi/admin can read and answer questions only for managed chaburos.
+- The assigned rabbi can read and answer questions only for that chaburah.
+- A local admin cannot read other participants' Ask Rav questions.
 - A local admin cannot create global announcements or global files.
 - A global admin can manage all application records.
 - Private Storage downloads follow the matching file record's visibility.

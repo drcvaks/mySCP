@@ -1,10 +1,10 @@
 # Codex Work Log
 
-Last updated: June 30, 2026
+Last updated: July 2, 2026
 
 ## Project State
 
-`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 5 is now underway after the Checkpoint 4 admin/rabbi management workflows.
+`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 5 is QA-ready after the Checkpoint 4 admin/rabbi management workflows.
 
 The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used only as a visual reference.
 
@@ -31,6 +31,8 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added Video and Other material types for uploaded files and external links.
 - Updated `StatusBanner` so error messages still appear inline but also trigger a cross-platform alert popup.
 - Added a reusable header refresh button and enabled it on the main Supabase-backed screens for manual cross-device sync during testing.
+- Added `CHECKPOINT_5_QA.md` for manual tester-readiness checks.
+- Added `supabase/pilot_cleanup.sql` to remove disposable content/history before creating real pilot content.
 
 Primary files:
 
@@ -43,11 +45,14 @@ Primary files:
 - `src/lib/database.types.ts`
 - `package.json`
 - `package-lock.json`
+- `CHECKPOINT_5_QA.md`
+- `supabase/pilot_cleanup.sql`
 - `supabase/migrations/202606300002_list_chaburah_member_directory.sql`
 - `supabase/migrations/202606300003_allow_all_week_learning_files.sql`
 - `supabase/migrations/202606300004_add_learning_file_coverage.sql`
 - `supabase/migrations/202606300005_capture_signup_city.sql`
 - `supabase/migrations/202607020001_add_video_other_file_types.sql`
+- `supabase/migrations/202607020002_restrict_ask_rav_to_rabbi.sql`
 
 ### Checkpoint 4 Admin Workflows
 
@@ -121,6 +126,7 @@ Primary files:
 - Replaced participant workflow mock data with live Supabase reads and RPC calls.
 - Directory now joins chaburos through `join_chaburah`.
 - Ask Rav now inserts protected Supabase rows.
+- Ask Rav privacy now limits question visibility to the asker and the assigned active rabbi; local admins no longer see participant questions.
 - Review now checks answers through `check_review_answer` and saves sessions through `complete_review_session`.
 - Files now open external URLs or private Storage signed URLs.
 - Added live loading/error handling for Supabase data failures.
@@ -253,6 +259,7 @@ Primary file:
 - Keep Checkpoint 4 file management URL-based for now; native file picking/upload should be a separate dependency and UX decision.
 - Use existing Supabase RLS and RPCs for admin actions rather than adding service-role code to the Expo client.
 - Keep review answer keys out of the public `review_questions` table.
+- Keep Ask Rav questions private to the asker and assigned rabbi, not general chaburah admins.
 - Keep local rabbi/local admin assignment scoped to a chaburah through Admin, not Global Admin's app-wide role tool.
 - Treat changing chaburah as leaving other participant chaburah memberships for now.
 - Keep detailed Supabase/RPC error text visible during testing, but show it in the shared status banner.
@@ -286,6 +293,10 @@ Primary file:
 - Checkpoint 5 upload iteration TypeScript validation passed.
 - Checkpoint 5 upload iteration `expo-doctor` passed all 18 checks.
 - Checkpoint 5 file coverage selector TypeScript validation passed.
+- Checkpoint 5 QA closeout TypeScript validation passed.
+- Checkpoint 5 QA closeout `expo-doctor` passed all 18 checks.
+- Ask Rav privacy pass TypeScript validation passed.
+- Ask Rav privacy pass `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 

@@ -26,7 +26,7 @@ type QuestionKind = "true_false" | "multiple_choice";
 
 export default function RabbiHubScreen() {
   const { profile } = useAuthState();
-  const { askRavQuestions, chaburos, loading, refresh, reviewQuestions, selectedChaburahId } = useAppState();
+  const { askRavQuestions, chaburos, loading, memberships, refresh, reviewQuestions, selectedChaburahId } = useAppState();
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
@@ -43,12 +43,19 @@ export default function RabbiHubScreen() {
 
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const managedChaburah = chaburos.find((chaburah) => chaburah.id === managedChaburahId);
+  const canAnswerAskRav = memberships.some(
+    (membership) =>
+      membership.userId === profile?.id &&
+      membership.chaburahId === managedChaburahId &&
+      membership.status === "active" &&
+      membership.memberRole === "rabbi"
+  );
   const visibleQuestions = useMemo(
     () =>
-      askRavQuestions.filter(
-        (question) => profile?.role === "global_admin" || question.chaburahId === profile?.chaburahId
-      ),
-    [askRavQuestions, profile?.chaburahId, profile?.role]
+      canAnswerAskRav
+        ? askRavQuestions.filter((question) => question.chaburahId === managedChaburahId)
+        : [],
+    [askRavQuestions, canAnswerAskRav, managedChaburahId]
   );
   const submittedQuestions = visibleQuestions.filter((question) => question.status === "submitted");
   const answeredQuestions = visibleQuestions.filter((question) => question.status === "answered");
@@ -133,7 +140,7 @@ export default function RabbiHubScreen() {
   }
 
   async function submitAnswer(questionId: string) {
-    if (!profile?.id || answer.trim().length < 5) return;
+    if (!profile?.id || !canAnswerAskRav || answer.trim().length < 5) return;
     setSaving(true);
     setMessage("");
     const { error } = await supabase
@@ -256,7 +263,7 @@ export default function RabbiHubScreen() {
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Ask the Rav Queue</SectionTitle>
             <Text style={styles.muted}>
-              {managedChaburah ? managedChaburah.name : "Global view"} questions that need a response.
+              {managedChaburah ? managedChaburah.name : "Current chaburah"} questions that need a response.
             </Text>
           </View>
           <Pill label={`${submittedQuestions.length} open`} tone={submittedQuestions.length ? "accent" : "success"} />
@@ -281,7 +288,7 @@ export default function RabbiHubScreen() {
       {submittedQuestions.length === 0 ? (
         <Card>
           <SectionTitle>No Open Questions</SectionTitle>
-          <Text style={styles.muted}>Submitted questions will appear here for the rabbi or global admin.</Text>
+          <Text style={styles.muted}>Submitted questions will appear here for the assigned rabbi.</Text>
         </Card>
       ) : (
         submittedQuestions.map((question) => (

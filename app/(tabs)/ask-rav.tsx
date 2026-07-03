@@ -12,16 +12,30 @@ import {
   TextArea,
   styles
 } from "../../src/shared/components";
+import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
 export default function AskRavScreen() {
   const [draft, setDraft] = useState("");
   const [message, setMessage] = useState("");
-  const { askRavQuestions, chaburos, loading, refresh, selectedChaburahId, submitAskRavQuestion } = useAppState();
+  const { profile } = useAuthState();
+  const { askRavQuestions, chaburos, loading, memberships, refresh, selectedChaburahId, submitAskRavQuestion } = useAppState();
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
+  const canViewChaburahQuestions = memberships.some(
+    (membership) =>
+      membership.userId === profile?.id &&
+      membership.chaburahId === selectedChaburahId &&
+      membership.status === "active" &&
+      membership.memberRole === "rabbi"
+  );
   const localQuestions = useMemo(
-    () => askRavQuestions.filter((question) => question.chaburahId === selectedChaburahId),
-    [askRavQuestions, selectedChaburahId]
+    () =>
+      askRavQuestions.filter(
+        (question) =>
+          question.chaburahId === selectedChaburahId &&
+          (question.askerId === profile?.id || canViewChaburahQuestions)
+      ),
+    [askRavQuestions, canViewChaburahQuestions, profile?.id, selectedChaburahId]
   );
   const trimmedDraft = draft.trim();
 
