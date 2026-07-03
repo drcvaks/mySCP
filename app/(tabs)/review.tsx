@@ -42,7 +42,10 @@ export default function ReviewScreen() {
   const currentQuestions = useMemo(
     () =>
       reviewQuestions.filter(
-        (question) => question.enabled && (selectedWeek === "all" || question.week === selectedWeek)
+        (question) =>
+          question.enabled &&
+          question.publicationStatus === "published" &&
+          (selectedWeek === "all" || question.week === selectedWeek)
       ),
     [reviewQuestions, selectedWeek]
   );
@@ -168,12 +171,14 @@ export default function ReviewScreen() {
         </Row>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <FilterChip
-            label={`All (${reviewQuestions.filter((question) => question.enabled).length})`}
+            label={`All (${reviewQuestions.filter((question) => question.enabled && question.publicationStatus === "published").length})`}
             onPress={() => reset("all")}
             selected={selectedWeek === "all"}
           />
           {weeks.map((week) => {
-            const count = reviewQuestions.filter((question) => question.enabled && question.week === week).length;
+            const count = reviewQuestions.filter(
+              (question) => question.enabled && question.publicationStatus === "published" && question.week === week
+            ).length;
             return (
               <FilterChip
                 key={week}

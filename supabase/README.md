@@ -6,7 +6,7 @@ These files are the Checkpoint 3 database and RLS draft for a clean Supabase pro
 
 - `migrations/202606220001_initial_schema.sql`: enums, tables, indexes, triggers, profile synchronization, and member-count maintenance.
 - `migrations/202606220002_rls_and_storage.sql`: helper functions, RPC functions, grants, RLS policies, and the private `learning-files` Storage bucket.
-- Later migrations add membership approvals, chaburah switching/count fixes, leadership assignment, member management, the My Chaburah roster RPC, learning-file coverage, and pending-request profile visibility for local managers.
+- Later migrations add membership approvals, chaburah switching/count fixes, leadership assignment, member management, the My Chaburah roster RPC, learning-file coverage, pending-request profile visibility for local managers, and staged review-question publishing.
 - `pilot_cleanup.sql`: optional cleanup script for removing disposable test content/history before creating real pilot material.
 - `seed.sql`: optional development chaburah records matching the current app mock data.
 
@@ -76,7 +76,7 @@ select public.review_role_request(
 - Chaburos: authenticated users see active chaburos. Global admins create/delete them. Active rabbis/admins manage their own chaburah.
 - Membership: participants join through `join_chaburah()`. Direct membership mutation is limited to authorized managers.
 - Announcements and files: everyone content is global-admin managed. Chaburah content is managed by that chaburah's rabbi/admin.
-- Review questions: prompts and choices are readable when authorized. Correct answers are stored separately and checked through `check_review_answer()`.
+- Review questions: published prompts and choices are readable when authorized. Staged questions are manager-only until published. Correct answers are stored separately and checked through `check_review_answer()`.
 - Review history: `complete_review_session()` computes scores on the server and stores per-question results.
 - Ask Rav: only the asker and the chaburah's active assigned rabbi can read a question.
 - Storage: the `learning-files` bucket is private. Object access is allowed only when a matching `learning_files.storage_path` row grants access.

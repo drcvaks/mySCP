@@ -115,6 +115,7 @@ supabase/
     202607020001_add_video_other_file_types.sql
     202607020002_restrict_ask_rav_to_rabbi.sql
     202607030001_allow_pending_member_profile_visibility.sql
+    202607030002_stage_review_questions.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
@@ -143,7 +144,10 @@ For pilot testing, use `CHECKPOINT_5_QA.md` as the manual test checklist. When r
 - Local admins and global admins can publish URL-based learning files with title, topic, week, file type, scope, and description.
 - Ask the Rav questions are visible to the asker and the assigned active rabbi for that chaburah.
 - Assigned rabbonim can answer Ask the Rav questions.
-- Rabbonim and global admins can create, edit, enable, and disable review questions while answer keys remain in the protected `review_question_answers` table.
+- Rabbi Hub stages review questions before participants see them.
+- Rabbonim can build questions for one week while browsing public library questions from another week.
+- Rabbonim can copy public library questions into their chaburah, edit the staged copies, and publish the full week when ready.
+- Review answer keys remain in the protected `review_question_answers` table.
 - Mobile bottom navigation shows Rabbi Hub for rabbi/global admin accounts.
 
 ## Checkpoint 5 Behavior

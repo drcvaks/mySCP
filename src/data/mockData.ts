@@ -154,6 +154,8 @@ export const reviewQuestions: ReviewQuestion[] = [
     kind: "multiple_choice",
     choices: ["Clean pareve food cooked in a clean meat pot", "Wine touched by a non-Jew", "Checking lettuce", "Lighting candles"],
     visibility: "everyone",
+    publicationStatus: "published",
+    isLibraryQuestion: false,
     correctChoiceIndex: 0,
     explanation: "The core kitchen case starts with transferred taste from clean utensils and pareve food.",
     enabled: true
@@ -166,6 +168,8 @@ export const reviewQuestions: ReviewQuestion[] = [
     kind: "true_false",
     choices: ["True", "False"],
     visibility: "everyone",
+    publicationStatus: "published",
+    isLibraryQuestion: false,
     correctChoiceIndex: 0,
     explanation: "Immediate feedback helps participants review before the bechina.",
     enabled: true
@@ -178,6 +182,8 @@ export const reviewQuestions: ReviewQuestion[] = [
     kind: "true_false",
     choices: ["True", "False"],
     visibility: "everyone",
+    publicationStatus: "published",
+    isLibraryQuestion: false,
     correctChoiceIndex: 0,
     explanation: "The roadmap places Stam Yeinam and wine from Week 7 onward.",
     enabled: true

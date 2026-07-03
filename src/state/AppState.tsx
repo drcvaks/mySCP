@@ -216,6 +216,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         (questionsResult.data ?? []).map((row) => ({
           id: row.id,
           chaburahId: row.chaburah_id ?? undefined,
+          sourceQuestionId: row.source_question_id ?? undefined,
           week: row.week,
           topic: row.topic,
           prompt: row.prompt,
@@ -224,6 +225,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             ? row.choices.filter((choice): choice is string => typeof choice === "string")
             : [],
           visibility: row.visibility,
+          publicationStatus: row.publication_status ?? "published",
+          isLibraryQuestion: row.is_library_question ?? false,
           enabled: row.enabled
         }))
       );

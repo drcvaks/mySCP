@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { ScrollView, Text, View } from "react-native";
 import {
   Button,
   Card,
@@ -23,14 +23,17 @@ import { ReviewQuestion, Visibility } from "../../src/shared/types";
 const reviewWeeks = buildReviewWeeks();
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
+type LibraryWeek = number | "all";
 
 export default function RabbiHubScreen() {
   const { profile } = useAuthState();
+  const scrollRef = useRef<ScrollView | null>(null);
   const { askRavQuestions, chaburos, loading, memberships, refresh, reviewQuestions, selectedChaburahId } = useAppState();
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
-  const [week, setWeek] = useState(String(currentReviewWeek));
+  const [buildWeek, setBuildWeek] = useState(currentReviewWeek);
+  const [libraryWeek, setLibraryWeek] = useState<LibraryWeek>(currentReviewWeek);
   const [questionKind, setQuestionKind] = useState<QuestionKind>("true_false");
   const [prompt, setPrompt] = useState("");
   const [optionCount, setOptionCount] = useState(4);
@@ -38,6 +41,7 @@ export default function RabbiHubScreen() {
   const [correctChoiceIndex, setCorrectChoiceIndex] = useState("0");
   const [explanation, setExplanation] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("chaburah");
+  const [questionFormOffset, setQuestionFormOffset] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -63,12 +67,22 @@ export default function RabbiHubScreen() {
     () =>
       reviewQuestions.filter(
         (question) => profile?.role === "global_admin" || question.chaburahId === profile?.chaburahId
-      ),
+    ),
     [profile?.chaburahId, profile?.role, reviewQuestions]
   );
-  const selectedWeekNumber = Number(week);
-  const selectedWeekReviewQuestions = manageableReviewQuestions.filter(
-    (question) => question.week === selectedWeekNumber
+  const selectedWeekReviewQuestions = manageableReviewQuestions.filter((question) => question.week === buildWeek);
+  const stagedQuestions = selectedWeekReviewQuestions.filter(
+    (question) => question.publicationStatus === "draft" && !question.isLibraryQuestion
+  );
+  const publishedQuestions = selectedWeekReviewQuestions.filter(
+    (question) => question.publicationStatus === "published" && !question.isLibraryQuestion
+  );
+  const publicLibraryQuestions = reviewQuestions.filter(
+    (question) =>
+      question.isLibraryQuestion &&
+      question.enabled &&
+      question.publicationStatus !== "archived" &&
+      (libraryWeek === "all" || question.week === libraryWeek)
   );
   const parsedChoices =
     questionKind === "true_false"
@@ -98,7 +112,6 @@ export default function RabbiHubScreen() {
 
   function resetReviewForm() {
     setEditingQuestionId(null);
-    setWeek(String(currentReviewWeek));
     setQuestionKind("true_false");
     setPrompt("");
     setOptionCount(4);
@@ -128,7 +141,7 @@ export default function RabbiHubScreen() {
     });
 
     setEditingQuestionId(question.id);
-    setWeek(String(question.week));
+    setBuildWeek(question.week);
     setQuestionKind(question.kind);
     setPrompt(question.prompt);
     setOptionCount(question.kind === "multiple_choice" ? Math.max(1, Math.min(4, question.choices.length)) : 4);
@@ -137,6 +150,9 @@ export default function RabbiHubScreen() {
     setExplanation(data.explanation);
     setVisibility(question.visibility);
     setMessage("Editing review question.");
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(questionFormOffset - 12, 0), animated: true });
+    });
   }
 
   async function submitAnswer(questionId: string) {
@@ -165,7 +181,8 @@ export default function RabbiHubScreen() {
 
   async function saveReviewQuestion() {
     if (!profile?.id) return;
-    const parsedWeek = Number(week);
+    const editingQuestion = reviewQuestions.find((question) => question.id === editingQuestionId);
+    const parsedWeek = buildWeek;
     const parsedCorrect = Number(correctChoiceIndex);
     if (!prompt.trim() || !explanation.trim()) {
       setMessage("Add a prompt and explanation.");
@@ -201,7 +218,9 @@ export default function RabbiHubScreen() {
         prompt: prompt.trim(),
         kind: questionKind,
         choices: parsedChoices,
-        visibility
+        visibility,
+        is_library_question: visibility === "everyone",
+        publication_status: editingQuestion?.publicationStatus ?? "draft"
     };
     const questionResult = editingQuestionId
       ? await supabase
@@ -239,7 +258,48 @@ export default function RabbiHubScreen() {
     }
 
     resetReviewForm();
-    setMessage(editingQuestionId ? "Review question updated." : "Review question published.");
+    setMessage(editingQuestionId ? "Review question updated." : "Review question staged.");
+    await refresh();
+  }
+
+  async function cloneLibraryQuestion(questionId: string) {
+    if (!managedChaburahId) {
+      setMessage("Choose or join a chaburah before using a library question.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    const { error } = await supabase.rpc("clone_review_question", {
+      source_review_question_id: questionId,
+      target_chaburah_id: managedChaburahId,
+      target_week: buildWeek
+    });
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setMessage(`Question copied to Week ${buildWeek} staging.`);
+    await refresh();
+  }
+
+  async function publishStagedWeek() {
+    if (!managedChaburahId) {
+      setMessage("Choose or join a chaburah before publishing questions.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    const { data, error } = await supabase.rpc("publish_review_week", {
+      target_chaburah_id: managedChaburahId,
+      target_week: buildWeek
+    });
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setMessage(`${data ?? 0} staged question${data === 1 ? "" : "s"} published for Week ${buildWeek}.`);
     await refresh();
   }
 
@@ -256,8 +316,25 @@ export default function RabbiHubScreen() {
     await refresh();
   }
 
+  async function removeStagedQuestion(question: ReviewQuestion) {
+    if (question.publicationStatus !== "draft") return;
+    setSaving(true);
+    setMessage("");
+    const { error } = await supabase.from("review_questions").delete().eq("id", question.id);
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    if (editingQuestionId === question.id) {
+      resetReviewForm();
+    }
+    setMessage("Staged question removed.");
+    await refresh();
+  }
+
   return (
-    <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading}>
+    <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
@@ -277,9 +354,12 @@ export default function RabbiHubScreen() {
             ? "info"
             : message.includes("saved") ||
                 message.includes("published") ||
+                message.includes("staged") ||
+                message.includes("copied") ||
                 message.includes("updated") ||
                 message.includes("enabled") ||
-                message.includes("disabled")
+                message.includes("disabled") ||
+                message.includes("removed")
               ? "success"
               : "error"
         }
@@ -325,27 +405,45 @@ export default function RabbiHubScreen() {
       )}
 
       <Card>
-        <SectionTitle>{editingQuestionId ? "Edit Review Question" : "Publish Review Question"}</SectionTitle>
-        <Text style={styles.muted}>Correct answers stay in the protected answer table and are checked by RPC.</Text>
-        {profile?.role === "global_admin" ? (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip label="Everyone" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
-            <FilterChip label="Current Chaburah" onPress={() => setVisibility("chaburah")} selected={visibility === "chaburah"} />
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Review Question Builder</SectionTitle>
+            <Text style={styles.muted}>
+              Build a staged set for your chaburah, then publish the week when the questions are ready.
+            </Text>
           </View>
-        ) : null}
+          <Pill label={`Week ${buildWeek}`} tone="primary" />
+        </Row>
         <View style={{ gap: 8 }}>
-          <MetaText>Current week is Week {currentReviewWeek}</MetaText>
+          <MetaText>Build Questions For</MetaText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {reviewWeeks.map((reviewWeek) => (
               <FilterChip
                 key={reviewWeek}
                 label={`Week ${reviewWeek}`}
-                onPress={() => setWeek(String(reviewWeek))}
-                selected={week === String(reviewWeek)}
+                onPress={() => setBuildWeek(reviewWeek)}
+                selected={buildWeek === reviewWeek}
               />
             ))}
           </View>
         </View>
+        <Row>
+          <Pill label={`${stagedQuestions.length} staged`} tone={stagedQuestions.length ? "accent" : "neutral"} />
+          <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
+        </Row>
+      </Card>
+
+      <View onLayout={(event) => setQuestionFormOffset(event.nativeEvent.layout.y)}>
+        <Card>
+        <SectionTitle>{editingQuestionId ? "Edit Review Question" : "Create Staged Question"}</SectionTitle>
+        <Text style={styles.muted}>New questions stay staged until you publish the selected week.</Text>
+        {profile?.role === "global_admin" ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <FilterChip label="Public Library" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
+            <FilterChip label="Current Chaburah" onPress={() => setVisibility("chaburah")} selected={visibility === "chaburah"} />
+          </View>
+        ) : null}
+        <MetaText>Saving to Week {buildWeek}. Current week is Week {currentReviewWeek}.</MetaText>
         <View style={{ gap: 8 }}>
           <MetaText>Question Type</MetaText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -409,23 +507,44 @@ export default function RabbiHubScreen() {
           </View>
         </View>
         <TextArea onChangeText={setExplanation} placeholder="Explanation shown after the answer" value={explanation} />
-        <Button disabled={saving} label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : "Publish Question"} onPress={saveReviewQuestion} />
+        <Button
+          disabled={saving}
+          label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : visibility === "everyone" ? "Add to Library" : "Stage Question"}
+          onPress={saveReviewQuestion}
+        />
         {editingQuestionId ? <Button label="Cancel Edit" onPress={resetReviewForm} variant="ghost" /> : null}
-      </Card>
+        </Card>
+      </View>
 
       <Card>
-        <SectionTitle>Manage Review Questions</SectionTitle>
+        <SectionTitle>Public Question Library</SectionTitle>
         <Row>
-          <Text style={styles.muted}>Showing questions for Week {week}.</Text>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <Text style={styles.muted}>Browse public library questions and copy useful ones into Week {buildWeek} staging.</Text>
+          </View>
           <Pill
-            label={`${selectedWeekReviewQuestions.length} question${selectedWeekReviewQuestions.length === 1 ? "" : "s"}`}
+            label={`${publicLibraryQuestions.length} available`}
             tone="accent"
           />
         </Row>
-        {selectedWeekReviewQuestions.length === 0 ? (
-          <Text style={styles.muted}>No review questions are available for this week yet.</Text>
+        <View style={{ gap: 8 }}>
+          <MetaText>Browse Library From</MetaText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <FilterChip label="All Weeks" onPress={() => setLibraryWeek("all")} selected={libraryWeek === "all"} />
+            {reviewWeeks.map((reviewWeek) => (
+              <FilterChip
+                key={reviewWeek}
+                label={`Week ${reviewWeek}`}
+                onPress={() => setLibraryWeek(reviewWeek)}
+                selected={libraryWeek === reviewWeek}
+              />
+            ))}
+          </View>
+        </View>
+        {publicLibraryQuestions.length === 0 ? (
+          <Text style={styles.muted}>No public library questions match this week yet.</Text>
         ) : null}
-        {selectedWeekReviewQuestions.map((question) => (
+        {publicLibraryQuestions.map((question) => (
           <View key={question.id} style={{ gap: 8 }}>
             <Row>
               <View style={{ flex: 1, minWidth: 220 }}>
@@ -434,21 +553,70 @@ export default function RabbiHubScreen() {
                   Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
                 </MetaText>
               </View>
-              <Pill label={question.enabled ? "Enabled" : "Disabled"} tone={question.enabled ? "success" : "danger"} />
+              <Pill label="Library" tone="primary" />
             </Row>
             <Row>
-              <MetaText>{question.visibility === "everyone" ? "Everyone" : "Current Chaburah"}</MetaText>
+              <MetaText>Copies into Week {buildWeek}</MetaText>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                <Button disabled={saving} label="Edit" onPress={() => startEditReviewQuestion(question)} variant="secondary" />
-                <Button
-                  disabled={saving}
-                  label={question.enabled ? "Disable" : "Enable"}
-                  onPress={() => toggleReviewQuestion(question)}
-                  variant="ghost"
-                />
+                <Button disabled={saving || !managedChaburahId} label="Use Question" onPress={() => cloneLibraryQuestion(question.id)} variant="secondary" />
+                {profile?.role === "global_admin" ? (
+                  <Button disabled={saving} label="Edit Library" onPress={() => startEditReviewQuestion(question)} variant="ghost" />
+                ) : null}
               </View>
             </Row>
           </View>
+        ))}
+      </Card>
+
+      <Card>
+        <SectionTitle>Staged Questions</SectionTitle>
+        <Row>
+          <Text style={styles.muted}>These Week {buildWeek} questions are not visible to participants yet.</Text>
+          <Pill label={`${stagedQuestions.length} staged`} tone={stagedQuestions.length ? "accent" : "neutral"} />
+        </Row>
+        {stagedQuestions.length === 0 ? (
+          <Text style={styles.muted}>No staged questions for this week yet. Create one or use the public library.</Text>
+        ) : null}
+        {stagedQuestions.map((question, index) => (
+          <ReviewQuestionManagerRow
+            key={question.id}
+            index={index}
+            question={question}
+            saving={saving}
+            onEdit={startEditReviewQuestion}
+            onRemove={removeStagedQuestion}
+            onToggle={toggleReviewQuestion}
+          />
+        ))}
+        {stagedQuestions.length > 0 ? (
+          <Button
+            disabled={saving}
+            label={saving ? "Publishing..." : `Publish Week ${buildWeek}`}
+            onPress={publishStagedWeek}
+            variant="secondary"
+          />
+        ) : null}
+      </Card>
+
+      <Card>
+        <SectionTitle>Published Questions</SectionTitle>
+        <Row>
+          <Text style={styles.muted}>These Week {buildWeek} questions are live for participants to review.</Text>
+          <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
+        </Row>
+        {publishedQuestions.length === 0 ? (
+          <Text style={styles.muted}>No published questions for this week yet.</Text>
+        ) : null}
+        {publishedQuestions.map((question, index) => (
+          <ReviewQuestionManagerRow
+            key={question.id}
+            index={index}
+            question={question}
+            saving={saving}
+            onEdit={startEditReviewQuestion}
+            onRemove={removeStagedQuestion}
+            onToggle={toggleReviewQuestion}
+          />
         ))}
       </Card>
 
@@ -463,5 +631,58 @@ export default function RabbiHubScreen() {
         {answeredQuestions.length === 0 ? <Text style={styles.muted}>No answered questions yet.</Text> : null}
       </Card>
     </Screen>
+  );
+}
+
+function ReviewQuestionManagerRow({
+  index,
+  question,
+  saving,
+  onEdit,
+  onRemove,
+  onToggle
+}: {
+  index: number;
+  question: ReviewQuestion;
+  saving: boolean;
+  onEdit: (question: ReviewQuestion) => void;
+  onRemove: (question: ReviewQuestion) => void;
+  onToggle: (question: ReviewQuestion) => void;
+}) {
+  const staged = question.publicationStatus === "draft";
+  return (
+    <View style={{ gap: 8 }}>
+      <Row>
+        <View style={{ flex: 1, minWidth: 220 }}>
+          <MetaText>
+            Question {index + 1} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
+          </MetaText>
+          <Text style={styles.body}>{question.prompt}</Text>
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <Pill
+            label={question.publicationStatus === "published" ? "Published" : "Staged"}
+            tone={question.publicationStatus === "published" ? "success" : "accent"}
+          />
+          {!staged ? <Pill label={question.enabled ? "Enabled" : "Disabled"} tone={question.enabled ? "success" : "danger"} /> : null}
+        </View>
+      </Row>
+      <Row>
+        <MetaText>{question.sourceQuestionId ? "Copied from public library" : "Original question"}</MetaText>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <Button disabled={saving} label="Edit" onPress={() => onEdit(question)} variant="secondary" />
+          {staged ? (
+            <Button disabled={saving} label="Remove" onPress={() => onRemove(question)} variant="ghost" />
+          ) : (
+            <Button
+              disabled={saving}
+              label={question.enabled ? "Disable" : "Enable"}
+              onPress={() => onToggle(question)}
+              variant="ghost"
+            />
+          )}
+        </View>
+      </Row>
+    </View>
   );
 }

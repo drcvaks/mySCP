@@ -101,12 +101,16 @@ type LearningFileRow = {
 type ReviewQuestionRow = {
   id: string;
   chaburah_id: string | null;
+  source_question_id: string | null;
   topic: string;
   week: number;
   prompt: string;
   kind: Database["public"]["Enums"]["review_question_kind"];
   choices: Json;
   visibility: Database["public"]["Enums"]["content_visibility"];
+  publication_status: Database["public"]["Enums"]["review_publication_status"];
+  is_library_question: boolean;
+  published_at: string | null;
   enabled: boolean;
   created_by: string;
   created_at: string;
@@ -221,6 +225,14 @@ export interface Database {
         Args: { target_chaburah_id: string };
         Returns: ChaburahMemberDirectoryRow[];
       };
+      clone_review_question: {
+        Args: { source_review_question_id: string; target_chaburah_id: string; target_week: number };
+        Returns: ReviewQuestionRow;
+      };
+      publish_review_week: {
+        Args: { target_chaburah_id: string; target_week: number };
+        Returns: number;
+      };
     };
     Enums: {
       app_role: "participant" | "local_rabbi" | "local_admin" | "global_admin";
@@ -230,6 +242,7 @@ export interface Database {
       content_visibility: "everyone" | "chaburah";
       file_coverage: "week" | "bechina_review" | "entire_zman";
       learning_file_type: "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link";
+      review_publication_status: "draft" | "published" | "archived";
       review_question_kind: "multiple_choice" | "true_false";
       ask_rav_status: "submitted" | "answered" | "archived";
     };

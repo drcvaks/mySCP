@@ -88,7 +88,9 @@ export default function DashboardScreen() {
         </Card>
         <Card>
           <Text style={styles.muted}>Review Questions</Text>
-          <Text style={styles.statNumber}>{reviewQuestions.filter((question) => question.enabled).length}</Text>
+          <Text style={styles.statNumber}>
+            {reviewQuestions.filter((question) => question.enabled && question.publicationStatus === "published").length}
+          </Text>
         </Card>
       </Row>
 

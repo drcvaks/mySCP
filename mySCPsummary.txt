@@ -126,7 +126,10 @@ Ask Rav:
 
 Rabbi Hub:
 - answers submitted Ask the Rav questions when the signed-in user is the assigned active rabbi
-- publishes review questions
+- stages review questions before publishing them
+- publishes staged review questions by selected chaburah week
+- browses public library questions from a separate source week
+- copies public library questions into the selected chaburah week as editable staged copies
 - edits existing review questions
 - enables/disables review questions
 - filters managed review questions by selected week
@@ -263,6 +266,7 @@ supabase/migrations/202606300005_capture_signup_city.sql
 supabase/migrations/202607020001_add_video_other_file_types.sql
 supabase/migrations/202607020002_restrict_ask_rav_to_rabbi.sql
 supabase/migrations/202607030001_allow_pending_member_profile_visibility.sql
+supabase/migrations/202607030002_stage_review_questions.sql
 
 For a fully clean test project:
 1. run `supabase/reset_app_schema.sql`

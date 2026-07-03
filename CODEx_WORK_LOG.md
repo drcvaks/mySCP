@@ -35,6 +35,10 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Moved the shared screen header outside the scroll area so the mobile hamburger menu and refresh button remain visible on long screens.
 - Added a Dashboard notification for rabbonim/admins when their chaburah has pending join requests.
 - Dashboard's Review Requests action now opens Admin directly at the Join Requests section.
+- Added Rabbi Hub review-question staging: create/copy questions as drafts, browse public library questions from any week, and publish staged chaburah questions by week.
+- Rabbi Hub Edit actions now scroll back to the review-question form after loading the answer key.
+- Moved Rabbi Hub's Publish Week action under the Staged Questions list so rabbonim publish after reviewing the staged set.
+- Replaced Disable with Remove for staged Rabbi Hub questions; Enable/Disable remains for published questions only.
 - Added `CHECKPOINT_5_QA.md` for manual tester-readiness checks.
 - Added `supabase/pilot_cleanup.sql` to remove disposable content/history before creating real pilot content.
 
@@ -58,6 +62,7 @@ Primary files:
 - `supabase/migrations/202607020001_add_video_other_file_types.sql`
 - `supabase/migrations/202607020002_restrict_ask_rav_to_rabbi.sql`
 - `supabase/migrations/202607030001_allow_pending_member_profile_visibility.sql`
+- `supabase/migrations/202607030002_stage_review_questions.sql`
 
 ### Checkpoint 4 Admin Workflows
 
@@ -82,6 +87,8 @@ Primary files:
   - publish and edit review questions
   - enable/disable review questions
   - filter managed review questions by selected week
+  - stage review questions before publishing them to participants
+  - copy public library questions into a chaburah-specific staged week
   - store review answer keys in the protected `review_question_answers` table
   - review recently answered questions
 - Directory now hides inactive chaburos and shows pending approval state for join requests.
@@ -308,6 +315,10 @@ Primary file:
 - Sticky mobile header TypeScript validation passed.
 - Dashboard join-request notification TypeScript validation passed.
 - Dashboard-to-Admin Join Requests deep link TypeScript validation passed.
+- Rabbi Hub staged review-question builder TypeScript validation passed.
+- Rabbi Hub edit-scroll TypeScript validation passed.
+- Rabbi Hub staged publish placement TypeScript validation passed.
+- Rabbi Hub staged remove action TypeScript validation passed.
 
 ## Still To Do
 

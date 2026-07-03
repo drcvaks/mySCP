@@ -2,6 +2,7 @@ export type UserRole = "participant" | "local_rabbi" | "local_admin" | "global_a
 export type FileType = "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link";
 export type Visibility = "everyone" | "chaburah";
 export type FileCoverage = "week" | "bechina_review" | "entire_zman";
+export type ReviewPublicationStatus = "draft" | "published" | "archived";
 
 export interface UserProfile {
   id: string;
@@ -83,12 +84,15 @@ export interface LearningFile {
 export interface ReviewQuestion {
   id: string;
   chaburahId?: string;
+  sourceQuestionId?: string;
   week: number;
   topic: string;
   prompt: string;
   kind: "multiple_choice" | "true_false";
   choices: string[];
   visibility: Visibility;
+  publicationStatus: ReviewPublicationStatus;
+  isLibraryQuestion: boolean;
   correctChoiceIndex?: number;
   explanation?: string;
   enabled: boolean;
