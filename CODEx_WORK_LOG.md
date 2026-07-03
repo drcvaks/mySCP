@@ -33,6 +33,8 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added a reusable header refresh button and enabled it on the main Supabase-backed screens for manual cross-device sync during testing.
 - Added a compact Admin Index at the top of the Admin screen so long admin workflows can jump to settings, join requests, members, publishing, and files.
 - Moved the shared screen header outside the scroll area so the mobile hamburger menu and refresh button remain visible on long screens.
+- Added a Dashboard notification for rabbonim/admins when their chaburah has pending join requests.
+- Dashboard's Review Requests action now opens Admin directly at the Join Requests section.
 - Added `CHECKPOINT_5_QA.md` for manual tester-readiness checks.
 - Added `supabase/pilot_cleanup.sql` to remove disposable content/history before creating real pilot content.
 
@@ -304,6 +306,8 @@ Primary file:
 - Pending join-request profile visibility TypeScript validation passed.
 - Admin Index TypeScript validation passed.
 - Sticky mobile header TypeScript validation passed.
+- Dashboard join-request notification TypeScript validation passed.
+- Dashboard-to-Admin Join Requests deep link TypeScript validation passed.
 
 ## Still To Do
 

@@ -1,15 +1,18 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { profile } = useAuthState();
   const {
     announcements,
     chaburos,
     learningFiles,
     loading,
+    memberships,
     refresh,
     reviewQuestions,
     reviewSessions,
@@ -24,6 +27,23 @@ export default function DashboardScreen() {
   const readiness = latestReview
     ? Math.round((latestReview.correctAnswers / latestReview.totalQuestions) * 100)
     : 0;
+  const canReviewJoinRequests =
+    profile?.role === "global_admin" ||
+    memberships.some(
+      (membership) =>
+        membership.userId === profile?.id &&
+        membership.chaburahId === selectedChaburahId &&
+        membership.status === "active" &&
+        (membership.memberRole === "rabbi" || membership.memberRole === "admin")
+    );
+  const pendingJoinRequests = canReviewJoinRequests
+    ? memberships.filter(
+        (membership) =>
+          membership.chaburahId === selectedChaburahId &&
+          membership.memberRole === "participant" &&
+          membership.status === "pending"
+      )
+    : [];
 
   return (
     <Screen title="This Week in SCP" eyebrow="Practical Kashrus" onRefresh={refresh} refreshing={loading}>
@@ -39,6 +59,27 @@ export default function DashboardScreen() {
           <Button label="My Chaburah" onPress={() => router.push("/(tabs)/chaburah")} variant="secondary" />
         </Row>
       </Card>
+
+      {pendingJoinRequests.length > 0 ? (
+        <Card>
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <Pill label="Action Needed" tone="accent" />
+              <SectionTitle>Pending Join Requests</SectionTitle>
+              <Text style={styles.muted}>
+                {pendingJoinRequests.length === 1
+                  ? "1 participant is waiting to join this chaburah."
+                  : `${pendingJoinRequests.length} participants are waiting to join this chaburah.`}
+              </Text>
+            </View>
+            <Button
+              label="Review Requests"
+              onPress={() => router.push({ pathname: "/(tabs)/admin", params: { section: "requests" } })}
+              variant="secondary"
+            />
+          </Row>
+        </Card>
+      ) : null}
 
       <Row>
         <Card>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, ScrollView, Text, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import {
@@ -33,10 +34,13 @@ type AdminSection = "chaburah" | "leadership" | "settings" | "requests" | "membe
 const memberStatusFilters: MemberStatusFilter[] = ["all", "active", "pending", "suspended", "left"];
 const fileCoverages: FileCoverage[] = ["week", "bechina_review", "entire_zman"];
 const fileWeekSelections = buildReviewWeeks();
+const adminSections: AdminSection[] = ["chaburah", "leadership", "settings", "requests", "members", "publish", "files"];
 
 export default function AdminScreen() {
   const { profile } = useAuthState();
+  const params = useLocalSearchParams();
   const scrollRef = useRef<ScrollView | null>(null);
+  const scrolledToTargetRef = useRef("");
   const {
     chaburos,
     learningFiles,
@@ -79,6 +83,8 @@ export default function AdminScreen() {
   const [sectionOffsets, setSectionOffsets] = useState<Partial<Record<AdminSection, number>>>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
+  const targetSection = isAdminSection(requestedSection) ? requestedSection : undefined;
 
   useEffect(() => {
     if (!isGlobalAdmin || adminChaburahId || chaburos.length === 0) return;
@@ -154,6 +160,16 @@ export default function AdminScreen() {
     if (offset === undefined) return;
     scrollRef.current?.scrollTo({ y: Math.max(offset - 12, 0), animated: true });
   }
+
+  useEffect(() => {
+    if (!targetSection || scrolledToTargetRef.current === targetSection) return;
+    const offset = sectionOffsets[targetSection];
+    if (offset === undefined) return;
+    scrolledToTargetRef.current = targetSection;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(offset - 12, 0), animated: true });
+    });
+  }, [sectionOffsets, targetSection]);
 
   async function saveChaburah() {
     if (!managedChaburahId) return;
@@ -943,4 +959,8 @@ function base64ToArrayBuffer(base64: string) {
   }
 
   return bytes.buffer;
+}
+
+function isAdminSection(value: unknown): value is AdminSection {
+  return typeof value === "string" && adminSections.includes(value as AdminSection);
 }
