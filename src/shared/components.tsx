@@ -53,12 +53,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
 
   return (
     <SafeAreaView style={globalStyles.screen} edges={["top"]}>
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={[globalStyles.content, width >= 768 && styles.wideContent]}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={[styles.headerShell, width >= 768 && styles.wideHeaderShell]}>
         <View style={styles.screenHeader}>
           {showDrawerButton ? (
             <Pressable
@@ -86,6 +81,13 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
             </Pressable>
           ) : null}
         </View>
+      </View>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[globalStyles.content, width >= 768 && styles.wideContent]}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+      >
         {children}
       </ScrollView>
       <Modal animationType="fade" transparent visible={menuOpen} onRequestClose={() => setMenuOpen(false)}>
@@ -347,13 +349,30 @@ export const styles = StyleSheet.create({
   },
   wideContent: {
     alignSelf: "center",
-    padding: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.xl
+  },
+  headerShell: {
+    alignItems: "center",
+    backgroundColor: theme.colors.background,
+    borderBottomColor: theme.colors.border,
+    borderBottomWidth: 1,
+    padding: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+    width: "100%",
+    zIndex: 10
+  },
+  wideHeaderShell: {
+    alignSelf: "center",
+    paddingHorizontal: theme.spacing.lg
   },
   screenHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: theme.spacing.sm
+    gap: theme.spacing.sm,
+    maxWidth: 1040,
+    width: "100%"
   },
   titleBlock: {
     flex: 1,
