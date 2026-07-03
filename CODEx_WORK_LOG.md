@@ -31,6 +31,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added Video and Other material types for uploaded files and external links.
 - Updated `StatusBanner` so error messages still appear inline but also trigger a cross-platform alert popup.
 - Added a reusable header refresh button and enabled it on the main Supabase-backed screens for manual cross-device sync during testing.
+- Added a compact Admin Index at the top of the Admin screen so long admin workflows can jump to settings, join requests, members, publishing, and files.
 - Added `CHECKPOINT_5_QA.md` for manual tester-readiness checks.
 - Added `supabase/pilot_cleanup.sql` to remove disposable content/history before creating real pilot content.
 
@@ -300,6 +301,7 @@ Primary file:
 - Ask Rav privacy pass TypeScript validation passed.
 - Ask Rav privacy pass `expo-doctor` passed all 18 checks.
 - Pending join-request profile visibility TypeScript validation passed.
+- Admin Index TypeScript validation passed.
 
 ## Still To Do
 

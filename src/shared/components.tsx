@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, RefObject, useEffect, useRef, useState } from "react";
 import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -12,9 +12,10 @@ interface ScreenProps {
   children: ReactNode;
   onRefresh?: () => void | Promise<void>;
   refreshing?: boolean;
+  scrollRef?: RefObject<ScrollView | null>;
 }
 
-export function Screen({ title, eyebrow, children, onRefresh, refreshing = false }: ScreenProps) {
+export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef }: ScreenProps) {
   const router = useRouter();
   const { profile } = useAuthState();
   const { width } = useWindowDimensions();
@@ -53,6 +54,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   return (
     <SafeAreaView style={globalStyles.screen} edges={["top"]}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[globalStyles.content, width >= 768 && styles.wideContent]}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"

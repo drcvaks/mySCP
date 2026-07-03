@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Alert, Platform, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Platform, ScrollView, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import {
@@ -29,12 +29,14 @@ const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "vid
 type LeadershipRole = "rabbi" | "admin";
 type MemberStatusFilter = ChaburahMembership["status"] | "all";
 type FilePublishMode = "upload" | "link";
+type AdminSection = "chaburah" | "leadership" | "settings" | "requests" | "members" | "publish" | "files";
 const memberStatusFilters: MemberStatusFilter[] = ["all", "active", "pending", "suspended", "left"];
 const fileCoverages: FileCoverage[] = ["week", "bechina_review", "entire_zman"];
 const fileWeekSelections = buildReviewWeeks();
 
 export default function AdminScreen() {
   const { profile } = useAuthState();
+  const scrollRef = useRef<ScrollView | null>(null);
   const {
     chaburos,
     learningFiles,
@@ -74,6 +76,7 @@ export default function AdminScreen() {
   const [leaderRole, setLeaderRole] = useState<LeadershipRole>("rabbi");
   const [memberSearch, setMemberSearch] = useState("");
   const [memberStatusFilter, setMemberStatusFilter] = useState<MemberStatusFilter>("active");
+  const [sectionOffsets, setSectionOffsets] = useState<Partial<Record<AdminSection, number>>>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -132,6 +135,25 @@ export default function AdminScreen() {
     return matchesStatus && matchesSearch;
   });
   const activeMemberCount = chaburahMembers.filter((membership) => membership.status === "active").length;
+  const adminIndexItems: { key: AdminSection; label: string; show: boolean; count?: number }[] = [
+    { key: "chaburah", label: "Chaburah", show: isGlobalAdmin },
+    { key: "leadership", label: "Leadership", show: isGlobalAdmin, count: assignedLeaders.length },
+    { key: "settings", label: "Settings", show: true },
+    { key: "requests", label: "Join Requests", show: true, count: pendingJoinRequests.length },
+    { key: "members", label: "Members", show: true, count: activeMemberCount },
+    { key: "publish", label: "Publish File", show: true },
+    { key: "files", label: "Manage Files", show: true, count: localFiles.length }
+  ];
+
+  function trackSection(section: AdminSection, y: number) {
+    setSectionOffsets((current) => (current[section] === y ? current : { ...current, [section]: y }));
+  }
+
+  function jumpToSection(section: AdminSection) {
+    const offset = sectionOffsets[section];
+    if (offset === undefined) return;
+    scrollRef.current?.scrollTo({ y: Math.max(offset - 12, 0), animated: true });
+  }
 
   async function saveChaburah() {
     if (!managedChaburahId) return;
@@ -457,9 +479,31 @@ export default function AdminScreen() {
   }
 
   return (
-    <Screen title="Admin" eyebrow="Local chaburah tools" onRefresh={refresh} refreshing={loading}>
+    <Screen title="Admin" eyebrow="Local chaburah tools" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
+      <Card>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Admin Index</SectionTitle>
+            <Text style={styles.muted}>Jump to the part of the admin tools you need.</Text>
+          </View>
+          {chaburah ? <Pill label={chaburah.name} tone="primary" /> : null}
+        </Row>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {adminIndexItems
+            .filter((item) => item.show)
+            .map((item) => (
+              <FilterChip
+                key={item.key}
+                label={item.count === undefined ? item.label : `${item.label} (${item.count})`}
+                onPress={() => jumpToSection(item.key)}
+              />
+            ))}
+        </View>
+      </Card>
+
       {isGlobalAdmin ? (
-        <Card>
+        <View onLayout={(event) => trackSection("chaburah", event.nativeEvent.layout.y)}>
+          <Card>
           <Row>
             <View style={{ flex: 1, minWidth: 220 }}>
               <SectionTitle>Managing Chaburah</SectionTitle>
@@ -485,7 +529,8 @@ export default function AdminScreen() {
           {filteredAdminChaburos.length === 0 ? (
             <Text style={styles.muted}>No chaburos match that search.</Text>
           ) : null}
-        </Card>
+          </Card>
+        </View>
       ) : null}
 
       <Card>
@@ -519,7 +564,8 @@ export default function AdminScreen() {
       />
 
       {isGlobalAdmin ? (
-        <Card>
+        <View onLayout={(event) => trackSection("leadership", event.nativeEvent.layout.y)}>
+          <Card>
           <Row>
             <View style={{ flex: 1, minWidth: 220 }}>
               <SectionTitle>Assign Local Leadership</SectionTitle>
@@ -551,10 +597,12 @@ export default function AdminScreen() {
               </Row>
             ))
           )}
-        </Card>
+          </Card>
+        </View>
       ) : null}
 
-      <Card>
+      <View onLayout={(event) => trackSection("settings", event.nativeEvent.layout.y)}>
+        <Card>
         <SectionTitle>Chaburah Settings</SectionTitle>
         {!managedChaburahId ? (
           <Text style={styles.muted}>Join or select a chaburah before editing local settings.</Text>
@@ -604,9 +652,11 @@ export default function AdminScreen() {
             <Button disabled={saving} label={saving ? "Saving..." : "Save Chaburah Settings"} onPress={saveChaburah} />
           </>
         )}
-      </Card>
+        </Card>
+      </View>
 
-      <Card>
+      <View onLayout={(event) => trackSection("requests", event.nativeEvent.layout.y)}>
+        <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Join Requests</SectionTitle>
@@ -645,9 +695,11 @@ export default function AdminScreen() {
             </Row>
           ))
         )}
-      </Card>
+        </Card>
+      </View>
 
-      <Card>
+      <View onLayout={(event) => trackSection("members", event.nativeEvent.layout.y)}>
+        <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Members</SectionTitle>
@@ -724,9 +776,11 @@ export default function AdminScreen() {
             )}
           </>
         )}
-      </Card>
+        </Card>
+      </View>
 
-      <Card>
+      <View onLayout={(event) => trackSection("publish", event.nativeEvent.layout.y)}>
+        <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>{editingFile ? "Edit Learning File" : "Publish Learning File"}</SectionTitle>
@@ -818,9 +872,11 @@ export default function AdminScreen() {
           />
           {editingFile ? <Button disabled={saving} label="Cancel Edit" onPress={resetFileForm} variant="ghost" /> : null}
         </Row>
-      </Card>
+        </Card>
+      </View>
 
-      <Card>
+      <View onLayout={(event) => trackSection("files", event.nativeEvent.layout.y)}>
+        <Card>
         <SectionTitle>Manage Files</SectionTitle>
         {localFiles.map((file) => (
           <Row key={file.id}>
@@ -836,7 +892,8 @@ export default function AdminScreen() {
           </Row>
         ))}
         {localFiles.length === 0 ? <Text style={styles.muted}>No files have been published yet.</Text> : null}
-      </Card>
+        </Card>
+      </View>
     </Screen>
   );
 }
