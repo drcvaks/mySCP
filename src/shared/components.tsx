@@ -1,7 +1,7 @@
 import { ReactNode, RefObject, useEffect, useRef, useState } from "react";
 import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { globalStyles, theme } from "./theme";
 import { useAuthState } from "../state/AuthState";
@@ -18,6 +18,7 @@ interface ScreenProps {
 
 export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef }: ScreenProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { profile } = useAuthState();
   const { chaburos, selectedChaburahId } = useAppState();
   const { width } = useWindowDimensions();
@@ -54,6 +55,11 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   function navigateTo(href: (typeof drawerItems)[number]["href"]) {
     setMenuOpen(false);
     router.push(href as never);
+  }
+
+  function isActiveDrawerItem(href: (typeof drawerItems)[number]["href"]) {
+    const normalizedHref = href.replace("/(tabs)", "");
+    return pathname === href || pathname === normalizedHref;
   }
 
   return (
@@ -109,12 +115,15 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
                 <Ionicons name="close" color={theme.colors.ink} size={24} />
               </Pressable>
             </View>
-            {drawerItems.map((item) => (
-              <Pressable key={item.href} onPress={() => navigateTo(item.href)} style={styles.drawerItem}>
-                <Ionicons name={item.icon} color={theme.colors.primary} size={22} />
-                <Text style={styles.drawerItemText}>{item.label}</Text>
-              </Pressable>
-            ))}
+            {drawerItems.map((item) => {
+              const active = isActiveDrawerItem(item.href);
+              return (
+                <Pressable key={item.href} onPress={() => navigateTo(item.href)} style={[styles.drawerItem, active && styles.drawerItemActive]}>
+                  <Ionicons name={item.icon} color={active ? theme.colors.primary : theme.colors.muted} size={22} />
+                  <Text style={[styles.drawerItemText, active && styles.drawerItemTextActive]}>{item.label}</Text>
+                </Pressable>
+              );
+            })}
           </Pressable>
         </Pressable>
       </Modal>
@@ -429,16 +438,25 @@ export const styles = StyleSheet.create({
   },
   drawerItem: {
     alignItems: "center",
+    borderColor: "transparent",
     borderRadius: theme.radius.sm,
+    borderWidth: 1,
     flexDirection: "row",
     gap: theme.spacing.md,
     minHeight: 50,
     paddingHorizontal: theme.spacing.md
   },
+  drawerItemActive: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.border
+  },
   drawerItemText: {
     color: theme.colors.ink,
     fontSize: 17,
     fontWeight: "700"
+  },
+  drawerItemTextActive: {
+    color: theme.colors.primary
   },
   card: {
     backgroundColor: theme.colors.surface,

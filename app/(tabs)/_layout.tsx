@@ -66,9 +66,17 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarActiveBackgroundColor: leftRailNav ? undefined : theme.colors.primarySoft,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.muted,
         tabBarIconStyle: { marginTop: 2 },
+        tabBarItemStyle: leftRailNav
+          ? undefined
+          : {
+              borderRadius: 12,
+              marginHorizontal: 4,
+              marginVertical: 4
+            },
         tabBarLabelStyle: { fontSize: 12, fontWeight: "700", lineHeight: 15 },
         tabBarPosition: leftRailNav ? "left" : "bottom",
         tabBarStyle: {

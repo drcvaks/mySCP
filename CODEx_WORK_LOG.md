@@ -45,6 +45,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added a per-chaburah Ask Rav enabled/disabled setting; Dashboard and My Chaburah hide Ask Rav when disabled, and the Ask Rav screen blocks submissions if reached directly.
 - Ask Rav is now also hidden from participant navigation when disabled for the current chaburah.
 - Made the Profile Sign Out button use the primary dark style.
+- Added a rounded active-state highlight for Android/iOS bottom navigation tabs.
 - Added `CHECKPOINT_5_QA.md` for manual tester-readiness checks.
 - Added `supabase/pilot_cleanup.sql` to remove disposable content/history before creating real pilot content.
 
@@ -331,8 +332,11 @@ Primary file:
 - Per-chaburah Ask Rav toggle TypeScript validation passed.
 - Ask Rav disabled navigation hiding TypeScript validation passed.
 - Profile Sign Out button style TypeScript validation passed.
+- Mobile active-tab highlight TypeScript validation passed.
 - Rabbi Hub public-library staging TypeScript validation passed.
 - Rabbi Hub Publish Library button style TypeScript validation passed.
+- Mobile drawer active-route highlight TypeScript validation passed.
+- Mobile drawer active-route highlight `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
