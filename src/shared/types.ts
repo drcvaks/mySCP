@@ -3,6 +3,7 @@ export type FileType = "source_sheet" | "review_sheet" | "recording" | "video" |
 export type Visibility = "everyone" | "chaburah";
 export type FileCoverage = "week" | "bechina_review" | "entire_zman";
 export type ReviewPublicationStatus = "draft" | "published" | "archived";
+export type DiscussionMessageStatus = "active" | "hidden" | "deleted";
 
 export interface UserProfile {
   id: string;
@@ -110,6 +111,18 @@ export interface AskRavQuestion {
   submittedAt: string;
   answer?: string;
   answeredAt?: string;
+}
+
+export interface DiscussionMessage {
+  id: string;
+  chaburahId: string;
+  authorId: string;
+  authorName?: string;
+  parentMessageId?: string;
+  body: string;
+  status: DiscussionMessageStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ReviewSession {

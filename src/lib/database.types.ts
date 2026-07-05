@@ -148,6 +148,17 @@ type AskRavRow = {
   updated_at: string;
 };
 
+type DiscussionMessageRow = {
+  id: string;
+  chaburah_id: string;
+  author_id: string;
+  parent_message_id: string | null;
+  body: string;
+  status: Database["public"]["Enums"]["discussion_message_status"];
+  created_at: string;
+  updated_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -171,6 +182,11 @@ export interface Database {
         AskRavRow,
         Pick<AskRavRow, "chaburah_id" | "asker_id" | "question"> &
           Partial<Omit<AskRavRow, "chaburah_id" | "asker_id" | "question">>
+      >;
+      discussion_messages: Table<
+        DiscussionMessageRow,
+        Pick<DiscussionMessageRow, "chaburah_id" | "author_id" | "body"> &
+          Partial<Omit<DiscussionMessageRow, "chaburah_id" | "author_id" | "body">>
       >;
     };
     Views: Record<string, never>;
@@ -246,6 +262,7 @@ export interface Database {
       review_publication_status: "draft" | "published" | "archived";
       review_question_kind: "multiple_choice" | "true_false";
       ask_rav_status: "submitted" | "answered" | "archived";
+      discussion_message_status: "active" | "hidden" | "deleted";
     };
     CompositeTypes: Record<string, never>;
   };

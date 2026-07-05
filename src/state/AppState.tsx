@@ -7,6 +7,7 @@ import {
   ChaburahMemberDirectoryItem,
   AskRavQuestion,
   Chaburah,
+  DiscussionMessage,
   LearningFile,
   ReviewQuestion,
   ReviewSession
@@ -36,6 +37,7 @@ interface AppStateValue {
   reviewQuestions: ReviewQuestion[];
   reviewSessions: ReviewSession[];
   askRavQuestions: AskRavQuestion[];
+  discussionMessages: DiscussionMessage[];
   refresh: () => Promise<void>;
   joinChaburah: (chaburahId: string) => Promise<string | null>;
   reviewMembershipRequest: (membershipId: string, approve: boolean) => Promise<string | null>;
@@ -46,6 +48,8 @@ interface AppStateValue {
   checkReviewAnswer: (questionId: string, choiceIndex: number) => Promise<ReviewFeedback>;
   saveReviewSession: (week: number | "all", answers: ReviewAnswer[]) => Promise<string | null>;
   submitAskRavQuestion: (question: string) => Promise<string | null>;
+  submitDiscussionMessage: (body: string) => Promise<string | null>;
+  hideDiscussionMessage: (messageId: string) => Promise<string | null>;
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -60,6 +64,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [reviewQuestions, setReviewQuestions] = useState<ReviewQuestion[]>([]);
   const [reviewSessions, setReviewSessions] = useState<ReviewSession[]>([]);
   const [askRavQuestions, setAskRavQuestions] = useState<AskRavQuestion[]>([]);
+  const [discussionMessages, setDiscussionMessages] = useState<DiscussionMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +79,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setReviewQuestions([]);
       setReviewSessions([]);
       setAskRavQuestions([]);
+      setDiscussionMessages([]);
       setHydrated(true);
       return;
     }
@@ -91,6 +97,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         questionsResult,
         sessionsResult,
         askRavResult,
+        discussionResult,
         memberDirectoryResult
       ] = await Promise.all([
         supabase.from("chaburos").select("*").order("name"),
@@ -101,6 +108,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         supabase.from("review_questions").select("*").order("week").order("created_at"),
         supabase.from("review_sessions").select("*").order("completed_at", { ascending: false }).limit(25),
         supabase.from("ask_rav_questions").select("*").order("submitted_at", { ascending: false }),
+        supabase.from("discussion_messages").select("*").order("created_at", { ascending: false }).limit(100),
         profile?.chaburahId
           ? supabase.rpc("list_chaburah_member_directory", {
               target_chaburah_id: profile.chaburahId
@@ -117,6 +125,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         questionsResult.error,
         sessionsResult.error,
         askRavResult.error,
+        discussionResult.error,
         memberDirectoryResult.error
       ].find(Boolean);
 
@@ -168,15 +177,39 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         })
       );
 
-      setChaburahMemberDirectory(
-        (memberDirectoryResult.data ?? []).map((row) => ({
+      const memberDirectory = (memberDirectoryResult.data ?? []).map((row) => ({
           id: row.id,
           userId: row.user_id,
           chaburahId: row.chaburah_id,
           memberRole: row.member_role,
           joinedAt: row.joined_at,
           fullName: row.full_name ?? undefined
-        }))
+        }));
+
+      setChaburahMemberDirectory(memberDirectory);
+
+      const displayNameById = new Map<string, string>();
+      profileById.forEach((value, key) => {
+        if (value.fullName || value.email) displayNameById.set(key, value.fullName ?? value.email);
+      });
+      memberDirectory.forEach((member) => {
+        if (member.fullName) displayNameById.set(member.userId, member.fullName);
+      });
+
+      setDiscussionMessages(
+        (discussionResult.data ?? [])
+          .map((row) => ({
+            id: row.id,
+            chaburahId: row.chaburah_id,
+            authorId: row.author_id,
+            authorName: displayNameById.get(row.author_id),
+            parentMessageId: row.parent_message_id ?? undefined,
+            body: row.body,
+            status: row.status,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
+          }))
+          .reverse()
       );
 
       setAnnouncements(
@@ -285,6 +318,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       reviewQuestions,
       reviewSessions,
       askRavQuestions,
+      discussionMessages,
       refresh,
       joinChaburah: async (chaburahId) => {
         const { data, error: joinError } = await supabase.rpc("join_chaburah", {
@@ -362,6 +396,34 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (questionError) return questionError.message;
         await refresh();
         return null;
+      },
+      submitDiscussionMessage: async (body) => {
+        if (!session?.user.id || !profile?.chaburahId) {
+          return "Join a chaburah before posting in the discussion.";
+        }
+        const trimmedBody = body.trim();
+        if (!trimmedBody) return "Write a message before posting.";
+        const currentChaburah = chaburos.find((chaburah) => chaburah.id === profile.chaburahId);
+        if (currentChaburah && !currentChaburah.discussionEnabled) {
+          return "Discussion is not enabled for this chaburah.";
+        }
+        const { error: discussionError } = await supabase.from("discussion_messages").insert({
+          chaburah_id: profile.chaburahId,
+          author_id: session.user.id,
+          body: trimmedBody
+        });
+        if (discussionError) return discussionError.message;
+        await refresh();
+        return null;
+      },
+      hideDiscussionMessage: async (messageId) => {
+        const { error: discussionError } = await supabase
+          .from("discussion_messages")
+          .update({ status: "hidden" })
+          .eq("id", messageId);
+        if (discussionError) return discussionError.message;
+        await refresh();
+        return "Message hidden.";
       }
     }),
     [
@@ -369,6 +431,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       askRavQuestions,
       chaburos,
       chaburahMemberDirectory,
+      discussionMessages,
       error,
       hydrated,
       learningFiles,

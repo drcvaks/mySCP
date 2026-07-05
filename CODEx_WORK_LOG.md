@@ -1,14 +1,33 @@
 # Codex Work Log
 
-Last updated: July 2, 2026
+Last updated: July 5, 2026
 
 ## Project State
 
-`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 5 is QA-ready after the Checkpoint 4 admin/rabbi management workflows.
+`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 5 is feature-complete, and Checkpoint 6 has started with chaburah discussion.
 
 The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used only as a visual reference.
 
 ## Changes Completed
+
+### Checkpoint 6 Chaburah Communication
+
+- Started Checkpoint 6 with a forum-style Chaburah Discussion feature.
+- Added `discussion_messages` with row-level security for active chaburah members, local managers, and Global Admin.
+- Used the existing `chaburos.discussion_enabled` setting as the MVP on/off switch.
+- Added app state loading for recent discussion messages.
+- Added participant posting from My Chaburah when discussion is enabled.
+- Added Rabbi/Admin/Global Admin moderation by hiding active messages instead of hard deleting them.
+- Kept the Discussion card compact by putting messages in an internal scroll area so long conversations do not stretch My Chaburah endlessly.
+- Kept this first part query/refresh based; realtime subscriptions are intentionally deferred until the discussion behavior is stable.
+
+Primary files:
+
+- `app/(tabs)/chaburah.tsx`
+- `src/state/AppState.tsx`
+- `src/shared/types.ts`
+- `src/lib/database.types.ts`
+- `supabase/migrations/202607060001_add_chaburah_discussion.sql`
 
 ### Checkpoint 5 Community Usability and Uploads
 
@@ -339,11 +358,19 @@ Primary file:
 - Mobile drawer active-route highlight `expo-doctor` passed all 18 checks.
 - Admin file chooser primary button style TypeScript validation passed.
 - Admin file chooser primary button style `expo-doctor` passed all 18 checks.
+- Checkpoint 6 discussion foundation TypeScript validation passed.
+- Checkpoint 6 discussion foundation `expo-doctor` passed all 18 checks.
+- Checkpoint 6 discussion scroll window TypeScript validation passed.
+- Checkpoint 6 discussion scroll window `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
 ### Functional Behavior
 
+- Run `supabase/migrations/202607060001_add_chaburah_discussion.sql` in Supabase before testing Chaburah Discussion in the app.
+- Test Discussion as participant, local rabbi, local admin, and Global Admin.
+- Decide whether hidden discussion messages should remain visible to managers or move to a separate moderation view.
+- Add optional Supabase Realtime subscriptions for Discussion after the refresh-based version is confirmed.
 - Test native upload on a real Android/iOS device and confirm signed URL opening on each platform.
 - Test file editing/deleting/replacing on real Android/iOS devices.
 - Add review question delete flow if/when deletion policy is decided.

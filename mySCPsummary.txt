@@ -1,5 +1,5 @@
 mySCP Project Summary
-Last updated: July 2, 2026
+Last updated: July 5, 2026
 
 Purpose
 -------
@@ -93,6 +93,11 @@ Dashboard:
 My Chaburah:
 - selected/current chaburah details
 - read-only active member roster with names, roles, and joined dates
+- Chaburah Discussion when enabled:
+  - forum-style local conversation for the current chaburah
+  - messages are stored in Supabase
+  - first implementation uses normal refresh/query behavior, not realtime
+  - local Rabbi/Admin/Global Admin can hide messages for moderation
 - local announcements
 - source sheets/recordings
 - review assigned count
@@ -175,6 +180,22 @@ Admin:
   - RPC creates/updates membership and profile role
 - publish URL-based learning files
 - recent files list
+
+Checkpoint 6: Chaburah communication
+- Started with a forum-style Chaburah Discussion feature, not WhatsApp-style live chat.
+- Uses existing `chaburos.discussion_enabled` as the initial on/off setting.
+- Added `discussion_messages` in migration `supabase/migrations/202607060001_add_chaburah_discussion.sql`.
+- RLS intent:
+  - active members can read/post active messages in their chaburah when discussion is enabled
+  - local Rabbi/Admin can moderate their chaburah
+  - Global Admin can manage all
+  - hidden messages are not shown as active participant content
+- Current app behavior:
+  - My Chaburah shows Discussion when a chaburah is selected
+  - participants can post when discussion is enabled
+  - managers can hide messages
+  - realtime is deferred until the base workflow is stable
+- Must run the discussion migration in Supabase before testing this feature.
 
 Global Admin:
 - create chaburah
