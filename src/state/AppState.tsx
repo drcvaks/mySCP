@@ -49,6 +49,8 @@ interface AppStateValue {
   saveReviewSession: (week: number | "all", answers: ReviewAnswer[]) => Promise<string | null>;
   submitAskRavQuestion: (question: string) => Promise<string | null>;
   submitDiscussionMessage: (body: string) => Promise<string | null>;
+  editDiscussionMessage: (messageId: string, body: string) => Promise<string | null>;
+  deleteDiscussionMessage: (messageId: string) => Promise<string | null>;
   hideDiscussionMessage: (messageId: string) => Promise<string | null>;
 }
 
@@ -415,6 +417,25 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (discussionError) return discussionError.message;
         await refresh();
         return null;
+      },
+      editDiscussionMessage: async (messageId, body) => {
+        const trimmedBody = body.trim();
+        if (!trimmedBody) return "Write a message before saving.";
+        const { error: discussionError } = await supabase.rpc("update_discussion_message", {
+          target_message_id: messageId,
+          new_body: trimmedBody
+        });
+        if (discussionError) return discussionError.message;
+        await refresh();
+        return null;
+      },
+      deleteDiscussionMessage: async (messageId) => {
+        const { error: discussionError } = await supabase.rpc("delete_discussion_message", {
+          target_message_id: messageId
+        });
+        if (discussionError) return discussionError.message;
+        await refresh();
+        return "Message deleted.";
       },
       hideDiscussionMessage: async (messageId) => {
         const { error: discussionError } = await supabase

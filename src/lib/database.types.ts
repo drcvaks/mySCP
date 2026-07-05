@@ -250,6 +250,14 @@ export interface Database {
         Args: { target_chaburah_id: string; target_week: number };
         Returns: number;
       };
+      update_discussion_message: {
+        Args: { target_message_id: string; new_body: string };
+        Returns: DiscussionMessageRow;
+      };
+      delete_discussion_message: {
+        Args: { target_message_id: string };
+        Returns: DiscussionMessageRow;
+      };
     };
     Enums: {
       app_role: "participant" | "local_rabbi" | "local_admin" | "global_admin";

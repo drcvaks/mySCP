@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, TextArea, styles } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
 import { currentReviewWeek } from "../../src/shared/reviewWeeks";
+import { theme } from "../../src/shared/theme";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
@@ -14,7 +15,9 @@ export default function MyChaburahScreen() {
     announcements,
     chaburahMemberDirectory,
     chaburos,
+    deleteDiscussionMessage,
     discussionMessages,
+    editDiscussionMessage,
     hideDiscussionMessage,
     learningFiles,
     loading,
@@ -26,6 +29,8 @@ export default function MyChaburahScreen() {
   const [discussionBody, setDiscussionBody] = useState("");
   const [discussionMessage, setDiscussionMessage] = useState("");
   const [postingDiscussion, setPostingDiscussion] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageBody, setEditingMessageBody] = useState("");
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
   const activeMembers = chaburahMemberDirectory.filter((member) => member.chaburahId === selectedChaburahId);
   const currentMembership = activeMembers.find((member) => member.userId === profile?.id);
@@ -49,6 +54,49 @@ export default function MyChaburahScreen() {
     }
     setDiscussionBody("");
     setDiscussionMessage("Message posted.");
+  }
+
+  function startEditingMessage(messageId: string, body: string) {
+    setEditingMessageId(messageId);
+    setEditingMessageBody(body);
+    setDiscussionMessage("");
+  }
+
+  async function saveEditedMessage() {
+    if (!editingMessageId) return;
+    setPostingDiscussion(true);
+    setDiscussionMessage("");
+    const result = await editDiscussionMessage(editingMessageId, editingMessageBody);
+    setPostingDiscussion(false);
+    if (result) {
+      setDiscussionMessage(result);
+      return;
+    }
+    setEditingMessageId(null);
+    setEditingMessageBody("");
+    setDiscussionMessage("Message updated.");
+  }
+
+  function confirmDeleteMessage(messageId: string) {
+    if (Platform.OS === "web") {
+      if (window.confirm("Delete this message? This removes your message from the discussion.")) {
+        deleteMessage(messageId);
+      }
+      return;
+    }
+
+    Alert.alert("Delete message?", "This removes your message from the discussion.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => deleteMessage(messageId) }
+    ]);
+  }
+
+  async function deleteMessage(messageId: string) {
+    setPostingDiscussion(true);
+    setDiscussionMessage("");
+    const result = await deleteDiscussionMessage(messageId);
+    setPostingDiscussion(false);
+    setDiscussionMessage(result ?? "Message deleted.");
   }
 
   async function hideMessage(messageId: string) {
@@ -120,7 +168,14 @@ export default function MyChaburahScreen() {
         {discussionMessage ? (
           <StatusBanner
             message={discussionMessage}
-            tone={discussionMessage.includes("posted") || discussionMessage.includes("hidden") ? "success" : "error"}
+            tone={
+              discussionMessage.includes("posted") ||
+              discussionMessage.includes("updated") ||
+              discussionMessage.includes("deleted") ||
+              discussionMessage.includes("hidden")
+                ? "success"
+                : "error"
+            }
           />
         ) : null}
         {!chaburah.discussionEnabled ? (
@@ -141,23 +196,72 @@ export default function MyChaburahScreen() {
               <Text style={styles.muted}>No discussion messages yet.</Text>
             ) : (
               <ScrollView contentContainerStyle={{ gap: 14, paddingRight: 2 }} nestedScrollEnabled style={{ maxHeight: 420 }}>
-                {localDiscussionMessages.map((message) => (
-                  <View key={message.id} style={{ gap: 6 }}>
-                    <Row>
-                      <View style={{ flex: 1, minWidth: 200 }}>
-                        <Text style={styles.body}>{message.authorName ?? "Chaburah member"}</Text>
-                        <MetaText>{formatDiscussionDate(message.createdAt)}</MetaText>
+                {localDiscussionMessages.map((message) => {
+                  const isAuthor = message.authorId === profile?.id;
+                  const isEditing = editingMessageId === message.id;
+                  return (
+                    <View key={message.id} style={{ gap: 6 }}>
+                      <View style={localStyles.discussionMessageHeader}>
+                        <View style={localStyles.discussionMessageMeta}>
+                          <Text style={styles.body}>{message.authorName ?? "Chaburah member"}</Text>
+                          <MetaText>{formatDiscussionDate(message.createdAt)}</MetaText>
+                        </View>
+                        <View style={localStyles.discussionActions}>
+                          {message.status !== "active" ? (
+                            <Pill label={message.status === "deleted" ? "Deleted" : "Hidden"} tone="neutral" />
+                          ) : null}
+                          {isAuthor && message.status === "active" && !isEditing ? (
+                            <DiscussionAction
+                              disabled={postingDiscussion}
+                              label="Edit"
+                              onPress={() => startEditingMessage(message.id, message.body)}
+                            />
+                          ) : null}
+                          {isAuthor && message.status === "active" && !isEditing ? (
+                            <DiscussionAction
+                              disabled={postingDiscussion}
+                              label="Delete"
+                              onPress={() => confirmDeleteMessage(message.id)}
+                              tone="danger"
+                            />
+                          ) : null}
+                          {canModerateDiscussion && message.status === "active" && !isEditing ? (
+                            <DiscussionAction disabled={postingDiscussion} label="Hide" onPress={() => hideMessage(message.id)} />
+                          ) : null}
+                        </View>
                       </View>
-                      {message.status !== "active" ? <Pill label="Hidden" tone="neutral" /> : null}
-                      {canModerateDiscussion && message.status === "active" ? (
-                        <Button disabled={postingDiscussion} label="Hide" onPress={() => hideMessage(message.id)} variant="ghost" />
-                      ) : null}
-                    </Row>
-                    <Text style={message.status === "active" ? styles.body : styles.muted}>
-                      {message.status === "active" ? message.body : "This message was hidden by a moderator."}
-                    </Text>
-                  </View>
-                ))}
+                      {isEditing ? (
+                        <View style={{ gap: 8 }}>
+                          <TextArea onChangeText={setEditingMessageBody} placeholder="Edit message..." value={editingMessageBody} />
+                          <Row>
+                            <Button
+                              disabled={postingDiscussion || !editingMessageBody.trim()}
+                              label={postingDiscussion ? "Saving..." : "Save"}
+                              onPress={saveEditedMessage}
+                            />
+                            <Button
+                              disabled={postingDiscussion}
+                              label="Cancel"
+                              onPress={() => {
+                                setEditingMessageId(null);
+                                setEditingMessageBody("");
+                              }}
+                              variant="ghost"
+                            />
+                          </Row>
+                        </View>
+                      ) : (
+                        <Text style={message.status === "active" ? styles.body : styles.muted}>
+                          {message.status === "active"
+                            ? message.body
+                            : message.status === "deleted"
+                              ? "This message was deleted by the author."
+                              : "This message was hidden by a moderator."}
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
               </ScrollView>
             )}
           </>
@@ -228,3 +332,77 @@ function formatDiscussionDate(value: string) {
     minute: "2-digit"
   });
 }
+
+function DiscussionAction({
+  disabled = false,
+  label,
+  onPress,
+  tone = "primary"
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+  tone?: "primary" | "danger";
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        localStyles.discussionAction,
+        tone === "danger" && localStyles.discussionActionDanger,
+        pressed && !disabled && localStyles.discussionActionPressed,
+        disabled && localStyles.discussionActionDisabled
+      ]}
+    >
+      <Text style={[localStyles.discussionActionText, tone === "danger" && localStyles.discussionActionDangerText]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const localStyles = StyleSheet.create({
+  discussionAction: {
+    alignItems: "center",
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radius.sm,
+    minHeight: 34,
+    paddingHorizontal: 10,
+    justifyContent: "center"
+  },
+  discussionActionDanger: {
+    backgroundColor: "#FEE2E2"
+  },
+  discussionActionDangerText: {
+    color: theme.colors.danger
+  },
+  discussionActionDisabled: {
+    opacity: 0.45
+  },
+  discussionActionPressed: {
+    opacity: 0.8
+  },
+  discussionActionText: {
+    color: theme.colors.primary,
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 17
+  },
+  discussionActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 0,
+    gap: 6,
+    justifyContent: "flex-end"
+  },
+  discussionMessageHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between"
+  },
+  discussionMessageMeta: {
+    flex: 1,
+    minWidth: 0
+  }
+});

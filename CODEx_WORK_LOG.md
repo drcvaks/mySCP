@@ -17,6 +17,10 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Used the existing `chaburos.discussion_enabled` setting as the MVP on/off switch.
 - Added app state loading for recent discussion messages.
 - Added participant posting from My Chaburah when discussion is enabled.
+- Added author-owned Edit/Delete controls for active discussion messages.
+- Replaced full-size discussion message action buttons with compact inline actions so Edit/Delete/Hide fit cleanly on Android.
+- Fixed Discussion delete confirmation on web by using the browser confirmation dialog while keeping native alerts on Android/iOS.
+- Added RPCs so authors can edit/delete only their own active messages without broad table update permission.
 - Added Rabbi/Admin/Global Admin moderation by hiding active messages instead of hard deleting them.
 - Kept the Discussion card compact by putting messages in an internal scroll area so long conversations do not stretch My Chaburah endlessly.
 - Kept this first part query/refresh based; realtime subscriptions are intentionally deferred until the discussion behavior is stable.
@@ -28,6 +32,7 @@ Primary files:
 - `src/shared/types.ts`
 - `src/lib/database.types.ts`
 - `supabase/migrations/202607060001_add_chaburah_discussion.sql`
+- `supabase/migrations/202607060002_author_manage_discussion_messages.sql`
 
 ### Checkpoint 5 Community Usability and Uploads
 
@@ -362,12 +367,18 @@ Primary file:
 - Checkpoint 6 discussion foundation `expo-doctor` passed all 18 checks.
 - Checkpoint 6 discussion scroll window TypeScript validation passed.
 - Checkpoint 6 discussion scroll window `expo-doctor` passed all 18 checks.
+- Checkpoint 6 discussion author edit/delete TypeScript validation passed.
+- Checkpoint 6 discussion author edit/delete `expo-doctor` passed all 18 checks.
+- Checkpoint 6 compact discussion actions TypeScript validation passed.
+- Checkpoint 6 compact discussion actions `expo-doctor` passed all 18 checks.
+- Checkpoint 6 web discussion delete confirmation TypeScript validation passed.
+- Checkpoint 6 web discussion delete confirmation `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
 ### Functional Behavior
 
-- Run `supabase/migrations/202607060001_add_chaburah_discussion.sql` in Supabase before testing Chaburah Discussion in the app.
+- Run `supabase/migrations/202607060001_add_chaburah_discussion.sql` and `supabase/migrations/202607060002_author_manage_discussion_messages.sql` in Supabase before testing Chaburah Discussion in the app.
 - Test Discussion as participant, local rabbi, local admin, and Global Admin.
 - Decide whether hidden discussion messages should remain visible to managers or move to a separate moderation view.
 - Add optional Supabase Realtime subscriptions for Discussion after the refresh-based version is confirmed.

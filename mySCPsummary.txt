@@ -97,6 +97,7 @@ My Chaburah:
   - forum-style local conversation for the current chaburah
   - messages are stored in Supabase
   - first implementation uses normal refresh/query behavior, not realtime
+  - authors can edit or delete their own active messages
   - local Rabbi/Admin/Global Admin can hide messages for moderation
 - local announcements
 - source sheets/recordings
@@ -185,17 +186,20 @@ Checkpoint 6: Chaburah communication
 - Started with a forum-style Chaburah Discussion feature, not WhatsApp-style live chat.
 - Uses existing `chaburos.discussion_enabled` as the initial on/off setting.
 - Added `discussion_messages` in migration `supabase/migrations/202607060001_add_chaburah_discussion.sql`.
+- Added author edit/delete RPCs in migration `supabase/migrations/202607060002_author_manage_discussion_messages.sql`.
 - RLS intent:
   - active members can read/post active messages in their chaburah when discussion is enabled
+  - authors can edit/delete their own active messages through RPCs
   - local Rabbi/Admin can moderate their chaburah
   - Global Admin can manage all
   - hidden messages are not shown as active participant content
 - Current app behavior:
   - My Chaburah shows Discussion when a chaburah is selected
   - participants can post when discussion is enabled
+  - message authors can edit/delete their own active posts
   - managers can hide messages
   - realtime is deferred until the base workflow is stable
-- Must run the discussion migration in Supabase before testing this feature.
+- Must run both discussion migrations in Supabase before testing this feature.
 
 Global Admin:
 - create chaburah
