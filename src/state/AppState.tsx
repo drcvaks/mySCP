@@ -139,6 +139,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           memberCount: row.member_count,
           discussionEnabled: row.discussion_enabled,
           joinRequiresApproval: row.join_requires_approval,
+          askRavEnabled: row.ask_rav_enabled ?? true,
           zoomLink: row.zoom_url ?? undefined,
           description: row.description ?? undefined
         }))
@@ -242,16 +243,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       );
 
       setAskRavQuestions(
-        (askRavResult.data ?? []).map((row) => ({
-          id: row.id,
-          chaburahId: row.chaburah_id,
-          askerId: row.asker_id,
-          question: row.question,
-          status: row.status === "answered" ? "answered" : "submitted",
-          submittedAt: row.submitted_at,
-          answer: row.answer ?? undefined,
-          answeredAt: row.answered_at ?? undefined
-        }))
+        (askRavResult.data ?? []).map((row) => {
+          const askerProfile = profileById.get(row.asker_id);
+          return {
+            id: row.id,
+            chaburahId: row.chaburah_id,
+            askerId: row.asker_id,
+            askerName: askerProfile?.fullName,
+            askerEmail: askerProfile?.email,
+            question: row.question,
+            status: row.status === "answered" ? "answered" : "submitted",
+            submittedAt: row.submitted_at,
+            answer: row.answer ?? undefined,
+            answeredAt: row.answered_at ?? undefined
+          };
+        })
       );
     } catch (refreshError) {
       setError(formatSupabaseError(refreshError));
@@ -343,6 +349,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       submitAskRavQuestion: async (question) => {
         if (!session?.user.id || !profile?.chaburahId) {
           return "Join a chaburah before submitting a question.";
+        }
+        const currentChaburah = chaburos.find((chaburah) => chaburah.id === profile.chaburahId);
+        if (currentChaburah && !currentChaburah.askRavEnabled) {
+          return "Ask Rav is not enabled for this chaburah.";
         }
         const { error: questionError } = await supabase.from("ask_rav_questions").insert({
           chaburah_id: profile.chaburahId,

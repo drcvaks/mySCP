@@ -116,6 +116,8 @@ supabase/
     202607020002_restrict_ask_rav_to_rabbi.sql
     202607030001_allow_pending_member_profile_visibility.sql
     202607030002_stage_review_questions.sql
+    202607040001_add_ask_rav_chaburah_toggle.sql
+    202607050001_publish_review_library_drafts.sql
 ```
 
 For a clean test project, apply the reset file first, then the migrations in order, then `seed.sql`. The seed data expects at least one `global_admin` profile because seeded announcements, files, and review questions need an author.
@@ -143,10 +145,12 @@ For pilot testing, use `CHECKPOINT_5_QA.md` as the manual test checklist. When r
 - Local admins, rabbonim, and global admins can search/filter local members and suspend, reactivate, or remove participant memberships.
 - Local admins and global admins can publish URL-based learning files with title, topic, week, file type, scope, and description.
 - Ask the Rav questions are visible to the asker and the assigned active rabbi for that chaburah.
+- Ask Rav can be enabled or disabled per chaburah; when disabled, it is hidden from Dashboard.
 - Assigned rabbonim can answer Ask the Rav questions.
 - Rabbi Hub stages review questions before participants see them.
 - Rabbonim can build questions for one week while browsing public library questions from another week.
 - Rabbonim can copy public library questions into their chaburah, edit the staged copies, and publish the full week when ready.
+- Global Admin public-library questions are staged first, then published to the library when ready.
 - Review answer keys remain in the protected `review_question_answers` table.
 - Mobile bottom navigation shows Rabbi Hub for rabbi/global admin accounts.
 

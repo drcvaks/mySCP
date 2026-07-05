@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { globalStyles, theme } from "./theme";
 import { useAuthState } from "../state/AuthState";
+import { useAppState } from "../state/AppState";
 
 interface ScreenProps {
   title: string;
@@ -18,12 +19,16 @@ interface ScreenProps {
 export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef }: ScreenProps) {
   const router = useRouter();
   const { profile } = useAuthState();
+  const { chaburos, selectedChaburahId } = useAppState();
   const { width } = useWindowDimensions();
   const showDrawerButton = Platform.OS !== "web" && width < 768;
   const [menuOpen, setMenuOpen] = useState(false);
+  const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
+  const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
+  const canManageAskRavSetting = profile?.role === "local_admin" || profile?.role === "local_rabbi" || profile?.role === "global_admin";
   const drawerItems = [
     { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" as const, show: true },
-    { label: "Ask Rav", href: "/(tabs)/ask-rav", icon: "chatbubble-ellipses-outline" as const, show: true },
+    { label: "Ask Rav", href: "/(tabs)/ask-rav", icon: "chatbubble-ellipses-outline" as const, show: askRavEnabled || canManageAskRavSetting },
     {
       label: "Rabbi Hub",
       href: "/(tabs)/rabbi-hub",

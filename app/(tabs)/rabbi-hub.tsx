@@ -81,9 +81,18 @@ export default function RabbiHubScreen() {
     (question) =>
       question.isLibraryQuestion &&
       question.enabled &&
-      question.publicationStatus !== "archived" &&
+      question.publicationStatus === "published" &&
       (libraryWeek === "all" || question.week === libraryWeek)
   );
+  const stagedLibraryQuestions =
+    profile?.role === "global_admin"
+      ? reviewQuestions.filter(
+          (question) =>
+            question.isLibraryQuestion &&
+            question.publicationStatus === "draft" &&
+            question.week === buildWeek
+        )
+      : [];
   const parsedChoices =
     questionKind === "true_false"
       ? ["True", "False"]
@@ -118,7 +127,6 @@ export default function RabbiHubScreen() {
     setMultipleChoiceOptions(["", "", "", ""]);
     setCorrectChoiceIndex("0");
     setExplanation("");
-    setVisibility("chaburah");
   }
 
   async function startEditReviewQuestion(question: ReviewQuestion) {
@@ -258,7 +266,13 @@ export default function RabbiHubScreen() {
     }
 
     resetReviewForm();
-    setMessage(editingQuestionId ? "Review question updated." : "Review question staged.");
+    setMessage(
+      editingQuestionId
+        ? "Review question updated."
+        : visibility === "everyone"
+          ? "Library question staged."
+          : "Review question staged."
+    );
     await refresh();
   }
 
@@ -300,6 +314,28 @@ export default function RabbiHubScreen() {
       return;
     }
     setMessage(`${data ?? 0} staged question${data === 1 ? "" : "s"} published for Week ${buildWeek}.`);
+    await refresh();
+  }
+
+  async function publishStagedLibraryWeek() {
+    setSaving(true);
+    setMessage("");
+    const { error } = await supabase
+      .from("review_questions")
+      .update({
+        enabled: true,
+        publication_status: "published",
+        published_at: new Date().toISOString()
+      })
+      .eq("is_library_question", true)
+      .eq("publication_status", "draft")
+      .eq("week", buildWeek);
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setMessage(`${stagedLibraryQuestions.length} library question${stagedLibraryQuestions.length === 1 ? "" : "s"} published for Week ${buildWeek}.`);
     await refresh();
   }
 
@@ -374,8 +410,12 @@ export default function RabbiHubScreen() {
         submittedQuestions.map((question) => (
           <Card key={question.id}>
             <Row>
-              <Pill label="Submitted" tone="accent" />
-              <MetaText>{new Date(question.submittedAt).toLocaleDateString()}</MetaText>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <Pill label="Submitted" tone="accent" />
+                <MetaText>
+                  From {question.askerName || question.askerEmail || "Unknown participant"} - {new Date(question.submittedAt).toLocaleDateString()}
+                </MetaText>
+              </View>
             </Row>
             <Text style={styles.body}>{question.question}</Text>
             {activeQuestionId === question.id ? (
@@ -509,18 +549,49 @@ export default function RabbiHubScreen() {
         <TextArea onChangeText={setExplanation} placeholder="Explanation shown after the answer" value={explanation} />
         <Button
           disabled={saving}
-          label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : visibility === "everyone" ? "Add to Library" : "Stage Question"}
+          label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : visibility === "everyone" ? "Stage Library Question" : "Stage Question"}
           onPress={saveReviewQuestion}
         />
         {editingQuestionId ? <Button label="Cancel Edit" onPress={resetReviewForm} variant="ghost" /> : null}
         </Card>
       </View>
 
+      {profile?.role === "global_admin" ? (
+        <Card>
+          <SectionTitle>Staged Library Questions</SectionTitle>
+          <Row>
+            <Text style={styles.muted}>These Week {buildWeek} questions are not visible in the public library yet.</Text>
+            <Pill label={`${stagedLibraryQuestions.length} staged`} tone={stagedLibraryQuestions.length ? "accent" : "neutral"} />
+          </Row>
+          {stagedLibraryQuestions.length === 0 ? (
+            <Text style={styles.muted}>No staged public-library questions for this week yet.</Text>
+          ) : null}
+          {stagedLibraryQuestions.map((question, index) => (
+            <ReviewQuestionManagerRow
+              key={question.id}
+              index={index}
+              question={question}
+              saving={saving}
+              onEdit={startEditReviewQuestion}
+              onRemove={removeStagedQuestion}
+              onToggle={toggleReviewQuestion}
+            />
+          ))}
+          {stagedLibraryQuestions.length > 0 ? (
+            <Button
+              disabled={saving}
+              label={saving ? "Publishing..." : `Publish Library Week ${buildWeek}`}
+              onPress={publishStagedLibraryWeek}
+            />
+          ) : null}
+        </Card>
+      ) : null}
+
       <Card>
         <SectionTitle>Public Question Library</SectionTitle>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <Text style={styles.muted}>Browse public library questions and copy useful ones into Week {buildWeek} staging.</Text>
+            <Text style={styles.muted}>Browse published public library questions and copy useful ones into Week {buildWeek} staging.</Text>
           </View>
           <Pill
             label={`${publicLibraryQuestions.length} available`}
@@ -542,7 +613,7 @@ export default function RabbiHubScreen() {
           </View>
         </View>
         {publicLibraryQuestions.length === 0 ? (
-          <Text style={styles.muted}>No public library questions match this week yet.</Text>
+          <Text style={styles.muted}>No published public library questions match this week yet.</Text>
         ) : null}
         {publicLibraryQuestions.map((question) => (
           <View key={question.id} style={{ gap: 8 }}>

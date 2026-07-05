@@ -6,7 +6,7 @@ These files are the Checkpoint 3 database and RLS draft for a clean Supabase pro
 
 - `migrations/202606220001_initial_schema.sql`: enums, tables, indexes, triggers, profile synchronization, and member-count maintenance.
 - `migrations/202606220002_rls_and_storage.sql`: helper functions, RPC functions, grants, RLS policies, and the private `learning-files` Storage bucket.
-- Later migrations add membership approvals, chaburah switching/count fixes, leadership assignment, member management, the My Chaburah roster RPC, learning-file coverage, pending-request profile visibility for local managers, and staged review-question publishing.
+- Later migrations add membership approvals, chaburah switching/count fixes, leadership assignment, member management, the My Chaburah roster RPC, learning-file coverage, pending-request profile visibility for local managers, staged review-question publishing, the per-chaburah Ask Rav toggle, and public-library draft publishing.
 - `pilot_cleanup.sql`: optional cleanup script for removing disposable test content/history before creating real pilot material.
 - `seed.sql`: optional development chaburah records matching the current app mock data.
 

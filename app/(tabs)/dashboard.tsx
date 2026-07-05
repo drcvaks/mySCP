@@ -118,11 +118,13 @@ export default function DashboardScreen() {
         ))}
       </Card>
 
-      <Card>
-        <SectionTitle>Ask the Rav</SectionTitle>
-        <Text style={styles.muted}>Submit a question to your local rav and track the answer here.</Text>
-        <Button label="Submit Question" onPress={() => router.push("/(tabs)/ask-rav")} />
-      </Card>
+      {currentChaburah?.askRavEnabled ? (
+        <Card>
+          <SectionTitle>Ask the Rav</SectionTitle>
+          <Text style={styles.muted}>Submit a question about this week's SCP material to your local Rav.</Text>
+          <Button label="Submit Question" onPress={() => router.push("/(tabs)/ask-rav")} />
+        </Card>
+      ) : null}
     </Screen>
   );
 }

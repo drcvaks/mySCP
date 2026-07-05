@@ -44,6 +44,7 @@ type ChaburahRow = {
   status: Database["public"]["Enums"]["chaburah_status"];
   discussion_enabled: boolean;
   join_requires_approval: boolean;
+  ask_rav_enabled: boolean;
   member_count: number;
   created_by: string | null;
   created_at: string;

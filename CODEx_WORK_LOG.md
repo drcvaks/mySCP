@@ -36,9 +36,15 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added a Dashboard notification for rabbonim/admins when their chaburah has pending join requests.
 - Dashboard's Review Requests action now opens Admin directly at the Join Requests section.
 - Added Rabbi Hub review-question staging: create/copy questions as drafts, browse public library questions from any week, and publish staged chaburah questions by week.
+- Added Global Admin public-library staging so library questions are drafted before becoming browseable/copyable by rabbonim.
+- Made the Rabbi Hub Publish Library action use the primary button style so it does not look disabled.
 - Rabbi Hub Edit actions now scroll back to the review-question form after loading the answer key.
 - Moved Rabbi Hub's Publish Week action under the Staged Questions list so rabbonim publish after reviewing the staged set.
 - Replaced Disable with Remove for staged Rabbi Hub questions; Enable/Disable remains for published questions only.
+- Rabbi Hub Ask Rav queue now shows the submitter name/email with each question.
+- Added a per-chaburah Ask Rav enabled/disabled setting; Dashboard and My Chaburah hide Ask Rav when disabled, and the Ask Rav screen blocks submissions if reached directly.
+- Ask Rav is now also hidden from participant navigation when disabled for the current chaburah.
+- Made the Profile Sign Out button use the primary dark style.
 - Added `CHECKPOINT_5_QA.md` for manual tester-readiness checks.
 - Added `supabase/pilot_cleanup.sql` to remove disposable content/history before creating real pilot content.
 
@@ -63,6 +69,8 @@ Primary files:
 - `supabase/migrations/202607020002_restrict_ask_rav_to_rabbi.sql`
 - `supabase/migrations/202607030001_allow_pending_member_profile_visibility.sql`
 - `supabase/migrations/202607030002_stage_review_questions.sql`
+- `supabase/migrations/202607040001_add_ask_rav_chaburah_toggle.sql`
+- `supabase/migrations/202607050001_publish_review_library_drafts.sql`
 
 ### Checkpoint 4 Admin Workflows
 
@@ -319,6 +327,12 @@ Primary file:
 - Rabbi Hub edit-scroll TypeScript validation passed.
 - Rabbi Hub staged publish placement TypeScript validation passed.
 - Rabbi Hub staged remove action TypeScript validation passed.
+- Rabbi Hub Ask Rav submitter display TypeScript validation passed.
+- Per-chaburah Ask Rav toggle TypeScript validation passed.
+- Ask Rav disabled navigation hiding TypeScript validation passed.
+- Profile Sign Out button style TypeScript validation passed.
+- Rabbi Hub public-library staging TypeScript validation passed.
+- Rabbi Hub Publish Library button style TypeScript validation passed.
 
 ## Still To Do
 

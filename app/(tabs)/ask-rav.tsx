@@ -40,6 +40,10 @@ export default function AskRavScreen() {
   const trimmedDraft = draft.trim();
 
   async function submit() {
+    if (!chaburah?.askRavEnabled) {
+      setMessage("Ask Rav is not enabled for this chaburah.");
+      return;
+    }
     if (trimmedDraft.length < 10) {
       setMessage("Please enter at least 10 characters so the question has enough detail.");
       return;
@@ -57,23 +61,32 @@ export default function AskRavScreen() {
     <Screen title="Ask the Rav" eyebrow={chaburah?.rabbiName} onRefresh={refresh} refreshing={loading}>
       <Card>
         <SectionTitle>Submit a Question</SectionTitle>
-        <Text style={styles.muted}>
-          Your question will be associated with {chaburah?.name ?? "your current chaburah"} and is protected by database privacy rules.
-        </Text>
-        <TextArea
-          onChangeText={(value) => {
-            setDraft(value);
-            setMessage("");
-          }}
-          placeholder="Type your halachic question..."
-          value={draft}
-        />
-        <Row>
-          <MetaText>{trimmedDraft.length} characters - minimum 10</MetaText>
-          <Pill label="Private draft" tone="accent" />
-        </Row>
-        <StatusBanner message={message} tone={message.startsWith("Please") ? "error" : "success"} />
-        <Button disabled={trimmedDraft.length === 0} label="Submit Question" onPress={submit} />
+        {chaburah && !chaburah.askRavEnabled ? (
+          <>
+            <Text style={styles.muted}>Ask Rav is not enabled for this chaburah.</Text>
+            <StatusBanner message={message} tone="error" />
+          </>
+        ) : (
+          <>
+            <Text style={styles.muted}>
+              Submit a question about this week's SCP material to {chaburah?.rabbiName ?? "your local Rav"}. Your question is protected by database privacy rules.
+            </Text>
+            <TextArea
+              onChangeText={(value) => {
+                setDraft(value);
+                setMessage("");
+              }}
+              placeholder="Type your SCP question..."
+              value={draft}
+            />
+            <Row>
+              <MetaText>{trimmedDraft.length} characters - minimum 10</MetaText>
+              <Pill label="Private draft" tone="accent" />
+            </Row>
+            <StatusBanner message={message} tone={message.startsWith("Please") || message.includes("not enabled") ? "error" : "success"} />
+            <Button disabled={trimmedDraft.length === 0} label="Submit Question" onPress={submit} />
+          </>
+        )}
       </Card>
 
       <Card>

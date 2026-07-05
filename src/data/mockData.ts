@@ -12,7 +12,8 @@ export const chaburos: Chaburah[] = [
     schedule: "Sunday 9:15 AM",
     memberCount: 42,
     discussionEnabled: false,
-    joinRequiresApproval: false
+    joinRequiresApproval: false,
+    askRavEnabled: true
   },
   {
     id: "chaburah_shomrei_emunah",
@@ -25,7 +26,8 @@ export const chaburos: Chaburah[] = [
     schedule: "Wednesday 8:00 PM",
     memberCount: 36,
     discussionEnabled: false,
-    joinRequiresApproval: false
+    joinRequiresApproval: false,
+    askRavEnabled: true
   },
   {
     id: "chaburah_suburban_orthodox",
@@ -38,7 +40,8 @@ export const chaburos: Chaburah[] = [
     schedule: "Monday 8:00 PM",
     memberCount: 58,
     discussionEnabled: false,
-    joinRequiresApproval: false
+    joinRequiresApproval: false,
+    askRavEnabled: true
   },
   {
     id: "chaburah_vaks_test",
@@ -51,7 +54,8 @@ export const chaburos: Chaburah[] = [
     schedule: "Sunday 8:00 PM",
     memberCount: 12,
     discussionEnabled: false,
-    joinRequiresApproval: false
+    joinRequiresApproval: false,
+    askRavEnabled: true
   }
 ];
 

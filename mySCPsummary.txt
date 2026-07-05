@@ -121,12 +121,14 @@ Review:
 
 Ask Rav:
 - participant submits questions for current chaburah
+- can be disabled per chaburah from Admin; when disabled it is hidden from Dashboard/My Chaburah and direct submission is blocked
 - local questions/history show in the screen
 - question visibility is private to the asker and the chaburah's assigned active rabbi
 
 Rabbi Hub:
 - answers submitted Ask the Rav questions when the signed-in user is the assigned active rabbi
 - stages review questions before publishing them
+- stages public library questions before making them available to other rabbonim
 - publishes staged review questions by selected chaburah week
 - browses public library questions from a separate source week
 - copies public library questions into the selected chaburah week as editable staged copies
@@ -156,6 +158,7 @@ Admin:
   - description
   - discussion setting
   - join approval setting
+  - Ask Rav enabled/disabled setting
 - join request review:
   - approve
   - reject
@@ -267,6 +270,8 @@ supabase/migrations/202607020001_add_video_other_file_types.sql
 supabase/migrations/202607020002_restrict_ask_rav_to_rabbi.sql
 supabase/migrations/202607030001_allow_pending_member_profile_visibility.sql
 supabase/migrations/202607030002_stage_review_questions.sql
+supabase/migrations/202607040001_add_ask_rav_chaburah_toggle.sql
+supabase/migrations/202607050001_publish_review_library_drafts.sql
 
 For a fully clean test project:
 1. run `supabase/reset_app_schema.sql`

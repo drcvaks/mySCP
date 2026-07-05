@@ -90,7 +90,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Button label="Sign Out" onPress={signOut} variant="secondary" />
+        <Button label="Sign Out" onPress={signOut} />
       </Card>
     </Screen>
   );

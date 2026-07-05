@@ -98,11 +98,13 @@ export default function MyChaburahScreen() {
         <Button label="Start Review" onPress={() => router.push("/(tabs)/review")} />
       </Card>
 
-      <Card>
-        <SectionTitle>Ask the Rav</SectionTitle>
-        <Text style={styles.muted}>Questions submitted here go to {chaburah?.rabbiName}.</Text>
-        <Button label="Ask a Question" onPress={() => router.push("/(tabs)/ask-rav")} variant="secondary" />
-      </Card>
+      {chaburah.askRavEnabled ? (
+        <Card>
+          <SectionTitle>Ask the Rav</SectionTitle>
+          <Text style={styles.muted}>Submit a question about this week's SCP material to {chaburah?.rabbiName}.</Text>
+          <Button label="Ask a Question" onPress={() => router.push("/(tabs)/ask-rav")} variant="secondary" />
+        </Card>
+      ) : null}
     </Screen>
   );
 }

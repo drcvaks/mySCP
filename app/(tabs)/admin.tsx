@@ -65,6 +65,7 @@ export default function AdminScreen() {
   const [description, setDescription] = useState("");
   const [discussionEnabled, setDiscussionEnabled] = useState(false);
   const [joinRequiresApproval, setJoinRequiresApproval] = useState(false);
+  const [askRavEnabled, setAskRavEnabled] = useState(true);
   const [fileTitle, setFileTitle] = useState("");
   const [fileTopic, setFileTopic] = useState("");
   const [fileCoverage, setFileCoverage] = useState<FileCoverage>("week");
@@ -103,6 +104,7 @@ export default function AdminScreen() {
     setDescription(chaburah.description ?? "");
     setDiscussionEnabled(chaburah.discussionEnabled);
     setJoinRequiresApproval(chaburah.joinRequiresApproval);
+    setAskRavEnabled(chaburah.askRavEnabled);
   }, [chaburah]);
 
   const localFiles = learningFiles.filter(
@@ -184,7 +186,8 @@ export default function AdminScreen() {
         zoom_url: zoomLink.trim() || null,
         description: description.trim() || null,
         discussion_enabled: discussionEnabled,
-        join_requires_approval: joinRequiresApproval
+        join_requires_approval: joinRequiresApproval,
+        ask_rav_enabled: askRavEnabled
       })
       .eq("id", managedChaburahId);
     setSaving(false);
@@ -656,6 +659,14 @@ export default function AdminScreen() {
               <Row>
                 <FilterChip label="Enabled" onPress={() => setDiscussionEnabled(true)} selected={discussionEnabled} />
                 <FilterChip label="Disabled" onPress={() => setDiscussionEnabled(false)} selected={!discussionEnabled} />
+              </Row>
+            </View>
+            <View style={{ gap: 8 }}>
+              <MetaText>Ask Rav</MetaText>
+              <Text style={styles.muted}>Allow participants to submit questions about the SCP material to the local Rav.</Text>
+              <Row>
+                <FilterChip label="Enabled" onPress={() => setAskRavEnabled(true)} selected={askRavEnabled} />
+                <FilterChip label="Disabled" onPress={() => setAskRavEnabled(false)} selected={!askRavEnabled} />
               </Row>
             </View>
             <View style={{ gap: 8 }}>

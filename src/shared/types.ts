@@ -30,6 +30,7 @@ export interface Chaburah {
   memberCount: number;
   discussionEnabled: boolean;
   joinRequiresApproval: boolean;
+  askRavEnabled: boolean;
   zoomLink?: string;
   description?: string;
 }
@@ -102,6 +103,8 @@ export interface AskRavQuestion {
   id: string;
   chaburahId: string;
   askerId: string;
+  askerName?: string;
+  askerEmail?: string;
   question: string;
   status: "submitted" | "answered";
   submittedAt: string;

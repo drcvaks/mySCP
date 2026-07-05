@@ -31,7 +31,7 @@ function tabIcon(name: TabName) {
 
 export default function TabLayout() {
   const { loading, profile, session } = useAuthState();
-  const { error: dataError, hydrated, loading: dataLoading, refresh } = useAppState();
+  const { chaburos, error: dataError, hydrated, loading: dataLoading, refresh, selectedChaburahId } = useAppState();
   const { width } = useWindowDimensions();
   const compactPhoneNav = Platform.OS !== "web" && width < 768;
   if (loading || (session && !hydrated)) {
@@ -57,6 +57,9 @@ export default function TabLayout() {
   const showAdmin = isAdmin(profile) || isRabbi(profile) || isGlobalAdmin(profile);
   const showGlobalAdmin = isGlobalAdmin(profile);
   const showProfile = true;
+  const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
+  const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
+  const showAskRav = askRavEnabled || showAdmin;
   const leftRailNav = Platform.OS === "web" || width >= 768;
 
   return (
@@ -85,7 +88,7 @@ export default function TabLayout() {
       <Tabs.Screen name="directory" options={{ title: "Directory", tabBarIcon: tabIcon("directory"), href: compactPhoneNav ? null : undefined }} />
       <Tabs.Screen
         name="ask-rav"
-        options={{ title: "Ask Rav", tabBarIcon: tabIcon("ask-rav"), href: compactPhoneNav ? null : undefined }}
+        options={{ title: "Ask Rav", tabBarIcon: tabIcon("ask-rav"), href: showAskRav && !compactPhoneNav ? undefined : null }}
       />
       <Tabs.Screen
         name="rabbi-hub"
