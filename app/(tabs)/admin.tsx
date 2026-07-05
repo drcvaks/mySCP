@@ -866,7 +866,6 @@ export default function AdminScreen() {
               disabled={saving}
               label={selectedFile ? "Change Selected File" : editingFile?.storagePath ? "Replace Uploaded File" : "Choose File"}
               onPress={chooseFile}
-              variant="secondary"
             />
             {selectedFile ? (
               <MetaText>

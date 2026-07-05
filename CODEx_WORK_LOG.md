@@ -337,6 +337,8 @@ Primary file:
 - Rabbi Hub Publish Library button style TypeScript validation passed.
 - Mobile drawer active-route highlight TypeScript validation passed.
 - Mobile drawer active-route highlight `expo-doctor` passed all 18 checks.
+- Admin file chooser primary button style TypeScript validation passed.
+- Admin file chooser primary button style `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
