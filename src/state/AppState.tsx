@@ -38,6 +38,7 @@ interface AppStateValue {
   reviewSessions: ReviewSession[];
   askRavQuestions: AskRavQuestion[];
   discussionMessages: DiscussionMessage[];
+  discussionUnreadCount: number;
   refresh: () => Promise<void>;
   joinChaburah: (chaburahId: string) => Promise<string | null>;
   reviewMembershipRequest: (membershipId: string, approve: boolean) => Promise<string | null>;
@@ -52,6 +53,7 @@ interface AppStateValue {
   editDiscussionMessage: (messageId: string, body: string) => Promise<string | null>;
   deleteDiscussionMessage: (messageId: string) => Promise<string | null>;
   hideDiscussionMessage: (messageId: string) => Promise<string | null>;
+  markDiscussionRead: () => Promise<string | null>;
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -67,6 +69,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [reviewSessions, setReviewSessions] = useState<ReviewSession[]>([]);
   const [askRavQuestions, setAskRavQuestions] = useState<AskRavQuestion[]>([]);
   const [discussionMessages, setDiscussionMessages] = useState<DiscussionMessage[]>([]);
+  const [discussionUnreadCount, setDiscussionUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +85,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setReviewSessions([]);
       setAskRavQuestions([]);
       setDiscussionMessages([]);
+      setDiscussionUnreadCount(0);
       setHydrated(true);
       return;
     }
@@ -100,6 +104,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         sessionsResult,
         askRavResult,
         discussionResult,
+        discussionUnreadResult,
         memberDirectoryResult
       ] = await Promise.all([
         supabase.from("chaburos").select("*").order("name"),
@@ -111,6 +116,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         supabase.from("review_sessions").select("*").order("completed_at", { ascending: false }).limit(25),
         supabase.from("ask_rav_questions").select("*").order("submitted_at", { ascending: false }),
         supabase.from("discussion_messages").select("*").order("created_at", { ascending: false }).limit(100),
+        profile?.chaburahId
+          ? supabase.rpc("count_unread_discussion_messages", {
+              target_chaburah_id: profile.chaburahId
+            })
+          : Promise.resolve({ data: 0, error: null }),
         profile?.chaburahId
           ? supabase.rpc("list_chaburah_member_directory", {
               target_chaburah_id: profile.chaburahId
@@ -128,6 +138,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         sessionsResult.error,
         askRavResult.error,
         discussionResult.error,
+        discussionUnreadResult.error,
         memberDirectoryResult.error
       ].find(Boolean);
 
@@ -213,6 +224,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           }))
           .reverse()
       );
+      setDiscussionUnreadCount(discussionUnreadResult.data ?? 0);
 
       setAnnouncements(
         (announcementsResult.data ?? []).map((row) => ({
@@ -321,6 +333,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       reviewSessions,
       askRavQuestions,
       discussionMessages,
+      discussionUnreadCount,
       refresh,
       joinChaburah: async (chaburahId) => {
         const { data, error: joinError } = await supabase.rpc("join_chaburah", {
@@ -445,6 +458,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (discussionError) return discussionError.message;
         await refresh();
         return "Message hidden.";
+      },
+      markDiscussionRead: async () => {
+        if (!profile?.chaburahId) return "Join a chaburah before marking discussion as read.";
+        const { error: discussionError } = await supabase.rpc("mark_discussion_read", {
+          target_chaburah_id: profile.chaburahId
+        });
+        if (discussionError) return discussionError.message;
+        await refresh();
+        return null;
       }
     }),
     [
@@ -453,6 +475,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       chaburos,
       chaburahMemberDirectory,
       discussionMessages,
+      discussionUnreadCount,
       error,
       hydrated,
       learningFiles,

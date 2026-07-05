@@ -89,6 +89,8 @@ Screens
 -------
 Dashboard:
 - overview of current chaburah, source sheet/review prompts, Ask Rav action, etc.
+- shows unread Chaburah Discussion card only when there are new discussion messages
+- Open Discussion deep-links into the Discussion section of My Chaburah
 
 My Chaburah:
 - selected/current chaburah details
@@ -97,6 +99,7 @@ My Chaburah:
   - forum-style local conversation for the current chaburah
   - messages are stored in Supabase
   - first implementation uses normal refresh/query behavior, not realtime
+  - unread counts use `discussion_reads` and normal Supabase RPCs, not realtime subscriptions
   - authors can edit or delete their own active messages
   - local Rabbi/Admin/Global Admin can hide messages for moderation
 - local announcements
@@ -187,9 +190,11 @@ Checkpoint 6: Chaburah communication
 - Uses existing `chaburos.discussion_enabled` as the initial on/off setting.
 - Added `discussion_messages` in migration `supabase/migrations/202607060001_add_chaburah_discussion.sql`.
 - Added author edit/delete RPCs in migration `supabase/migrations/202607060002_author_manage_discussion_messages.sql`.
+- Added unread tracking in migration `supabase/migrations/202607060003_discussion_reads.sql`.
 - RLS intent:
   - active members can read/post active messages in their chaburah when discussion is enabled
   - authors can edit/delete their own active messages through RPCs
+  - unread count is per user/chaburah via `discussion_reads`
   - local Rabbi/Admin can moderate their chaburah
   - Global Admin can manage all
   - hidden messages are not shown as active participant content
@@ -197,9 +202,11 @@ Checkpoint 6: Chaburah communication
   - My Chaburah shows Discussion when a chaburah is selected
   - participants can post when discussion is enabled
   - message authors can edit/delete their own active posts
+  - Discussion index badge shows unread messages, not total messages
+  - viewing/jumping to Discussion marks it read
   - managers can hide messages
   - realtime is deferred until the base workflow is stable
-- Must run both discussion migrations in Supabase before testing this feature.
+- Must run all three discussion migrations in Supabase before testing this feature.
 
 Global Admin:
 - create chaburah

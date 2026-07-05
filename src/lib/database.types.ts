@@ -159,6 +159,13 @@ type DiscussionMessageRow = {
   updated_at: string;
 };
 
+type DiscussionReadRow = {
+  user_id: string;
+  chaburah_id: string;
+  last_read_at: string;
+  updated_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -187,6 +194,10 @@ export interface Database {
         DiscussionMessageRow,
         Pick<DiscussionMessageRow, "chaburah_id" | "author_id" | "body"> &
           Partial<Omit<DiscussionMessageRow, "chaburah_id" | "author_id" | "body">>
+      >;
+      discussion_reads: Table<
+        DiscussionReadRow,
+        Pick<DiscussionReadRow, "user_id" | "chaburah_id"> & Partial<Omit<DiscussionReadRow, "user_id" | "chaburah_id">>
       >;
     };
     Views: Record<string, never>;
@@ -257,6 +268,14 @@ export interface Database {
       delete_discussion_message: {
         Args: { target_message_id: string };
         Returns: DiscussionMessageRow;
+      };
+      count_unread_discussion_messages: {
+        Args: { target_chaburah_id: string };
+        Returns: number;
+      };
+      mark_discussion_read: {
+        Args: { target_chaburah_id: string };
+        Returns: DiscussionReadRow;
       };
     };
     Enums: {

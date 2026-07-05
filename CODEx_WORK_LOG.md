@@ -21,6 +21,11 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Replaced full-size discussion message action buttons with compact inline actions so Edit/Delete/Hide fit cleanly on Android.
 - Fixed Discussion delete confirmation on web by using the browser confirmation dialog while keeping native alerts on Android/iOS.
 - Moved the Discussion compose box below the message board so users read posts first and reply afterward.
+- Added `discussion_reads` tracking so Discussion index badges represent unread messages since the user last viewed Discussion.
+- Added RPCs to count unread discussion messages and mark the current chaburah discussion as read.
+- My Chaburah marks Discussion read when the section is jumped to or becomes visible while scrolling.
+- Added a Dashboard attention card for unread chaburah discussion messages.
+- Dashboard's Open Discussion action deep-links to the Discussion section inside My Chaburah.
 - Moved My Chaburah Announcements directly under the chaburah information card.
 - Added a compact My Chaburah index with jump links for Announcements, Discussion, Members, Files, Review, and Ask Rav when available.
 - Removed Announcements from the My Chaburah index because it is directly visible near the top.
@@ -34,6 +39,8 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Tightened My Chaburah Recent Files rows so Open stays aligned at the right edge on Android.
 - Increased My Chaburah Recent Files preview from 3 to 5 local files.
 - Tightened the My Chaburah Recent Files header so View All Files stays aligned on Android.
+- Made My Chaburah Recent Files a scrollable preview of up to 10 local files with a note pointing users to View All Files for more.
+- Adjusted My Chaburah Recent Files so about 5 files are visible before scrolling through up to 10.
 - Extracted shared learning-file opening logic so My Chaburah and Files use the same signed-URL/external-link behavior.
 - Added RPCs so authors can edit/delete only their own active messages without broad table update permission.
 - Added Rabbi/Admin/Global Admin moderation by hiding active messages instead of hard deleting them.
@@ -48,6 +55,7 @@ Primary files:
 - `src/lib/database.types.ts`
 - `supabase/migrations/202607060001_add_chaburah_discussion.sql`
 - `supabase/migrations/202607060002_author_manage_discussion_messages.sql`
+- `supabase/migrations/202607060003_discussion_reads.sql`
 
 ### Checkpoint 5 Community Usability and Uploads
 
@@ -390,6 +398,10 @@ Primary file:
 - Checkpoint 6 web discussion delete confirmation `expo-doctor` passed all 18 checks.
 - Checkpoint 6 Discussion compose placement TypeScript validation passed.
 - Checkpoint 6 Discussion compose placement `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Discussion unread tracking TypeScript validation passed.
+- Checkpoint 6 Discussion unread tracking `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Dashboard unread discussion card TypeScript validation passed.
+- Checkpoint 6 Dashboard unread discussion card `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah index TypeScript validation passed.
 - Checkpoint 6 My Chaburah index `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah members scroll window TypeScript validation passed.
@@ -408,12 +420,16 @@ Primary file:
 - Checkpoint 6 My Chaburah 5-file preview `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah View All Files alignment TypeScript validation passed.
 - Checkpoint 6 My Chaburah View All Files alignment `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah 10-file scroll preview TypeScript validation passed.
+- Checkpoint 6 My Chaburah 10-file scroll preview `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah 5-visible file preview TypeScript validation passed.
+- Checkpoint 6 My Chaburah 5-visible file preview `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
 ### Functional Behavior
 
-- Run `supabase/migrations/202607060001_add_chaburah_discussion.sql` and `supabase/migrations/202607060002_author_manage_discussion_messages.sql` in Supabase before testing Chaburah Discussion in the app.
+- Run `supabase/migrations/202607060001_add_chaburah_discussion.sql`, `supabase/migrations/202607060002_author_manage_discussion_messages.sql`, and `supabase/migrations/202607060003_discussion_reads.sql` in Supabase before testing Chaburah Discussion in the app.
 - Test Discussion as participant, local rabbi, local admin, and Global Admin.
 - Decide whether hidden discussion messages should remain visible to managers or move to a separate moderation view.
 - Add optional Supabase Realtime subscriptions for Discussion after the refresh-based version is confirmed.

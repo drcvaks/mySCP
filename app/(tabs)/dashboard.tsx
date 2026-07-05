@@ -17,6 +17,7 @@ export default function DashboardScreen() {
     refresh,
     reviewQuestions,
     reviewSessions,
+    discussionUnreadCount,
     selectedChaburahId
   } = useAppState();
   const currentChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
@@ -83,6 +84,27 @@ export default function DashboardScreen() {
             <Button
               label="Review Requests"
               onPress={() => router.push({ pathname: "/(tabs)/admin", params: { section: "requests" } })}
+              variant="secondary"
+            />
+          </Row>
+        </Card>
+      ) : null}
+
+      {discussionUnreadCount > 0 ? (
+        <Card>
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <Pill label="New" tone="accent" />
+              <SectionTitle>New Chaburah Discussion</SectionTitle>
+              <Text style={styles.muted}>
+                {discussionUnreadCount === 1
+                  ? "1 new message in your chaburah discussion."
+                  : `${discussionUnreadCount} new messages in your chaburah discussion.`}
+              </Text>
+            </View>
+            <Button
+              label="Open Discussion"
+              onPress={() => router.push({ pathname: "/(tabs)/chaburah", params: { section: "discussion" } })}
               variant="secondary"
             />
           </Row>

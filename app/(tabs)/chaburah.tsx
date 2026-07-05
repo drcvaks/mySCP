@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, TextArea, styles } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
 import { openLearningFile } from "../../src/shared/openLearningFile";
@@ -12,7 +12,10 @@ type MyChaburahSection = "announcements" | "discussion" | "members" | "files" | 
 
 export default function MyChaburahScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const scrollRef = useRef<ScrollView | null>(null);
+  const markedDiscussionReadRef = useRef("");
+  const scrolledToTargetRef = useRef("");
   const { profile } = useAuthState();
   const {
     announcements,
@@ -20,10 +23,12 @@ export default function MyChaburahScreen() {
     chaburos,
     deleteDiscussionMessage,
     discussionMessages,
+    discussionUnreadCount,
     editDiscussionMessage,
     hideDiscussionMessage,
     learningFiles,
     loading,
+    markDiscussionRead,
     refresh,
     selectedChaburahId,
     submitDiscussionMessage
@@ -34,6 +39,8 @@ export default function MyChaburahScreen() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageBody, setEditingMessageBody] = useState("");
   const [sectionOffsets, setSectionOffsets] = useState<Partial<Record<MyChaburahSection, number>>>({});
+  const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
+  const targetSection = isMyChaburahSection(requestedSection) ? requestedSection : undefined;
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
   const activeMembers = chaburahMemberDirectory.filter((member) => member.chaburahId === selectedChaburahId);
   const currentMembership = activeMembers.find((member) => member.userId === profile?.id);
@@ -44,7 +51,7 @@ export default function MyChaburahScreen() {
   const localFiles = learningFiles.filter((item) => item.visibility === "chaburah" && item.chaburahId === selectedChaburahId);
   const indexItems: { key: MyChaburahSection; label: string; show: boolean; count?: number }[] = [
     { key: "members", label: "Members", show: true, count: activeMembers.length },
-    { key: "discussion", label: "Discussion", show: true, count: localDiscussionMessages.length },
+    { key: "discussion", label: "Discussion", show: true, count: discussionUnreadCount > 0 ? discussionUnreadCount : undefined },
     { key: "files", label: "Files", show: true, count: localFiles.length },
     { key: "askRav", label: "Ask Rav", show: chaburah?.askRavEnabled ?? false }
   ];
@@ -53,16 +60,52 @@ export default function MyChaburahScreen() {
     setSectionOffsets((current) => (current[section] === y ? current : { ...current, [section]: y }));
   }
 
-  function jumpToSection(section: MyChaburahSection) {
+  async function markCurrentDiscussionRead() {
+    if (!selectedChaburahId || markedDiscussionReadRef.current === selectedChaburahId) return;
+    markedDiscussionReadRef.current = selectedChaburahId;
+    await markDiscussionRead();
+  }
+
+  function handleContentScroll(event: { nativeEvent: { contentOffset: { y: number }; layoutMeasurement: { height: number } } }) {
+    const discussionOffset = sectionOffsets.discussion;
+    if (discussionOffset === undefined) return;
+    const visibleBottom = event.nativeEvent.contentOffset.y + event.nativeEvent.layoutMeasurement.height;
+    if (visibleBottom >= discussionOffset + 40) {
+      void markCurrentDiscussionRead();
+    }
+  }
+
+  async function jumpToSection(section: MyChaburahSection) {
     if (Platform.OS === "web" && typeof document !== "undefined") {
       document.getElementById(sectionDomId(section))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (section === "discussion") await markDiscussionRead();
       return;
     }
 
     const offset = sectionOffsets[section];
     if (offset === undefined) return;
     scrollRef.current?.scrollTo({ y: Math.max(offset - 12, 0), animated: true });
+    if (section === "discussion") await markDiscussionRead();
   }
+
+  useEffect(() => {
+    if (!targetSection || scrolledToTargetRef.current === targetSection) return;
+    const offset = sectionOffsets[targetSection];
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      scrolledToTargetRef.current = targetSection;
+      requestAnimationFrame(() => {
+        document.getElementById(sectionDomId(targetSection))?.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (targetSection === "discussion") void markCurrentDiscussionRead();
+      });
+      return;
+    }
+    if (offset === undefined) return;
+    scrolledToTargetRef.current = targetSection;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(offset - 12, 0), animated: true });
+      if (targetSection === "discussion") void markCurrentDiscussionRead();
+    });
+  }, [sectionOffsets, targetSection]);
 
   async function postDiscussionMessage() {
     setPostingDiscussion(true);
@@ -141,7 +184,14 @@ export default function MyChaburahScreen() {
   }
 
   return (
-    <Screen title="My Chaburah" eyebrow={chaburah?.name} onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
+    <Screen
+      title="My Chaburah"
+      eyebrow={chaburah?.name}
+      onRefresh={refresh}
+      refreshing={loading}
+      scrollRef={scrollRef}
+      onScroll={handleContentScroll}
+    >
       <Card>
         <Row>
           <View>
@@ -209,7 +259,10 @@ export default function MyChaburahScreen() {
         </Card>
       </View>
 
-      <View nativeID={sectionDomId("discussion")} onLayout={(event) => trackSection("discussion", event.nativeEvent.layout.y)}>
+      <View
+        nativeID={sectionDomId("discussion")}
+        onLayout={(event) => trackSection("discussion", event.nativeEvent.layout.y)}
+      >
         <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
@@ -334,21 +387,28 @@ export default function MyChaburahScreen() {
           </View>
         </View>
         {localFiles.length === 0 ? <Text style={styles.muted}>No learning files have been published yet.</Text> : null}
-        {localFiles.slice(0, 5).map((file) => (
-          <View key={file.id} style={localStyles.fileRow}>
-            <View style={localStyles.fileInfo}>
-              <Text style={styles.body}>{file.title}</Text>
-              <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {fileTypeLabel(file.fileType)}</MetaText>
-            </View>
-            <View style={localStyles.fileActions}>
-              <Button
-                label={file.url || file.storagePath ? "Open" : "Details"}
-                onPress={() => openLearningFile(file)}
-                variant="secondary"
-              />
-            </View>
-          </View>
-        ))}
+        {localFiles.length > 0 ? (
+          <>
+            <ScrollView contentContainerStyle={{ gap: 12, paddingRight: 2 }} nestedScrollEnabled style={{ maxHeight: 300 }}>
+              {localFiles.slice(0, 10).map((file) => (
+                <View key={file.id} style={localStyles.fileRow}>
+                  <View style={localStyles.fileInfo}>
+                    <Text style={styles.body}>{file.title}</Text>
+                    <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {fileTypeLabel(file.fileType)}</MetaText>
+                  </View>
+                  <View style={localStyles.fileActions}>
+                    <Button
+                      label={file.url || file.storagePath ? "Open" : "Details"}
+                      onPress={() => openLearningFile(file)}
+                      variant="secondary"
+                    />
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            <Text style={styles.muted}>Click View All Files for more files and filters.</Text>
+          </>
+        ) : null}
         </Card>
       </View>
 
@@ -390,6 +450,10 @@ function formatDiscussionDate(value: string) {
 
 function sectionDomId(section: MyChaburahSection) {
   return `my-chaburah-${section}`;
+}
+
+function isMyChaburahSection(value: string | undefined): value is MyChaburahSection {
+  return value === "announcements" || value === "discussion" || value === "members" || value === "files" || value === "askRav";
 }
 
 function DiscussionAction({

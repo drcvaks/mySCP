@@ -1,5 +1,5 @@
 import { ReactNode, RefObject, useEffect, useRef, useState } from "react";
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Alert, Modal, Platform, Pressable, ScrollView, ScrollViewProps, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,9 +14,10 @@ interface ScreenProps {
   onRefresh?: () => void | Promise<void>;
   refreshing?: boolean;
   scrollRef?: RefObject<ScrollView | null>;
+  onScroll?: ScrollViewProps["onScroll"];
 }
 
-export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef }: ScreenProps) {
+export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef, onScroll }: ScreenProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { profile } = useAuthState();
@@ -98,6 +99,8 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
         contentContainerStyle={[globalStyles.content, width >= 768 && styles.wideContent]}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         {children}
       </ScrollView>
