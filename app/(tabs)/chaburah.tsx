@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, TextArea, styles } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
-import { currentReviewWeek } from "../../src/shared/reviewWeeks";
+import { openLearningFile } from "../../src/shared/openLearningFile";
 import { theme } from "../../src/shared/theme";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
+type MyChaburahSection = "announcements" | "discussion" | "members" | "files" | "askRav";
+
 export default function MyChaburahScreen() {
   const router = useRouter();
+  const scrollRef = useRef<ScrollView | null>(null);
   const { profile } = useAuthState();
   const {
     announcements,
@@ -22,7 +25,6 @@ export default function MyChaburahScreen() {
     learningFiles,
     loading,
     refresh,
-    reviewQuestions,
     selectedChaburahId,
     submitDiscussionMessage
   } = useAppState();
@@ -31,6 +33,7 @@ export default function MyChaburahScreen() {
   const [postingDiscussion, setPostingDiscussion] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageBody, setEditingMessageBody] = useState("");
+  const [sectionOffsets, setSectionOffsets] = useState<Partial<Record<MyChaburahSection, number>>>({});
   const chaburah = chaburos.find((item) => item.id === selectedChaburahId);
   const activeMembers = chaburahMemberDirectory.filter((member) => member.chaburahId === selectedChaburahId);
   const currentMembership = activeMembers.find((member) => member.userId === profile?.id);
@@ -38,10 +41,28 @@ export default function MyChaburahScreen() {
     profile?.role === "global_admin" || currentMembership?.memberRole === "rabbi" || currentMembership?.memberRole === "admin";
   const localAnnouncements = announcements.filter((item) => item.chaburahId === selectedChaburahId);
   const localDiscussionMessages = discussionMessages.filter((item) => item.chaburahId === selectedChaburahId);
-  const localFiles = learningFiles.filter(
-    (item) => item.visibility === "everyone" || item.chaburahId === selectedChaburahId
-  );
-  const assignedQuestions = reviewQuestions.filter((item) => item.enabled && item.week <= currentReviewWeek + 3);
+  const localFiles = learningFiles.filter((item) => item.visibility === "chaburah" && item.chaburahId === selectedChaburahId);
+  const indexItems: { key: MyChaburahSection; label: string; show: boolean; count?: number }[] = [
+    { key: "members", label: "Members", show: true, count: activeMembers.length },
+    { key: "discussion", label: "Discussion", show: true, count: localDiscussionMessages.length },
+    { key: "files", label: "Files", show: true, count: localFiles.length },
+    { key: "askRav", label: "Ask Rav", show: chaburah?.askRavEnabled ?? false }
+  ];
+
+  function trackSection(section: MyChaburahSection, y: number) {
+    setSectionOffsets((current) => (current[section] === y ? current : { ...current, [section]: y }));
+  }
+
+  function jumpToSection(section: MyChaburahSection) {
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      document.getElementById(sectionDomId(section))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    const offset = sectionOffsets[section];
+    if (offset === undefined) return;
+    scrollRef.current?.scrollTo({ y: Math.max(offset - 12, 0), animated: true });
+  }
 
   async function postDiscussionMessage() {
     setPostingDiscussion(true);
@@ -120,7 +141,7 @@ export default function MyChaburahScreen() {
   }
 
   return (
-    <Screen title="My Chaburah" eyebrow={chaburah?.name} onRefresh={refresh} refreshing={loading}>
+    <Screen title="My Chaburah" eyebrow={chaburah?.name} onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
       <Card>
         <Row>
           <View>
@@ -135,6 +156,34 @@ export default function MyChaburahScreen() {
       </Card>
 
       <Card>
+        <SectionTitle>Index</SectionTitle>
+        <View style={localStyles.indexGrid}>
+          {indexItems
+            .filter((item) => item.show)
+            .map((item) => (
+              <Pressable key={item.key} accessibilityRole="button" onPress={() => jumpToSection(item.key)} style={localStyles.indexButton}>
+                <Text style={localStyles.indexButtonText}>{item.label}</Text>
+                {typeof item.count === "number" ? <Text style={localStyles.indexCount}>{item.count}</Text> : null}
+              </Pressable>
+            ))}
+        </View>
+      </Card>
+
+      <View nativeID={sectionDomId("announcements")} onLayout={(event) => trackSection("announcements", event.nativeEvent.layout.y)}>
+        <Card>
+          <SectionTitle>Announcements</SectionTitle>
+          {localAnnouncements.length === 0 ? <Text style={styles.muted}>No local announcements yet.</Text> : null}
+          {localAnnouncements.map((announcement) => (
+            <View key={announcement.id}>
+              <Text style={styles.body}>{announcement.title}</Text>
+              <Text style={styles.muted}>{announcement.body}</Text>
+            </View>
+          ))}
+        </Card>
+      </View>
+
+      <View nativeID={sectionDomId("members")} onLayout={(event) => trackSection("members", event.nativeEvent.layout.y)}>
+        <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Members</SectionTitle>
@@ -145,19 +194,23 @@ export default function MyChaburahScreen() {
         {activeMembers.length === 0 ? (
           <Text style={styles.muted}>No active members are listed yet.</Text>
         ) : (
-          activeMembers.map((member) => (
-            <Row key={member.id}>
-              <View style={{ flex: 1, minWidth: 180 }}>
-                <Text style={styles.body}>{member.fullName ?? "Member"}</Text>
-                <MetaText>Joined {formatMemberDate(member.joinedAt)}</MetaText>
-              </View>
-              <Pill label={memberRoleLabel(member.memberRole)} tone={member.memberRole === "participant" ? "neutral" : "primary"} />
-            </Row>
-          ))
+          <ScrollView contentContainerStyle={{ gap: 12, paddingRight: 2 }} nestedScrollEnabled style={{ maxHeight: 340 }}>
+            {activeMembers.map((member) => (
+              <Row key={member.id}>
+                <View style={{ flex: 1, minWidth: 180 }}>
+                  <Text style={styles.body}>{member.fullName ?? "Member"}</Text>
+                  <MetaText>Joined {formatMemberDate(member.joinedAt)}</MetaText>
+                </View>
+                <Pill label={memberRoleLabel(member.memberRole)} tone={member.memberRole === "participant" ? "neutral" : "primary"} />
+              </Row>
+            ))}
+          </ScrollView>
         )}
-      </Card>
+        </Card>
+      </View>
 
-      <Card>
+      <View nativeID={sectionDomId("discussion")} onLayout={(event) => trackSection("discussion", event.nativeEvent.layout.y)}>
+        <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Discussion</SectionTitle>
@@ -182,16 +235,6 @@ export default function MyChaburahScreen() {
           <Text style={styles.muted}>Discussion is not enabled for this chaburah yet.</Text>
         ) : (
           <>
-            <TextArea
-              onChangeText={setDiscussionBody}
-              placeholder="Share a question, note, or chaburah discussion point..."
-              value={discussionBody}
-            />
-            <Button
-              disabled={postingDiscussion || !discussionBody.trim()}
-              label={postingDiscussion ? "Posting..." : "Post Message"}
-              onPress={postDiscussionMessage}
-            />
             {localDiscussionMessages.length === 0 ? (
               <Text style={styles.muted}>No discussion messages yet.</Text>
             ) : (
@@ -264,47 +307,59 @@ export default function MyChaburahScreen() {
                 })}
               </ScrollView>
             )}
+            <TextArea
+              onChangeText={setDiscussionBody}
+              placeholder="Share a question, note, or chaburah discussion point..."
+              value={discussionBody}
+            />
+            <Button
+              disabled={postingDiscussion || !discussionBody.trim()}
+              label={postingDiscussion ? "Posting..." : "Post Message"}
+              onPress={postDiscussionMessage}
+            />
           </>
         )}
-      </Card>
+        </Card>
+      </View>
 
-      <Card>
-        <SectionTitle>Announcements</SectionTitle>
-        {localAnnouncements.length === 0 ? <Text style={styles.muted}>No local announcements yet.</Text> : null}
-        {localAnnouncements.map((announcement) => (
-          <View key={announcement.id}>
-            <Text style={styles.body}>{announcement.title}</Text>
-            <Text style={styles.muted}>{announcement.body}</Text>
+      <View nativeID={sectionDomId("files")} onLayout={(event) => trackSection("files", event.nativeEvent.layout.y)}>
+        <Card>
+        <View style={localStyles.filesHeader}>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Recent Files</SectionTitle>
+            <Text style={styles.muted}>Newest source sheets, review sheets, recordings, and links.</Text>
+          </View>
+          <View style={localStyles.viewAllFilesAction}>
+            <Button label="View All Files" onPress={() => router.push("/(tabs)/files")} variant="secondary" />
+          </View>
+        </View>
+        {localFiles.length === 0 ? <Text style={styles.muted}>No learning files have been published yet.</Text> : null}
+        {localFiles.slice(0, 5).map((file) => (
+          <View key={file.id} style={localStyles.fileRow}>
+            <View style={localStyles.fileInfo}>
+              <Text style={styles.body}>{file.title}</Text>
+              <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {fileTypeLabel(file.fileType)}</MetaText>
+            </View>
+            <View style={localStyles.fileActions}>
+              <Button
+                label={file.url || file.storagePath ? "Open" : "Details"}
+                onPress={() => openLearningFile(file)}
+                variant="secondary"
+              />
+            </View>
           </View>
         ))}
-      </Card>
-
-      <Card>
-        <SectionTitle>Source Sheets & Recordings</SectionTitle>
-        {localFiles.length === 0 ? <Text style={styles.muted}>No learning files have been published yet.</Text> : null}
-        {localFiles.slice(0, 3).map((file) => (
-          <Row key={file.id}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.body}>{file.title}</Text>
-              <Text style={styles.muted}>{fileCoverageDetailLabel(file.coverage, file.week)} - {fileTypeLabel(file.fileType)}</Text>
-            </View>
-            <Pill label={file.visibility === "everyone" ? "Everyone" : "Local"} />
-          </Row>
-        ))}
-      </Card>
-
-      <Card>
-        <SectionTitle>Review Assigned</SectionTitle>
-        <Text style={styles.muted}>{assignedQuestions.length} questions are available for this zman.</Text>
-        <Button label="Start Review" onPress={() => router.push("/(tabs)/review")} />
-      </Card>
+        </Card>
+      </View>
 
       {chaburah.askRavEnabled ? (
-        <Card>
-          <SectionTitle>Ask the Rav</SectionTitle>
-          <Text style={styles.muted}>Submit a question about this week's SCP material to {chaburah?.rabbiName}.</Text>
-          <Button label="Ask a Question" onPress={() => router.push("/(tabs)/ask-rav")} variant="secondary" />
-        </Card>
+        <View nativeID={sectionDomId("askRav")} onLayout={(event) => trackSection("askRav", event.nativeEvent.layout.y)}>
+          <Card>
+            <SectionTitle>Ask the Rav</SectionTitle>
+            <Text style={styles.muted}>Submit a question about this week's SCP material to {chaburah?.rabbiName}.</Text>
+            <Button label="Ask a Question" onPress={() => router.push("/(tabs)/ask-rav")} variant="secondary" />
+          </Card>
+        </View>
       ) : null}
     </Screen>
   );
@@ -331,6 +386,10 @@ function formatDiscussionDate(value: string) {
     hour: "numeric",
     minute: "2-digit"
   });
+}
+
+function sectionDomId(section: MyChaburahSection) {
+  return `my-chaburah-${section}`;
 }
 
 function DiscussionAction({
@@ -404,5 +463,58 @@ const localStyles = StyleSheet.create({
   discussionMessageMeta: {
     flex: 1,
     minWidth: 0
+  },
+  fileActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "flex-end"
+  },
+  fileInfo: {
+    flex: 1,
+    minWidth: 0
+  },
+  fileRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between"
+  },
+  filesHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "space-between"
+  },
+  indexButton: {
+    alignItems: "center",
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    minHeight: 42,
+    paddingHorizontal: 12
+  },
+  indexButtonText: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  indexCount: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  indexGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  viewAllFilesAction: {
+    flexShrink: 0,
+    width: 132
   }
 });

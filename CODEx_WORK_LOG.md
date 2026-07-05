@@ -20,6 +20,21 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added author-owned Edit/Delete controls for active discussion messages.
 - Replaced full-size discussion message action buttons with compact inline actions so Edit/Delete/Hide fit cleanly on Android.
 - Fixed Discussion delete confirmation on web by using the browser confirmation dialog while keeping native alerts on Android/iOS.
+- Moved the Discussion compose box below the message board so users read posts first and reply afterward.
+- Moved My Chaburah Announcements directly under the chaburah information card.
+- Added a compact My Chaburah index with jump links for Announcements, Discussion, Members, Files, Review, and Ask Rav when available.
+- Removed Announcements from the My Chaburah index because it is directly visible near the top.
+- Put the My Chaburah Members list in an internal scroll area so large rosters do not stretch the page.
+- Moved Review Assigned from My Chaburah to Dashboard so participants see their review action immediately after login.
+- Removed Review from the My Chaburah index after moving the card to Dashboard.
+- Reordered the My Chaburah index so Members appears first, matching the page order.
+- Fixed My Chaburah index jumps on web by using DOM section targets with `scrollIntoView` while keeping native `ScrollView.scrollTo` behavior on Android/iOS.
+- Reworked My Chaburah files into a Recent Files preview with per-file Open actions and a View All Files action.
+- Limited My Chaburah Recent Files to selected-chaburah files only, excluding Everyone files from that local preview.
+- Tightened My Chaburah Recent Files rows so Open stays aligned at the right edge on Android.
+- Increased My Chaburah Recent Files preview from 3 to 5 local files.
+- Tightened the My Chaburah Recent Files header so View All Files stays aligned on Android.
+- Extracted shared learning-file opening logic so My Chaburah and Files use the same signed-URL/external-link behavior.
 - Added RPCs so authors can edit/delete only their own active messages without broad table update permission.
 - Added Rabbi/Admin/Global Admin moderation by hiding active messages instead of hard deleting them.
 - Kept the Discussion card compact by putting messages in an internal scroll area so long conversations do not stretch My Chaburah endlessly.
@@ -373,6 +388,26 @@ Primary file:
 - Checkpoint 6 compact discussion actions `expo-doctor` passed all 18 checks.
 - Checkpoint 6 web discussion delete confirmation TypeScript validation passed.
 - Checkpoint 6 web discussion delete confirmation `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Discussion compose placement TypeScript validation passed.
+- Checkpoint 6 Discussion compose placement `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah index TypeScript validation passed.
+- Checkpoint 6 My Chaburah index `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah members scroll window TypeScript validation passed.
+- Checkpoint 6 My Chaburah members scroll window `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Dashboard Review Assigned move TypeScript validation passed.
+- Checkpoint 6 Dashboard Review Assigned move `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah index order TypeScript validation passed.
+- Checkpoint 6 My Chaburah index order `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah web index jump TypeScript validation passed.
+- Checkpoint 6 My Chaburah web index jump `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah actionable files TypeScript validation passed.
+- Checkpoint 6 My Chaburah actionable files `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah local-only files TypeScript validation passed.
+- Checkpoint 6 My Chaburah local-only files `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah 5-file preview TypeScript validation passed.
+- Checkpoint 6 My Chaburah 5-file preview `expo-doctor` passed all 18 checks.
+- Checkpoint 6 My Chaburah View All Files alignment TypeScript validation passed.
+- Checkpoint 6 My Chaburah View All Files alignment `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 

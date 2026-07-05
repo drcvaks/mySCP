@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
@@ -24,6 +25,13 @@ export default function DashboardScreen() {
     (announcement) => announcement.isGlobal || announcement.chaburahId === selectedChaburahId
   );
   const latestReview = reviewSessions[0];
+  const assignedQuestions = reviewQuestions.filter(
+    (question) =>
+      question.enabled &&
+      question.publicationStatus === "published" &&
+      question.week <= currentReviewWeek + 3 &&
+      (question.visibility === "everyone" || question.chaburahId === selectedChaburahId)
+  );
   const readiness = latestReview
     ? Math.round((latestReview.correctAnswers / latestReview.totalQuestions) * 100)
     : 0;
@@ -93,6 +101,16 @@ export default function DashboardScreen() {
           </Text>
         </Card>
       </Row>
+
+      <Card>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Review Assigned</SectionTitle>
+            <Text style={styles.muted}>{assignedQuestions.length} questions are available for this zman.</Text>
+          </View>
+          <Button label="Start Review" onPress={() => router.push("/(tabs)/review")} />
+        </Row>
+      </Card>
 
       <Card>
         <SectionTitle>Latest Source Sheet</SectionTitle>

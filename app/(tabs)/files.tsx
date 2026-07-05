@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Linking, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import {
   Button,
   Card,
@@ -17,7 +17,7 @@ import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeek
 import { FileCoverage, FileType, Visibility } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
-import { supabase } from "../../src/lib/supabase";
+import { openLearningFile } from "../../src/shared/openLearningFile";
 
 const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "video", "pdf", "other"];
 const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
@@ -82,34 +82,7 @@ export default function FilesScreen() {
   async function openFile(fileId: string) {
     const file = learningFiles.find((item) => item.id === fileId);
     if (!file) return;
-    let targetUrl = file.url;
-    if (!targetUrl && file.storagePath) {
-      const { data, error } = await supabase.storage
-        .from("learning-files")
-        .createSignedUrl(file.storagePath, 60);
-      if (error) {
-        Alert.alert("Cannot Open File", error.message);
-        return;
-      }
-      targetUrl = data.signedUrl;
-    }
-
-    if (!targetUrl) {
-      Alert.alert(
-        file.title,
-        "This file record does not have an uploaded object or external URL."
-      );
-      return;
-    }
-
-    try {
-      await Linking.openURL(targetUrl);
-    } catch (openError) {
-      Alert.alert(
-        "Cannot Open File",
-        openError instanceof Error ? openError.message : "This device could not open the file URL."
-      );
-    }
+    await openLearningFile(file);
   }
 
   return (
