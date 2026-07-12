@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
 import { currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
@@ -21,11 +22,12 @@ export default function DashboardScreen() {
     selectedChaburahId
   } = useAppState();
   const currentChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
-  const latestSourceSheet = learningFiles.find((file) => file.fileType === "source_sheet");
+  const visibleFiles = learningFiles.filter((file) => file.visibility === "everyone" || file.chaburahId === selectedChaburahId);
+  const latestUploadedFile = visibleFiles[0];
+  const latestUploadedFiles = visibleFiles.slice(0, 3);
   const localAnnouncements = announcements.filter(
     (announcement) => announcement.isGlobal || announcement.chaburahId === selectedChaburahId
   );
-  const latestReview = reviewSessions[0];
   const assignedQuestions = reviewQuestions.filter(
     (question) =>
       question.enabled &&
@@ -33,9 +35,17 @@ export default function DashboardScreen() {
       question.week <= currentReviewWeek + 3 &&
       (question.visibility === "everyone" || question.chaburahId === selectedChaburahId)
   );
-  const readiness = latestReview
-    ? Math.round((latestReview.correctAnswers / latestReview.totalQuestions) * 100)
-    : 0;
+  const cumulativeReview = reviewSessions.reduce(
+    (total, session) => ({
+      correct: total.correct + session.correctAnswers,
+      questions: total.questions + session.totalQuestions
+    }),
+    { correct: 0, questions: 0 }
+  );
+  const cumulativeReviewScore =
+    cumulativeReview.questions > 0
+      ? Math.round((cumulativeReview.correct / cumulativeReview.questions) * 100)
+      : 0;
   const canReviewJoinRequests =
     profile?.role === "global_admin" ||
     memberships.some(
@@ -65,7 +75,7 @@ export default function DashboardScreen() {
             <Text style={styles.muted}>Next Shiur</Text>
             <Text style={styles.body}>{currentChaburah?.schedule ?? "Join a chaburah to see its schedule."}</Text>
           </View>
-          <Button label="My Chaburah" onPress={() => router.push("/(tabs)/chaburah")} variant="secondary" />
+          <Button label="My Chaburah" onPress={() => router.push("/(tabs)/chaburah")} />
         </Row>
       </Card>
 
@@ -84,7 +94,6 @@ export default function DashboardScreen() {
             <Button
               label="Review Requests"
               onPress={() => router.push({ pathname: "/(tabs)/admin", params: { section: "requests" } })}
-              variant="secondary"
             />
           </Row>
         </Card>
@@ -111,16 +120,29 @@ export default function DashboardScreen() {
         </Card>
       ) : null}
 
+      {latestUploadedFile ? (
+        <Card>
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <Pill label="New Upload" tone="accent" />
+              <SectionTitle>New File Available</SectionTitle>
+              <Text style={styles.muted}>
+                {latestUploadedFile.title} - {fileCoverageDetailLabel(latestUploadedFile.coverage, latestUploadedFile.week)}
+              </Text>
+            </View>
+            <Button label="Open Files" onPress={() => router.push("/(tabs)/files")} />
+          </Row>
+        </Card>
+      ) : null}
+
       <Row>
         <Card>
-          <Text style={styles.muted}>Bechina Readiness</Text>
-          <Text style={styles.statNumber}>{readiness}%</Text>
+          <Text style={styles.muted}>Cumulative Review Score</Text>
+          <Text style={styles.statNumber}>{cumulativeReviewScore}%</Text>
         </Card>
         <Card>
           <Text style={styles.muted}>Review Questions</Text>
-          <Text style={styles.statNumber}>
-            {reviewQuestions.filter((question) => question.enabled && question.publicationStatus === "published").length}
-          </Text>
+          <Text style={styles.statNumber}>{assignedQuestions.length}</Text>
         </Card>
       </Row>
 
@@ -135,16 +157,17 @@ export default function DashboardScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Latest Source Sheet</SectionTitle>
-        <Text style={styles.body}>{latestSourceSheet?.title ?? "No source sheet has been published yet."}</Text>
-        {latestSourceSheet ? <Text style={styles.muted}>{latestSourceSheet.topic}</Text> : null}
-        <Button label="Open" onPress={() => router.push("/(tabs)/files")} />
-      </Card>
-
-      <Card>
-        <SectionTitle>Missed Last Shiur?</SectionTitle>
-        <Text style={styles.muted}>Catch up with recordings and review summaries from your chaburah.</Text>
-        <Button label="Catch Up" onPress={() => router.push("/(tabs)/files")} variant="secondary" />
+        <SectionTitle>Latest Uploaded Files</SectionTitle>
+        {latestUploadedFiles.length === 0 ? <Text style={styles.muted}>No files have been uploaded yet.</Text> : null}
+        {latestUploadedFiles.map((file) => (
+          <View key={file.id}>
+            <Text style={styles.body}>{file.title}</Text>
+            <Text style={styles.muted}>
+              {fileCoverageDetailLabel(file.coverage, file.week)} - {fileTypeLabel(file.fileType)}
+            </Text>
+          </View>
+        ))}
+        <Button label="View Files" onPress={() => router.push("/(tabs)/files")} />
       </Card>
 
       <Card>

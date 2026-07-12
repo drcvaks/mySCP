@@ -26,6 +26,13 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - My Chaburah marks Discussion read when the section is jumped to or becomes visible while scrolling.
 - Added a Dashboard attention card for unread chaburah discussion messages.
 - Dashboard's Open Discussion action deep-links to the Discussion section inside My Chaburah.
+- Removed the Dashboard Missed Last Shiur card.
+- Made the Dashboard My Chaburah button use the primary dark style.
+- Replaced Latest Source Sheet with Latest Uploaded Files and added a New Upload Available attention card when files exist.
+- Made the Dashboard Open Files action use the primary dark style.
+- Made the Dashboard Review Requests action use the primary dark style.
+- Changed Dashboard Bechina Readiness to Cumulative Review Score, calculated from all saved review sessions.
+- Changed Dashboard Review Questions count to use only visible/assigned review questions for the current user/chaburah.
 - Moved My Chaburah Announcements directly under the chaburah information card.
 - Added a compact My Chaburah index with jump links for Announcements, Discussion, Members, Files, Review, and Ask Rav when available.
 - Removed Announcements from the My Chaburah index because it is directly visible near the top.
@@ -402,6 +409,14 @@ Primary file:
 - Checkpoint 6 Discussion unread tracking `expo-doctor` passed all 18 checks.
 - Checkpoint 6 Dashboard unread discussion card TypeScript validation passed.
 - Checkpoint 6 Dashboard unread discussion card `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Dashboard upload polish TypeScript validation passed.
+- Checkpoint 6 Dashboard upload polish `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Dashboard Open Files button style TypeScript validation passed.
+- Checkpoint 6 Dashboard Open Files button style `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Dashboard Review Requests button style TypeScript validation passed.
+- Checkpoint 6 Dashboard Review Requests button style `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Dashboard review stat cleanup TypeScript validation passed.
+- Checkpoint 6 Dashboard review stat cleanup `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah index TypeScript validation passed.
 - Checkpoint 6 My Chaburah index `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah members scroll window TypeScript validation passed.
