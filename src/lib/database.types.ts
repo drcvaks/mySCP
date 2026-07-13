@@ -173,6 +173,8 @@ type NotificationPreferenceRow = {
   review_questions_in_app: boolean;
   discussion_posts_email: boolean;
   discussion_posts_in_app: boolean;
+  ask_rav_questions_email: boolean;
+  ask_rav_questions_in_app: boolean;
   rabbi_answers_email: boolean;
   rabbi_answers_in_app: boolean;
   uploads_email: boolean;
@@ -321,6 +323,10 @@ export interface Database {
         Args: { target_question_id: string };
         Returns: number;
       };
+      notify_ask_rav_question: {
+        Args: { target_question_id: string };
+        Returns: number;
+      };
       notify_learning_file: {
         Args: { target_file_id: string };
         Returns: number;
@@ -346,7 +352,14 @@ export interface Database {
       review_question_kind: "multiple_choice" | "true_false";
       ask_rav_status: "submitted" | "answered" | "archived";
       discussion_message_status: "active" | "hidden" | "deleted";
-      notification_type: "review_questions" | "discussion_posts" | "rabbi_answers" | "uploads" | "join_requests" | "system";
+      notification_type:
+        | "review_questions"
+        | "discussion_posts"
+        | "ask_rav_questions"
+        | "rabbi_answers"
+        | "uploads"
+        | "join_requests"
+        | "system";
     };
     CompositeTypes: Record<string, never>;
   };

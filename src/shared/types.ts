@@ -4,7 +4,14 @@ export type Visibility = "everyone" | "chaburah";
 export type FileCoverage = "week" | "bechina_review" | "entire_zman";
 export type ReviewPublicationStatus = "draft" | "published" | "archived";
 export type DiscussionMessageStatus = "active" | "hidden" | "deleted";
-export type NotificationType = "review_questions" | "discussion_posts" | "rabbi_answers" | "uploads" | "join_requests" | "system";
+export type NotificationType =
+  | "review_questions"
+  | "discussion_posts"
+  | "ask_rav_questions"
+  | "rabbi_answers"
+  | "uploads"
+  | "join_requests"
+  | "system";
 
 export interface UserProfile {
   id: string;

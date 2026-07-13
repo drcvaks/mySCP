@@ -11,6 +11,7 @@ export default function DashboardScreen() {
   const { profile } = useAuthState();
   const {
     announcements,
+    askRavQuestions,
     chaburos,
     learningFiles,
     loading,
@@ -63,6 +64,16 @@ export default function DashboardScreen() {
           membership.memberRole === "participant" &&
           membership.status === "pending"
       )
+    : [];
+  const canAnswerAskRav = memberships.some(
+    (membership) =>
+      membership.userId === profile?.id &&
+      membership.chaburahId === selectedChaburahId &&
+      membership.status === "active" &&
+      membership.memberRole === "rabbi"
+  );
+  const submittedAskRavQuestions = canAnswerAskRav
+    ? askRavQuestions.filter((question) => question.chaburahId === selectedChaburahId && question.status === "submitted")
     : [];
 
   return (
@@ -117,6 +128,23 @@ export default function DashboardScreen() {
               onPress={() => router.push({ pathname: "/(tabs)/chaburah", params: { section: "discussion" } })}
               variant="secondary"
             />
+          </Row>
+        </Card>
+      ) : null}
+
+      {submittedAskRavQuestions.length > 0 ? (
+        <Card>
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <Pill label="Action Needed" tone="accent" />
+              <SectionTitle>Ask Rav Questions</SectionTitle>
+              <Text style={styles.muted}>
+                {submittedAskRavQuestions.length === 1
+                  ? "1 participant question is waiting for an answer."
+                  : `${submittedAskRavQuestions.length} participant questions are waiting for answers.`}
+              </Text>
+            </View>
+            <Button label="Answer Questions" onPress={() => router.push("/(tabs)/rabbi-hub")} />
           </Row>
         </Card>
       ) : null}
@@ -199,7 +227,7 @@ export default function DashboardScreen() {
         ))}
       </Card>
 
-      {currentChaburah?.askRavEnabled ? (
+      {currentChaburah?.askRavEnabled && !canAnswerAskRav ? (
         <Card>
           <SectionTitle>Ask the Rav</SectionTitle>
           <Text style={styles.muted}>Submit a question about this week's SCP material to your local Rav.</Text>

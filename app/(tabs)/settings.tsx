@@ -3,8 +3,9 @@ import { Text, View } from "react-native";
 import { Button, Card, FilterChip, MetaText, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
+import { useAppState } from "../../src/state/AppState";
 
-type NotificationEventKey = "reviewQuestions" | "discussionPosts" | "rabbiAnswers" | "uploads";
+type NotificationEventKey = "reviewQuestions" | "discussionPosts" | "askRavQuestions" | "rabbiAnswers" | "uploads";
 type NotificationChannel = "email" | "inApp";
 
 type NotificationPreferences = Record<NotificationEventKey, Record<NotificationChannel, boolean>>;
@@ -12,6 +13,7 @@ type NotificationPreferences = Record<NotificationEventKey, Record<NotificationC
 const defaultPreferences: NotificationPreferences = {
   reviewQuestions: { email: true, inApp: true },
   discussionPosts: { email: false, inApp: true },
+  askRavQuestions: { email: true, inApp: true },
   rabbiAnswers: { email: true, inApp: true },
   uploads: { email: false, inApp: true }
 };
@@ -28,6 +30,11 @@ const notificationEvents: Array<{ key: NotificationEventKey; title: string; desc
     description: "When new messages are posted in your chaburah discussion."
   },
   {
+    key: "askRavQuestions",
+    title: "New Ask Rav Questions",
+    description: "For rabbonim, when a participant submits a new Ask Rav question."
+  },
+  {
     key: "rabbiAnswers",
     title: "Rabbi Answers",
     description: "When your Ask Rav question receives an answer."
@@ -41,10 +48,20 @@ const notificationEvents: Array<{ key: NotificationEventKey; title: string; desc
 
 export default function SettingsScreen() {
   const { profile } = useAuthState();
+  const { memberships } = useAppState();
   const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const canReceiveAskRavQuestions = memberships.some(
+    (membership) =>
+      membership.userId === profile?.id &&
+      membership.status === "active" &&
+      membership.memberRole === "rabbi"
+  );
+  const visibleNotificationEvents = notificationEvents.filter(
+    (event) => event.key !== "askRavQuestions" || canReceiveAskRavQuestions
+  );
 
   useEffect(() => {
     loadPreferences();
@@ -87,6 +104,8 @@ export default function SettingsScreen() {
       review_questions_in_app: preferences.reviewQuestions.inApp,
       discussion_posts_email: preferences.discussionPosts.email,
       discussion_posts_in_app: preferences.discussionPosts.inApp,
+      ask_rav_questions_email: preferences.askRavQuestions.email,
+      ask_rav_questions_in_app: preferences.askRavQuestions.inApp,
       rabbi_answers_email: preferences.rabbiAnswers.email,
       rabbi_answers_in_app: preferences.rabbiAnswers.inApp,
       uploads_email: preferences.uploads.email,
@@ -108,7 +127,7 @@ export default function SettingsScreen() {
       <Card>
         <SectionTitle>Notifications</SectionTitle>
         <Text style={styles.muted}>Choose how you want to be notified. Delivery will use these settings as notification features are connected.</Text>
-        {notificationEvents.map((event) => (
+        {visibleNotificationEvents.map((event) => (
           <View key={event.key} style={{ gap: 8 }}>
             <Row>
               <View style={{ flex: 1, minWidth: 220 }}>
@@ -147,6 +166,8 @@ function mapPreferencesFromRow(row: {
   review_questions_in_app: boolean;
   discussion_posts_email: boolean;
   discussion_posts_in_app: boolean;
+  ask_rav_questions_email?: boolean;
+  ask_rav_questions_in_app?: boolean;
   rabbi_answers_email: boolean;
   rabbi_answers_in_app: boolean;
   uploads_email: boolean;
@@ -155,6 +176,10 @@ function mapPreferencesFromRow(row: {
   return {
     reviewQuestions: { email: row.review_questions_email, inApp: row.review_questions_in_app },
     discussionPosts: { email: row.discussion_posts_email, inApp: row.discussion_posts_in_app },
+    askRavQuestions: {
+      email: row.ask_rav_questions_email ?? defaultPreferences.askRavQuestions.email,
+      inApp: row.ask_rav_questions_in_app ?? defaultPreferences.askRavQuestions.inApp
+    },
     rabbiAnswers: { email: row.rabbi_answers_email, inApp: row.rabbi_answers_in_app },
     uploads: { email: row.uploads_email, inApp: row.uploads_in_app }
   };

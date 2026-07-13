@@ -446,12 +446,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (currentChaburah && !currentChaburah.askRavEnabled) {
           return "Ask Rav is not enabled for this chaburah.";
         }
-        const { error: questionError } = await supabase.from("ask_rav_questions").insert({
-          chaburah_id: profile.chaburahId,
-          asker_id: session.user.id,
-          question
-        });
+        const { data: questionData, error: questionError } = await supabase
+          .from("ask_rav_questions")
+          .insert({
+            chaburah_id: profile.chaburahId,
+            asker_id: session.user.id,
+            question
+          })
+          .select("id")
+          .single();
         if (questionError) return questionError.message;
+        if (questionData?.id) {
+          await supabase.rpc("notify_ask_rav_question", {
+            target_question_id: questionData.id
+          });
+        }
         await refresh();
         return null;
       },

@@ -46,6 +46,10 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added a Notifications screen plus Dashboard attention card for unread in-app notifications.
 - Added Notifications to web/tablet navigation and the mobile hamburger menu.
 - Added Supabase RPC generators for in-app notifications from discussion posts, Rabbi answers, new uploads, published review questions, and join requests.
+- Added Rabbi-side Ask Rav question notifications so rabbonim are notified when participants submit new questions.
+- Added Dashboard reminder card for Rabbis when submitted Ask Rav questions are waiting for answers.
+- Removed the participant-style Dashboard Ask Rav submit card from Rabbi users; Rabbis now use Rabbi Hub for incoming questions.
+- Hid the Rabbi-only Ask Rav Questions notification preference from users who are not active rabbonim.
 - Wired existing app actions to call the notification generators after successful saves/publishes.
 - Moved My Chaburah Announcements directly under the chaburah information card.
 - Added a compact My Chaburah index with jump links for Announcements, Discussion, Members, Files, Review, and Ask Rav when available.
@@ -81,6 +85,8 @@ Primary files:
 - `supabase/migrations/202607120002_notification_preferences.sql`
 - `supabase/migrations/202607120003_in_app_notifications.sql`
 - `supabase/migrations/202607120004_notification_generators.sql`
+- `supabase/migrations/202607130001_add_ask_rav_notification_type.sql`
+- `supabase/migrations/202607130002_ask_rav_question_notifications.sql`
 
 ### Checkpoint 5 Community Usability and Uploads
 
@@ -475,6 +481,10 @@ Primary file:
 - Checkpoint 6 My Chaburah 10-file scroll preview `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah 5-visible file preview TypeScript validation passed.
 - Checkpoint 6 My Chaburah 5-visible file preview `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Ask Rav question notifications TypeScript validation passed.
+- Checkpoint 6 Ask Rav question notifications `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Rabbi-only Ask Rav notification setting TypeScript validation passed.
+- Checkpoint 6 Rabbi-only Ask Rav notification setting `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 

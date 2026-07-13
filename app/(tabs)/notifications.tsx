@@ -90,6 +90,7 @@ function notificationTypeLabel(type: NotificationItem["type"]) {
     review_questions: "Review Questions",
     discussion_posts: "Discussion",
     rabbi_answers: "Rabbi Answers",
+    ask_rav_questions: "Ask Rav Questions",
     uploads: "Uploads",
     join_requests: "Join Requests",
     system: "System"
