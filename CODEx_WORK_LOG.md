@@ -26,6 +26,13 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - My Chaburah marks Discussion read when the section is jumped to or becomes visible while scrolling.
 - Added a Dashboard attention card for unread chaburah discussion messages.
 - Dashboard's Open Discussion action deep-links to the Discussion section inside My Chaburah.
+- Added public-library model review questions so Global Admin can mark ready-to-use questions for rabbonim.
+- Added a Rabbi Hub Model Questions section where rabbonim can quickly stage model public-library questions into their selected week.
+- Added a Stage All Model Questions action so rabbonim can copy all matching model questions into their selected week in one step.
+- After staging all model questions, Rabbi Hub now scrolls down to Staged Questions so the Publish Week action is immediately available.
+- Made Rabbi Hub's Publish Week action use the primary dark style.
+- Kept the Rabbi Hub Model Question selection sticky after staging a library question so Global Admin can enter multiple model questions without reselecting it.
+- Clarified Public Question Library copy to say it includes both model and regular public questions.
 - Removed the Dashboard Missed Last Shiur card.
 - Made the Dashboard My Chaburah button use the primary dark style.
 - Replaced Latest Source Sheet with Latest Uploaded Files and added a New Upload Available attention card when files exist.
@@ -63,6 +70,7 @@ Primary files:
 - `supabase/migrations/202607060001_add_chaburah_discussion.sql`
 - `supabase/migrations/202607060002_author_manage_discussion_messages.sql`
 - `supabase/migrations/202607060003_discussion_reads.sql`
+- `supabase/migrations/202607120001_add_model_review_questions.sql`
 
 ### Checkpoint 5 Community Usability and Uploads
 
@@ -417,6 +425,18 @@ Primary file:
 - Checkpoint 6 Dashboard Review Requests button style `expo-doctor` passed all 18 checks.
 - Checkpoint 6 Dashboard review stat cleanup TypeScript validation passed.
 - Checkpoint 6 Dashboard review stat cleanup `expo-doctor` passed all 18 checks.
+- Checkpoint 6 model review questions TypeScript validation passed.
+- Checkpoint 6 model review questions `expo-doctor` passed all 18 checks.
+- Checkpoint 6 sticky model-question form TypeScript validation passed.
+- Checkpoint 6 sticky model-question form `expo-doctor` passed all 18 checks.
+- Checkpoint 6 stage-all model questions TypeScript validation passed.
+- Checkpoint 6 stage-all model questions `expo-doctor` passed all 18 checks.
+- Checkpoint 6 stage-all model scroll-to-publish TypeScript validation passed.
+- Checkpoint 6 stage-all model scroll-to-publish `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Rabbi Hub Publish Week button style TypeScript validation passed.
+- Checkpoint 6 Rabbi Hub Publish Week button style `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Public Question Library copy TypeScript validation passed.
+- Checkpoint 6 Public Question Library copy `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah index TypeScript validation passed.
 - Checkpoint 6 My Chaburah index `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah members scroll window TypeScript validation passed.

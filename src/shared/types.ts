@@ -95,6 +95,7 @@ export interface ReviewQuestion {
   visibility: Visibility;
   publicationStatus: ReviewPublicationStatus;
   isLibraryQuestion: boolean;
+  isModelQuestion: boolean;
   correctChoiceIndex?: number;
   explanation?: string;
   enabled: boolean;

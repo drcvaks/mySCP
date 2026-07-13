@@ -111,6 +111,7 @@ type ReviewQuestionRow = {
   visibility: Database["public"]["Enums"]["content_visibility"];
   publication_status: Database["public"]["Enums"]["review_publication_status"];
   is_library_question: boolean;
+  is_model_question: boolean;
   published_at: string | null;
   enabled: boolean;
   created_by: string;

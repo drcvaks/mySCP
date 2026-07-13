@@ -275,6 +275,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           visibility: row.visibility,
           publicationStatus: row.publication_status ?? "published",
           isLibraryQuestion: row.is_library_question ?? false,
+          isModelQuestion: row.is_model_question ?? false,
           enabled: row.enabled
         }))
       );

@@ -138,6 +138,9 @@ Rabbi Hub:
 - answers submitted Ask the Rav questions when the signed-in user is the assigned active rabbi
 - stages review questions before publishing them
 - stages public library questions before making them available to other rabbonim
+- Global Admin can mark public-library questions as model questions
+- rabbonim can quickly stage model questions into their selected chaburah week
+- rabbonim can stage all matching model questions in one action
 - publishes staged review questions by selected chaburah week
 - browses public library questions from a separate source week
 - copies public library questions into the selected chaburah week as editable staged copies

@@ -160,6 +160,7 @@ export const reviewQuestions: ReviewQuestion[] = [
     visibility: "everyone",
     publicationStatus: "published",
     isLibraryQuestion: false,
+    isModelQuestion: false,
     correctChoiceIndex: 0,
     explanation: "The core kitchen case starts with transferred taste from clean utensils and pareve food.",
     enabled: true
@@ -174,6 +175,7 @@ export const reviewQuestions: ReviewQuestion[] = [
     visibility: "everyone",
     publicationStatus: "published",
     isLibraryQuestion: false,
+    isModelQuestion: false,
     correctChoiceIndex: 0,
     explanation: "Immediate feedback helps participants review before the bechina.",
     enabled: true
@@ -188,6 +190,7 @@ export const reviewQuestions: ReviewQuestion[] = [
     visibility: "everyone",
     publicationStatus: "published",
     isLibraryQuestion: false,
+    isModelQuestion: false,
     correctChoiceIndex: 0,
     explanation: "The roadmap places Stam Yeinam and wine from Week 7 onward.",
     enabled: true
