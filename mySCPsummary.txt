@@ -226,7 +226,9 @@ Profile:
 - email, role, and current chaburah are shown read-only
 
 Settings:
-- placeholder
+- saves notification preferences in Supabase `notification_preferences`
+- users can choose Email and/or In App channels for new review questions, discussion posts, Rabbi answers, and uploads
+- actual email/in-app notification delivery is still future work
 
 Status Messages
 ---------------
@@ -396,7 +398,7 @@ High priority:
 - Run the Checkpoint 5 QA checklist before inviting testers.
 - Replace disposable test content with real pilot material after QA passes.
 - Deeper member-management history/auditing and leadership removal/demotion flows.
-- Settings screen functionality.
+- Notification delivery implementation for saved Settings preferences.
 - Production auth redirect/deep-link setup.
 - Supabase Realtime for automatic cross-device sync.
 - Generate official Supabase TypeScript types from the live project when CLI workflow is ready.
@@ -416,7 +418,7 @@ Later:
 - Automated interaction tests once stable browser testing is available.
 - Realtime subscriptions for profile/chaburah/file/review updates.
 - Rabbi request workflow for suggesting local admins if Global Admin approval is desired.
-- More complete Settings functionality.
+- More complete Settings functionality beyond notification preferences.
 
 Verification Commands
 ---------------------

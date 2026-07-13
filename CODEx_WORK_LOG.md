@@ -40,6 +40,8 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Made the Dashboard Review Requests action use the primary dark style.
 - Changed Dashboard Bechina Readiness to Cumulative Review Score, calculated from all saved review sessions.
 - Changed Dashboard Review Questions count to use only visible/assigned review questions for the current user/chaburah.
+- Added Settings notification preferences for email and in-app channels across new review questions, discussion posts, Rabbi answers, and uploads.
+- Added a Supabase `notification_preferences` table with self-only RLS for saved notification choices.
 - Moved My Chaburah Announcements directly under the chaburah information card.
 - Added a compact My Chaburah index with jump links for Announcements, Discussion, Members, Files, Review, and Ask Rav when available.
 - Removed Announcements from the My Chaburah index because it is directly visible near the top.
@@ -71,6 +73,7 @@ Primary files:
 - `supabase/migrations/202607060002_author_manage_discussion_messages.sql`
 - `supabase/migrations/202607060003_discussion_reads.sql`
 - `supabase/migrations/202607120001_add_model_review_questions.sql`
+- `supabase/migrations/202607120002_notification_preferences.sql`
 
 ### Checkpoint 5 Community Usability and Uploads
 
@@ -437,6 +440,8 @@ Primary file:
 - Checkpoint 6 Rabbi Hub Publish Week button style `expo-doctor` passed all 18 checks.
 - Checkpoint 6 Public Question Library copy TypeScript validation passed.
 - Checkpoint 6 Public Question Library copy `expo-doctor` passed all 18 checks.
+- Checkpoint 6 Settings notification preferences TypeScript validation passed.
+- Checkpoint 6 Settings notification preferences `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah index TypeScript validation passed.
 - Checkpoint 6 My Chaburah index `expo-doctor` passed all 18 checks.
 - Checkpoint 6 My Chaburah members scroll window TypeScript validation passed.

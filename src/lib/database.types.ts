@@ -167,6 +167,20 @@ type DiscussionReadRow = {
   updated_at: string;
 };
 
+type NotificationPreferenceRow = {
+  user_id: string;
+  review_questions_email: boolean;
+  review_questions_in_app: boolean;
+  discussion_posts_email: boolean;
+  discussion_posts_in_app: boolean;
+  rabbi_answers_email: boolean;
+  rabbi_answers_in_app: boolean;
+  uploads_email: boolean;
+  uploads_in_app: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -199,6 +213,10 @@ export interface Database {
       discussion_reads: Table<
         DiscussionReadRow,
         Pick<DiscussionReadRow, "user_id" | "chaburah_id"> & Partial<Omit<DiscussionReadRow, "user_id" | "chaburah_id">>
+      >;
+      notification_preferences: Table<
+        NotificationPreferenceRow,
+        Pick<NotificationPreferenceRow, "user_id"> & Partial<Omit<NotificationPreferenceRow, "user_id">>
       >;
     };
     Views: Record<string, never>;
