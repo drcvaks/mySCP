@@ -49,6 +49,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
       icon: "globe-outline" as const,
       show: profile?.role === "global_admin"
     },
+    { label: "Notifications", href: "/(tabs)/notifications", icon: "notifications-outline" as const, show: true },
     { label: "Profile", href: "/(tabs)/profile", icon: "person-outline" as const, show: true },
     { label: "Settings", href: "/(tabs)/settings", icon: "options-outline" as const, show: true }
   ].filter((item) => item.show);

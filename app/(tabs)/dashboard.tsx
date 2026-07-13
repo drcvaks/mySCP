@@ -19,6 +19,7 @@ export default function DashboardScreen() {
     reviewQuestions,
     reviewSessions,
     discussionUnreadCount,
+    notificationUnreadCount,
     selectedChaburahId
   } = useAppState();
   const currentChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
@@ -116,6 +117,23 @@ export default function DashboardScreen() {
               onPress={() => router.push({ pathname: "/(tabs)/chaburah", params: { section: "discussion" } })}
               variant="secondary"
             />
+          </Row>
+        </Card>
+      ) : null}
+
+      {notificationUnreadCount > 0 ? (
+        <Card>
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <Pill label="Unread" tone="accent" />
+              <SectionTitle>Notifications</SectionTitle>
+              <Text style={styles.muted}>
+                {notificationUnreadCount === 1
+                  ? "1 unread in-app notification."
+                  : `${notificationUnreadCount} unread in-app notifications.`}
+              </Text>
+            </View>
+            <Button label="Open Notifications" onPress={() => router.push("/(tabs)/notifications")} />
           </Row>
         </Card>
       ) : null}

@@ -181,6 +181,19 @@ type NotificationPreferenceRow = {
   updated_at: string;
 };
 
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  chaburah_id: string | null;
+  type: Database["public"]["Enums"]["notification_type"];
+  title: string;
+  body: string;
+  action_route: string | null;
+  action_params: Json;
+  read_at: string | null;
+  created_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -217,6 +230,10 @@ export interface Database {
       notification_preferences: Table<
         NotificationPreferenceRow,
         Pick<NotificationPreferenceRow, "user_id"> & Partial<Omit<NotificationPreferenceRow, "user_id">>
+      >;
+      notifications: Table<
+        NotificationRow,
+        Pick<NotificationRow, "user_id" | "type" | "title" | "body"> & Partial<Omit<NotificationRow, "user_id" | "type" | "title" | "body">>
       >;
     };
     Views: Record<string, never>;
@@ -296,6 +313,26 @@ export interface Database {
         Args: { target_chaburah_id: string };
         Returns: DiscussionReadRow;
       };
+      notify_discussion_post: {
+        Args: { target_message_id: string };
+        Returns: number;
+      };
+      notify_rabbi_answer: {
+        Args: { target_question_id: string };
+        Returns: number;
+      };
+      notify_learning_file: {
+        Args: { target_file_id: string };
+        Returns: number;
+      };
+      notify_review_questions_published: {
+        Args: { target_chaburah_id: string; target_week: number };
+        Returns: number;
+      };
+      notify_join_request: {
+        Args: { target_membership_id: string };
+        Returns: number;
+      };
     };
     Enums: {
       app_role: "participant" | "local_rabbi" | "local_admin" | "global_admin";
@@ -309,6 +346,7 @@ export interface Database {
       review_question_kind: "multiple_choice" | "true_false";
       ask_rav_status: "submitted" | "answered" | "archived";
       discussion_message_status: "active" | "hidden" | "deleted";
+      notification_type: "review_questions" | "discussion_posts" | "rabbi_answers" | "uploads" | "join_requests" | "system";
     };
     CompositeTypes: Record<string, never>;
   };

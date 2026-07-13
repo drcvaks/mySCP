@@ -185,6 +185,9 @@ export default function RabbiHubScreen() {
       setMessage(error.message);
       return;
     }
+    await supabase.rpc("notify_rabbi_answer", {
+      target_question_id: questionId
+    });
     setAnswer("");
     setActiveQuestionId(null);
     setMessage("Answer saved.");
@@ -357,6 +360,10 @@ export default function RabbiHubScreen() {
       setMessage(error.message);
       return;
     }
+    await supabase.rpc("notify_review_questions_published", {
+      target_chaburah_id: managedChaburahId,
+      target_week: buildWeek
+    });
     setMessage(`${data ?? 0} staged question${data === 1 ? "" : "s"} published for Week ${buildWeek}.`);
     await refresh();
   }

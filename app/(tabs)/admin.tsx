@@ -297,6 +297,11 @@ export default function AdminScreen() {
     }
 
     setSaving(false);
+    if (!wasEditing && fileResult.data?.id) {
+      await supabase.rpc("notify_learning_file", {
+        target_file_id: fileResult.data.id
+      });
+    }
     resetFileForm();
     setMessage(wasEditing ? "File updated." : filePublishMode === "upload" ? "File uploaded." : "File published.");
     await refresh();

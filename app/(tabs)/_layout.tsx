@@ -17,6 +17,7 @@ const iconMap = {
   "rabbi-hub": "library-outline",
   admin: "settings-outline",
   "global-admin": "globe-outline",
+  notifications: "notifications-outline",
   profile: "person-outline",
   settings: "options-outline"
 } as const;
@@ -117,6 +118,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{ title: "Profile", tabBarIcon: tabIcon("profile"), href: showProfile && !compactPhoneNav ? undefined : null }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{ title: "Notifications", tabBarIcon: tabIcon("notifications"), href: compactPhoneNav ? null : undefined }}
       />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: tabIcon("settings"), href: compactPhoneNav ? null : undefined }} />
     </Tabs>

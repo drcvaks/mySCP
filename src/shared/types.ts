@@ -4,6 +4,7 @@ export type Visibility = "everyone" | "chaburah";
 export type FileCoverage = "week" | "bechina_review" | "entire_zman";
 export type ReviewPublicationStatus = "draft" | "published" | "archived";
 export type DiscussionMessageStatus = "active" | "hidden" | "deleted";
+export type NotificationType = "review_questions" | "discussion_posts" | "rabbi_answers" | "uploads" | "join_requests" | "system";
 
 export interface UserProfile {
   id: string;
@@ -124,6 +125,19 @@ export interface DiscussionMessage {
   status: DiscussionMessageStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  chaburahId?: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  actionRoute?: string;
+  actionParams: Record<string, string>;
+  readAt?: string;
+  createdAt: string;
 }
 
 export interface ReviewSession {
