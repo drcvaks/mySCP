@@ -55,6 +55,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - After staging a question from the form or library, Rabbi Hub scrolls back to the Staged Questions tray.
 - Simplified Rabbi Hub Model Questions to a single Stage All Model Questions action and moved individual model browsing into the Public Question Library with an All/Model filter.
 - Made Rabbi Hub Staged Questions internally scrollable while keeping the Publish Week button visible below the tray.
+- Added Notifications screen Unread/All filters and clearer empty states while continuing to load only the latest 50 notification rows.
 - Wired existing app actions to call the notification generators after successful saves/publishes.
 - Moved My Chaburah Announcements directly under the chaburah information card.
 - Added a compact My Chaburah index with jump links for Announcements, Discussion, Members, Files, Review, and Ask Rav when available.
@@ -496,6 +497,8 @@ Primary file:
 - Checkpoint 6 Rabbi Hub model library filter `expo-doctor` passed all 18 checks.
 - Checkpoint 6 Rabbi Hub staged tray scroll TypeScript validation passed.
 - Checkpoint 6 Rabbi Hub staged tray scroll `expo-doctor` passed all 18 checks.
+- Checkpoint 6 notification inbox filters TypeScript validation passed.
+- Checkpoint 6 notification inbox filters `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 

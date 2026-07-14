@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { Button, Card, FilterChip, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { NotificationItem } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
 
+type NotificationFilter = "unread" | "all";
+
 export default function NotificationsScreen() {
   const router = useRouter();
+  const [filter, setFilter] = useState<NotificationFilter>("unread");
   const {
     loading,
     markAllNotificationsRead,
@@ -14,6 +18,7 @@ export default function NotificationsScreen() {
     notifications,
     refresh
   } = useAppState();
+  const visibleNotifications = filter === "unread" ? notifications.filter((notification) => !notification.readAt) : notifications;
 
   async function openNotification(notification: NotificationItem) {
     if (!notification.readAt) await markNotificationRead(notification.id);
@@ -31,23 +36,31 @@ export default function NotificationsScreen() {
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>In-App Notifications</SectionTitle>
-            <Text style={styles.muted}>Review app updates and mark them read.</Text>
+            <Text style={styles.muted}>Review recent app updates and mark them read. The inbox shows the latest 50 notifications.</Text>
           </View>
           <Pill label={`${notificationUnreadCount} unread`} tone={notificationUnreadCount ? "accent" : "success"} />
         </Row>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <FilterChip label={`Unread (${notificationUnreadCount})`} onPress={() => setFilter("unread")} selected={filter === "unread"} />
+          <FilterChip label={`All (${notifications.length})`} onPress={() => setFilter("all")} selected={filter === "all"} />
+        </View>
         {notificationUnreadCount > 0 ? (
           <Button label="Mark All Read" onPress={markAllNotificationsRead} />
         ) : null}
       </Card>
 
-      {notifications.length === 0 ? (
+      {visibleNotifications.length === 0 ? (
         <Card>
-          <SectionTitle>No Notifications</SectionTitle>
-          <Text style={styles.muted}>You do not have any in-app notifications yet.</Text>
+          <SectionTitle>{filter === "unread" ? "No Unread Notifications" : "No Notifications"}</SectionTitle>
+          <Text style={styles.muted}>
+            {filter === "unread"
+              ? "You are caught up. Switch to All to see recent read notifications."
+              : "You do not have any in-app notifications yet."}
+          </Text>
         </Card>
       ) : null}
 
-      {notifications.map((notification) => (
+      {visibleNotifications.map((notification) => (
         <Card key={notification.id}>
           <Row>
             <View style={{ flex: 1, minWidth: 220 }}>
