@@ -13,6 +13,7 @@ import {
   ReviewQuestion,
   ReviewSession
 } from "../shared/types";
+import { fallbackCurrentReviewWeek } from "../shared/reviewWeeks";
 import { useAuthState } from "./AuthState";
 
 interface ReviewFeedback {
@@ -42,7 +43,9 @@ interface AppStateValue {
   discussionUnreadCount: number;
   notifications: NotificationItem[];
   notificationUnreadCount: number;
+  currentReviewWeek: number;
   refresh: () => Promise<void>;
+  updateCurrentReviewWeek: (week: number) => Promise<string | null>;
   joinChaburah: (chaburahId: string) => Promise<string | null>;
   reviewMembershipRequest: (membershipId: string, approve: boolean) => Promise<string | null>;
   updateMembershipStatus: (
@@ -77,6 +80,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [discussionUnreadCount, setDiscussionUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [currentReviewWeek, setCurrentReviewWeek] = useState(fallbackCurrentReviewWeek);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +99,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setDiscussionUnreadCount(0);
       setNotifications([]);
       setNotificationUnreadCount(0);
+      setCurrentReviewWeek(fallbackCurrentReviewWeek);
       setHydrated(true);
       return;
     }
@@ -115,6 +120,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         discussionResult,
         discussionUnreadResult,
         notificationsResult,
+        appSettingsResult,
         memberDirectoryResult
       ] = await Promise.all([
         supabase.from("chaburos").select("*").order("name"),
@@ -132,6 +138,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             })
           : Promise.resolve({ data: 0, error: null }),
         supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(50),
+        supabase.from("app_settings").select("current_review_week").eq("id", true).maybeSingle(),
         profile?.chaburahId
           ? supabase.rpc("list_chaburah_member_directory", {
               target_chaburah_id: profile.chaburahId
@@ -151,6 +158,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         discussionResult.error,
         discussionUnreadResult.error,
         notificationsResult.error,
+        appSettingsResult.error?.code === "42P01" ? null : appSettingsResult.error,
         memberDirectoryResult.error
       ].find(Boolean);
 
@@ -251,6 +259,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }));
       setNotifications(mappedNotifications);
       setNotificationUnreadCount(mappedNotifications.filter((notification) => !notification.readAt).length);
+      setCurrentReviewWeek(appSettingsResult.data?.current_review_week ?? fallbackCurrentReviewWeek);
 
       setAnnouncements(
         (announcementsResult.data ?? []).map((row) => ({
@@ -363,7 +372,24 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       discussionUnreadCount,
       notifications,
       notificationUnreadCount,
+      currentReviewWeek,
       refresh,
+      updateCurrentReviewWeek: async (week) => {
+        if (!Number.isInteger(week) || week < 1 || week > 52) {
+          return "Current review week must be between 1 and 52.";
+        }
+        const { error: settingsError } = await supabase
+          .from("app_settings")
+          .update({
+            current_review_week: week,
+            updated_by: session?.user.id ?? null
+          })
+          .eq("id", true);
+        if (settingsError) return settingsError.message;
+        setCurrentReviewWeek(week);
+        await refresh();
+        return null;
+      },
       joinChaburah: async (chaburahId) => {
         const { data, error: joinError } = await supabase.rpc("join_chaburah", {
           target_chaburah_id: chaburahId
@@ -562,6 +588,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       memberships,
       notifications,
       notificationUnreadCount,
+      currentReviewWeek,
       profile?.chaburahId,
       refresh,
       refreshProfile,

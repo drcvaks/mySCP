@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import {
   Button,
@@ -17,10 +17,9 @@ import {
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
-import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { ReviewQuestion, Visibility } from "../../src/shared/types";
 
-const reviewWeeks = buildReviewWeeks();
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
 type LibraryWeek = number | "all";
@@ -29,12 +28,12 @@ type LibraryKind = "all" | "model";
 export default function RabbiHubScreen() {
   const { profile } = useAuthState();
   const scrollRef = useRef<ScrollView | null>(null);
-  const { askRavQuestions, chaburos, loading, memberships, refresh, reviewQuestions, selectedChaburahId } = useAppState();
+  const { askRavQuestions, chaburos, currentReviewWeek, loading, memberships, refresh, reviewQuestions, selectedChaburahId } = useAppState();
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
-  const [buildWeek, setBuildWeek] = useState(currentReviewWeek);
-  const [libraryWeek, setLibraryWeek] = useState<LibraryWeek>(currentReviewWeek);
+  const [buildWeek, setBuildWeek] = useState(fallbackCurrentReviewWeek);
+  const [libraryWeek, setLibraryWeek] = useState<LibraryWeek>(fallbackCurrentReviewWeek);
   const [libraryKind, setLibraryKind] = useState<LibraryKind>("all");
   const [questionKind, setQuestionKind] = useState<QuestionKind>("true_false");
   const [prompt, setPrompt] = useState("");
@@ -48,6 +47,7 @@ export default function RabbiHubScreen() {
   const [stagedQuestionsOffset, setStagedQuestionsOffset] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const reviewWeeks = buildReviewWeeks(currentReviewWeek);
 
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const managedChaburah = chaburos.find((chaburah) => chaburah.id === managedChaburahId);
@@ -113,6 +113,11 @@ export default function RabbiHubScreen() {
       : multipleChoiceOptions
           .slice(0, optionCount)
           .map((_choice, index) => `Option ${String.fromCharCode(65 + index)}`);
+
+  useEffect(() => {
+    setBuildWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
+    setLibraryWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
+  }, [currentReviewWeek]);
 
   function updateOptionCount(count: number) {
     setOptionCount(count);

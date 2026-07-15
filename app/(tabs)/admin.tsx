@@ -19,7 +19,7 @@ import {
   styles
 } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLabel } from "../../src/shared/format";
-import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { formatSchedule, meridiems, parseSchedule, weekDays } from "../../src/shared/schedule";
 import { ChaburahMembership, FileCoverage, FileType, LearningFile, Visibility } from "../../src/shared/types";
 import { supabase } from "../../src/lib/supabase";
@@ -33,7 +33,6 @@ type FilePublishMode = "upload" | "link";
 type AdminSection = "chaburah" | "leadership" | "settings" | "requests" | "members" | "publish" | "files";
 const memberStatusFilters: MemberStatusFilter[] = ["all", "active", "pending", "suspended", "left"];
 const fileCoverages: FileCoverage[] = ["week", "bechina_review", "entire_zman"];
-const fileWeekSelections = buildReviewWeeks();
 const adminSections: AdminSection[] = ["chaburah", "leadership", "settings", "requests", "members", "publish", "files"];
 
 export default function AdminScreen() {
@@ -43,6 +42,7 @@ export default function AdminScreen() {
   const scrolledToTargetRef = useRef("");
   const {
     chaburos,
+    currentReviewWeek,
     learningFiles,
     loading,
     memberships,
@@ -69,7 +69,7 @@ export default function AdminScreen() {
   const [fileTitle, setFileTitle] = useState("");
   const [fileTopic, setFileTopic] = useState("");
   const [fileCoverage, setFileCoverage] = useState<FileCoverage>("week");
-  const [fileWeek, setFileWeek] = useState(currentReviewWeek);
+  const [fileWeek, setFileWeek] = useState(fallbackCurrentReviewWeek);
   const [fileUrl, setFileUrl] = useState("");
   const [fileDescription, setFileDescription] = useState("");
   const [fileType, setFileType] = useState<FileType>("source_sheet");
@@ -86,6 +86,11 @@ export default function AdminScreen() {
   const [message, setMessage] = useState("");
   const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
   const targetSection = isAdminSection(requestedSection) ? requestedSection : undefined;
+  const fileWeekSelections = buildReviewWeeks(currentReviewWeek);
+
+  useEffect(() => {
+    setFileWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
+  }, [currentReviewWeek]);
 
   useEffect(() => {
     if (!isGlobalAdmin || adminChaburahId || chaburos.length === 0) return;

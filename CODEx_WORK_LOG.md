@@ -19,13 +19,27 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Used the app's configured Expo scheme redirect for password reset links.
 - Updated `supabase/pilot_cleanup.sql` for the current schema so pilot cleanup removes disposable notifications, discussion messages/read state, Ask Rav questions, review content/history, learning file metadata, and announcements while keeping users/chaburos/memberships/settings intact.
 - Added a Supabase SQL import script for the Weeks 1-7 public review question bank generated from the CSV file, including public-library/model flags and protected answer keys.
+- Added a Supabase SQL import script for the Weeks 8-12 public review question bank generated from the revised tab-delimited CSV file, leaving Weeks 1-7 untouched.
+- Added Supabase-backed `app_settings.current_review_week` with Global Admin controls so the current review week can be changed without a code edit.
+- Updated Dashboard, Review, Files, Admin uploads, and Rabbi Hub to use the live current week setting with a local fallback.
 
 Primary files:
 
 - `app/auth.tsx`
+- `app/(tabs)/global-admin.tsx`
+- `app/(tabs)/dashboard.tsx`
+- `app/(tabs)/review.tsx`
+- `app/(tabs)/files.tsx`
+- `app/(tabs)/admin.tsx`
+- `app/(tabs)/rabbi-hub.tsx`
+- `src/state/AppState.tsx`
+- `src/shared/reviewWeeks.ts`
+- `src/lib/database.types.ts`
 - `src/state/AuthState.tsx`
+- `supabase/migrations/202607150001_app_settings_current_review_week.sql`
 - `supabase/pilot_cleanup.sql`
 - `supabase/import_public_review_questions_weeks_1_7.sql`
+- `supabase/import_public_review_questions_weeks_8_12.sql`
 
 ### Checkpoint 6 Chaburah Communication
 
@@ -518,6 +532,8 @@ Primary file:
 - Checkpoint 6 notification inbox filters `expo-doctor` passed all 18 checks.
 - Checkpoint 7 password reset flow TypeScript validation passed.
 - Checkpoint 7 password reset flow `expo-doctor` passed all 18 checks.
+- Checkpoint 7 current review week setting TypeScript validation passed.
+- Checkpoint 7 current review week setting `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 

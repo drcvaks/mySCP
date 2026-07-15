@@ -2,7 +2,6 @@ import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
-import { currentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
@@ -13,6 +12,7 @@ export default function DashboardScreen() {
     announcements,
     askRavQuestions,
     chaburos,
+    currentReviewWeek,
     learningFiles,
     loading,
     memberships,

@@ -196,9 +196,21 @@ type NotificationRow = {
   created_at: string;
 };
 
+type AppSettingsRow = {
+  id: boolean;
+  current_review_week: number;
+  updated_by: string | null;
+  updated_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
+      app_settings: Table<
+        AppSettingsRow,
+        Partial<AppSettingsRow>,
+        Partial<Pick<AppSettingsRow, "current_review_week" | "updated_by">>
+      >;
       profiles: Table<
         ProfileRow,
         Omit<ProfileRow, "created_at" | "updated_at" | "role"> & {

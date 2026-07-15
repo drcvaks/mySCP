@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import {
   Button,
@@ -14,7 +14,7 @@ import {
   styles
 } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
-import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAppState } from "../../src/state/AppState";
 
 interface Feedback {
@@ -23,7 +23,7 @@ interface Feedback {
 }
 
 export default function ReviewScreen() {
-  const [selectedWeek, setSelectedWeek] = useState<number | "all">(1);
+  const [selectedWeek, setSelectedWeek] = useState<number | "all">(fallbackCurrentReviewWeek);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [feedback, setFeedback] = useState<Record<string, Feedback>>({});
@@ -32,6 +32,7 @@ export default function ReviewScreen() {
   const [message, setMessage] = useState("");
   const {
     checkReviewAnswer,
+    currentReviewWeek,
     loading,
     refresh,
     reviewQuestions,
@@ -63,8 +64,12 @@ export default function ReviewScreen() {
     : 0;
   const weeks = useMemo(() => {
     const maxQuestionWeek = reviewQuestions.reduce((max, question) => Math.max(max, question.week), 0);
-    return buildReviewWeeks(maxQuestionWeek);
-  }, [reviewQuestions]);
+    return buildReviewWeeks(currentReviewWeek, maxQuestionWeek);
+  }, [currentReviewWeek, reviewQuestions]);
+
+  useEffect(() => {
+    setSelectedWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
+  }, [currentReviewWeek]);
 
   function reset(week: number | "all" = selectedWeek) {
     setSelectedWeek(week);

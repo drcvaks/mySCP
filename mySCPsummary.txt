@@ -66,6 +66,7 @@ Global Admin:
 - has `profiles.role = 'global_admin'`
 - can create/activate/deactivate chaburos
 - can search chaburos in Global Admin
+- can update the app-wide current review week from Global Admin
 - can promote another global admin or reset a user to participant
 - can select which chaburah the Admin screen is managing
 - can assign local rabbis/admins to a selected chaburah by email
@@ -126,7 +127,8 @@ Files:
 
 Review:
 - week selector is generated from current week plus future range and from actual published question weeks
-- current review week is stored in `src/shared/reviewWeeks.ts`
+- current review week is stored in Supabase `app_settings.current_review_week`
+- `src/shared/reviewWeeks.ts` only provides the fallback week and week-list helper
 - questions are loaded from Supabase
 - answer checking uses RPC so answer keys are not exposed
 - review sessions/results are saved to Supabase
@@ -221,9 +223,10 @@ Global Admin:
 - structured schedule and contact email on create
 - search chaburos before activating/deactivating
 - active/inactive badges
+- set app-wide current review week
 - promote global admin
 - reset user to participant
-- live overview currently only shows configured chaburos count
+- live overview shows configured chaburos count and current review week
 - confusing review-session analytics count was removed until better analytics exists
 
 Profile:
@@ -330,6 +333,7 @@ supabase/migrations/202607120003_in_app_notifications.sql
 supabase/migrations/202607120004_notification_generators.sql
 supabase/migrations/202607130001_add_ask_rav_notification_type.sql
 supabase/migrations/202607130002_ask_rav_question_notifications.sql
+supabase/migrations/202607150001_app_settings_current_review_week.sql
 
 For a fully clean test project:
 1. run `supabase/reset_app_schema.sql`
@@ -418,6 +422,7 @@ Checkpoint 7: Pilot readiness and production hardening
 - password reset email request uses Supabase Auth
 - auth state handles Supabase password-recovery deep links
 - auth screen shows a new-password form after a recovery link opens the app
+- app-wide current review week is managed by Global Admin through Supabase `app_settings`
 - still needs full Supabase URL/deep-link configuration testing on web, Android, and iOS
 
 What Still Needs To Be Done

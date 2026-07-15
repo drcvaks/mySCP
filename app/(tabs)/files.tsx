@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import {
   Button,
@@ -13,7 +13,7 @@ import {
   styles
 } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLabel } from "../../src/shared/format";
-import { buildReviewWeeks, currentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { FileCoverage, FileType, Visibility } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
@@ -28,10 +28,14 @@ export default function FilesScreen() {
   const [selectedType, setSelectedType] = useState<FileType | "all">("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
   const [selectedCoverage, setSelectedCoverage] = useState<FileCoverage | "all">("all");
-  const [selectedWeek, setSelectedWeek] = useState(currentReviewWeek);
-  const { chaburos, learningFiles, loading, refresh, selectedChaburahId } = useAppState();
+  const [selectedWeek, setSelectedWeek] = useState(fallbackCurrentReviewWeek);
+  const { chaburos, currentReviewWeek, learningFiles, loading, refresh, selectedChaburahId } = useAppState();
   const { profile } = useAuthState();
   const isGlobalAdmin = profile?.role === "global_admin";
+
+  useEffect(() => {
+    setSelectedWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
+  }, [currentReviewWeek]);
 
   const visibleFiles = useMemo(
     () =>
@@ -43,6 +47,7 @@ export default function FilesScreen() {
   const fileWeeks = useMemo(
     () =>
       buildReviewWeeks(
+        currentReviewWeek,
         Math.max(
           0,
           ...visibleFiles
@@ -50,7 +55,7 @@ export default function FilesScreen() {
             .map((file) => file.week ?? 0)
         )
       ),
-    [visibleFiles]
+    [currentReviewWeek, visibleFiles]
   );
 
   const filteredFiles = useMemo(() => {

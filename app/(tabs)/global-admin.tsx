@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import {
   Button,
@@ -35,7 +35,7 @@ function slugify(value: string) {
 
 export default function GlobalAdminScreen() {
   const { profile, refreshProfile } = useAuthState();
-  const { chaburos, loading, refresh } = useAppState();
+  const { chaburos, currentReviewWeek, loading, refresh, updateCurrentReviewWeek } = useAppState();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -49,6 +49,7 @@ export default function GlobalAdminScreen() {
   const [description, setDescription] = useState("");
   const [roleEmail, setRoleEmail] = useState("");
   const [targetRole, setTargetRole] = useState<UserRole>("participant");
+  const [reviewWeekInput, setReviewWeekInput] = useState(String(currentReviewWeek));
   const [chaburahSearch, setChaburahSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -60,6 +61,10 @@ export default function GlobalAdminScreen() {
       .toLowerCase()
       .includes(query);
   });
+
+  useEffect(() => {
+    setReviewWeekInput(String(currentReviewWeek));
+  }, [currentReviewWeek]);
 
   async function createChaburah() {
     if (!profile?.id || !name.trim() || !city.trim()) {
@@ -148,6 +153,23 @@ export default function GlobalAdminScreen() {
     if (targetProfile.id === profile?.id) await refreshProfile();
   }
 
+  async function saveCurrentReviewWeek() {
+    const parsedWeek = Number(reviewWeekInput);
+    if (!Number.isInteger(parsedWeek) || parsedWeek < 1 || parsedWeek > 52) {
+      setMessage("Current review week must be a number from 1 to 52.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    const result = await updateCurrentReviewWeek(parsedWeek);
+    setSaving(false);
+    if (result) {
+      setMessage(result);
+      return;
+    }
+    setMessage(`Current review week updated to Week ${parsedWeek}.`);
+  }
+
   return (
     <Screen title="Global Admin" eyebrow="SCP headquarters" onRefresh={refresh} refreshing={loading}>
       <Card>
@@ -156,13 +178,16 @@ export default function GlobalAdminScreen() {
             <SectionTitle>Leadership Console</SectionTitle>
             <Text style={styles.muted}>Create chaburos, manage active status, and manage global app access.</Text>
           </View>
-          <Pill label={`${chaburos.length} chaburos`} tone="primary" />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <Pill label={`Week ${currentReviewWeek}`} tone="accent" />
+            <Pill label={`${chaburos.length} chaburos`} tone="primary" />
+          </View>
         </Row>
       </Card>
 
       <StatusBanner
         message={message}
-        tone={message.includes("created") || message.includes("activated") || message.includes("deactivated") || message.includes("now") ? "success" : "error"}
+        tone={message.includes("created") || message.includes("activated") || message.includes("deactivated") || message.includes("updated") || message.includes("now") ? "success" : "error"}
       />
 
       <Card>
@@ -172,7 +197,30 @@ export default function GlobalAdminScreen() {
             <Text style={styles.statNumber}>{chaburos.length}</Text>
             <MetaText>Configured chaburos</MetaText>
           </View>
+          <View style={{ minWidth: 160 }}>
+            <Text style={styles.statNumber}>{currentReviewWeek}</Text>
+            <MetaText>Current review week</MetaText>
+          </View>
         </Row>
+      </Card>
+
+      <Card>
+        <SectionTitle>Current Review Week</SectionTitle>
+        <Text style={styles.muted}>This controls the default week across Review, Rabbi Hub, Files, Admin uploads, and Dashboard prompts.</Text>
+        <Row>
+          <View style={{ flex: 1, minWidth: 160 }}>
+            <FormInput
+              keyboardType="numeric"
+              onChangeText={setReviewWeekInput}
+              placeholder="Current week"
+              value={reviewWeekInput}
+            />
+          </View>
+          <View style={{ minWidth: 140 }}>
+            <Button disabled={saving} label={saving ? "Saving..." : "Save Week"} onPress={saveCurrentReviewWeek} />
+          </View>
+        </Row>
+        <MetaText>Current setting: Week {currentReviewWeek}</MetaText>
       </Card>
 
       <Card>
