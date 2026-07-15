@@ -88,7 +88,14 @@ export default function RabbiHubScreen() {
       question.publicationStatus === "published" &&
       (libraryWeek === "all" || question.week === libraryWeek)
   );
-  const modelLibraryQuestions = publicLibraryQuestions.filter((question) => question.isModelQuestion);
+  const buildWeekModelQuestions = reviewQuestions.filter(
+    (question) =>
+      question.isLibraryQuestion &&
+      question.enabled &&
+      question.publicationStatus === "published" &&
+      question.isModelQuestion &&
+      question.week === buildWeek
+  );
   const visibleLibraryQuestions = publicLibraryQuestions.filter(
     (question) => libraryKind === "all" || question.isModelQuestion
   );
@@ -329,15 +336,15 @@ export default function RabbiHubScreen() {
       setMessage("Choose or join a chaburah before using model questions.");
       return;
     }
-    if (modelLibraryQuestions.length === 0) {
-      setMessage("No model questions are available for this library selection.");
+    if (buildWeekModelQuestions.length === 0) {
+      setMessage(`No model questions are available for Week ${buildWeek}.`);
       return;
     }
 
     setSaving(true);
     setMessage("");
     let copiedCount = 0;
-    for (const question of modelLibraryQuestions) {
+    for (const question of buildWeekModelQuestions) {
       const { error } = await supabase.rpc("clone_review_question", {
         source_review_question_id: question.id,
         target_chaburah_id: managedChaburahId,
@@ -717,15 +724,15 @@ export default function RabbiHubScreen() {
           <View style={{ flex: 1, minWidth: 220 }}>
             <Text style={styles.muted}>Quick-stage the full model set into Week {buildWeek}. Browse individual model questions in the Public Question Library below.</Text>
           </View>
-          <Pill label={`${modelLibraryQuestions.length} model`} tone={modelLibraryQuestions.length ? "accent" : "neutral"} />
+          <Pill label={`${buildWeekModelQuestions.length} model`} tone={buildWeekModelQuestions.length ? "accent" : "neutral"} />
         </Row>
         <Button
-          disabled={saving || !managedChaburahId || modelLibraryQuestions.length === 0}
-          label={saving ? "Staging..." : `Stage All Model Questions (${modelLibraryQuestions.length})`}
+          disabled={saving || !managedChaburahId || buildWeekModelQuestions.length === 0}
+          label={saving ? "Staging..." : `Stage All Model Questions (${buildWeekModelQuestions.length})`}
           onPress={cloneAllModelQuestions}
         />
-        {modelLibraryQuestions.length === 0 ? (
-          <Text style={styles.muted}>No model questions match this library week yet.</Text>
+        {buildWeekModelQuestions.length === 0 ? (
+          <Text style={styles.muted}>No model questions match Week {buildWeek} yet.</Text>
         ) : null}
       </Card>
 

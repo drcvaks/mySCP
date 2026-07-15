@@ -22,6 +22,8 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added a Supabase SQL import script for the Weeks 8-12 public review question bank generated from the revised tab-delimited CSV file, leaving Weeks 1-7 untouched.
 - Added Supabase-backed `app_settings.current_review_week` with Global Admin controls so the current review week can be changed without a code edit.
 - Updated Dashboard, Review, Files, Admin uploads, and Rabbi Hub to use the live current week setting with a local fallback.
+- Fixed Rabbi Hub Stage All Model Questions so it uses model questions from the selected Build Questions week, independent of the Public Question Library browse filter.
+- Fixed participant Review and Dashboard review counts to exclude public-library source questions; only Rabbi-published chaburah copies count as available review questions.
 
 Primary files:
 
@@ -534,6 +536,10 @@ Primary file:
 - Checkpoint 7 password reset flow `expo-doctor` passed all 18 checks.
 - Checkpoint 7 current review week setting TypeScript validation passed.
 - Checkpoint 7 current review week setting `expo-doctor` passed all 18 checks.
+- Checkpoint 7 Rabbi Hub build-week model staging TypeScript validation passed.
+- Checkpoint 7 Rabbi Hub build-week model staging `expo-doctor` reported an unrelated Expo patch mismatch: installed `expo` 54.0.35, expected `~54.0.36`.
+- Checkpoint 7 participant review-count filtering TypeScript validation passed.
+- Checkpoint 7 participant review-count filtering `expo-doctor` reported the same unrelated Expo patch mismatch: installed `expo` 54.0.35, expected `~54.0.36`.
 
 ## Still To Do
 

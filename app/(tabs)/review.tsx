@@ -46,6 +46,7 @@ export default function ReviewScreen() {
         (question) =>
           question.enabled &&
           question.publicationStatus === "published" &&
+          !question.isLibraryQuestion &&
           (selectedWeek === "all" || question.week === selectedWeek)
       ),
     [reviewQuestions, selectedWeek]
@@ -176,13 +177,17 @@ export default function ReviewScreen() {
         </Row>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <FilterChip
-            label={`All (${reviewQuestions.filter((question) => question.enabled && question.publicationStatus === "published").length})`}
+            label={`All (${reviewQuestions.filter((question) => question.enabled && question.publicationStatus === "published" && !question.isLibraryQuestion).length})`}
             onPress={() => reset("all")}
             selected={selectedWeek === "all"}
           />
           {weeks.map((week) => {
             const count = reviewQuestions.filter(
-              (question) => question.enabled && question.publicationStatus === "published" && question.week === week
+              (question) =>
+                question.enabled &&
+                question.publicationStatus === "published" &&
+                !question.isLibraryQuestion &&
+                question.week === week
             ).length;
             return (
               <FilterChip

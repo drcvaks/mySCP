@@ -34,6 +34,7 @@ export default function DashboardScreen() {
     (question) =>
       question.enabled &&
       question.publicationStatus === "published" &&
+      !question.isLibraryQuestion &&
       question.week <= currentReviewWeek + 3 &&
       (question.visibility === "everyone" || question.chaburahId === selectedChaburahId)
   );
