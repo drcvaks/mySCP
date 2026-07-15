@@ -43,6 +43,7 @@ Product Roles
 -------------
 Participant:
 - signs in/signs up with first name, last name, optional city, email, and password
+- can request a password reset email from the sign-in screen
 - joins or requests to join one chaburah
 - views Dashboard, My Chaburah, Files, Review, Directory, Ask Rav, Profile, Settings
 - submits Ask the Rav questions
@@ -346,7 +347,8 @@ Known Supabase Setup Notes
 --------------------------
 - If a verification email redirects to `http://localhost:3000`, update Supabase Authentication URL Configuration.
 - During development, email confirmation can be disabled or users can be manually confirmed.
-- Production should configure proper web URL and/or mobile deep links.
+- Production should configure proper web URL and/or mobile deep links for email confirmation and password reset.
+- Password reset requests use Supabase Auth and the app's Expo scheme redirect; the redirect URL must be allow-listed in Supabase Auth URL Configuration.
 - If Supabase says an RPC cannot be found in schema cache after running SQL, try:
   notify pgrst, 'reload schema';
 
@@ -409,6 +411,14 @@ Checkpoint 5: Community usability and file upload
 - External URL publishing remains available
 - Main Supabase-backed screens have a header refresh button for manual cross-device sync
 - Checkpoint 5 has `CHECKPOINT_5_QA.md` and `supabase/pilot_cleanup.sql` for tester-readiness closeout
+
+Checkpoint 7: Pilot readiness and production hardening
+- started with auth hardening
+- login screen includes Forgot Password
+- password reset email request uses Supabase Auth
+- auth state handles Supabase password-recovery deep links
+- auth screen shows a new-password form after a recovery link opens the app
+- still needs full Supabase URL/deep-link configuration testing on web, Android, and iOS
 
 What Still Needs To Be Done
 ---------------------------

@@ -4,11 +4,28 @@ Last updated: July 5, 2026
 
 ## Project State
 
-`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 5 is feature-complete, and Checkpoint 6 has started with chaburah discussion.
+`mySCPcodex` is an Expo SDK 54 and Expo Router application using TypeScript, Supabase Auth, Supabase database reads/writes, protected review RPCs, and role-aware navigation. Checkpoint 6 is well underway, and Checkpoint 7 has started with pilot-readiness/auth hardening.
 
 The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used only as a visual reference.
 
 ## Changes Completed
+
+### Checkpoint 7 Pilot Readiness and Auth Hardening
+
+- Added a Forgot Password action to the sign-in screen.
+- Added `resetPassword` to `AuthStateProvider` using Supabase Auth password-reset email delivery.
+- Added auth deep-link handling for Supabase recovery URLs.
+- Added a reset-password form that lets users save a new password after opening a recovery link.
+- Used the app's configured Expo scheme redirect for password reset links.
+- Updated `supabase/pilot_cleanup.sql` for the current schema so pilot cleanup removes disposable notifications, discussion messages/read state, Ask Rav questions, review content/history, learning file metadata, and announcements while keeping users/chaburos/memberships/settings intact.
+- Added a Supabase SQL import script for the Weeks 1-7 public review question bank generated from the CSV file, including public-library/model flags and protected answer keys.
+
+Primary files:
+
+- `app/auth.tsx`
+- `src/state/AuthState.tsx`
+- `supabase/pilot_cleanup.sql`
+- `supabase/import_public_review_questions_weeks_1_7.sql`
 
 ### Checkpoint 6 Chaburah Communication
 
@@ -499,6 +516,8 @@ Primary file:
 - Checkpoint 6 Rabbi Hub staged tray scroll `expo-doctor` passed all 18 checks.
 - Checkpoint 6 notification inbox filters TypeScript validation passed.
 - Checkpoint 6 notification inbox filters `expo-doctor` passed all 18 checks.
+- Checkpoint 7 password reset flow TypeScript validation passed.
+- Checkpoint 7 password reset flow `expo-doctor` passed all 18 checks.
 
 ## Still To Do
 
