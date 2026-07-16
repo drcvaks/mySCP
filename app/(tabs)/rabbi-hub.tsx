@@ -19,6 +19,7 @@ import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { ReviewQuestion, Visibility } from "../../src/shared/types";
+import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
@@ -29,6 +30,7 @@ export default function RabbiHubScreen() {
   const { profile } = useAuthState();
   const scrollRef = useRef<ScrollView | null>(null);
   const { askRavQuestions, chaburos, currentReviewWeek, loading, memberships, refresh, reviewQuestions, selectedChaburahId } = useAppState();
+  useRefreshOnFocus(refresh);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);

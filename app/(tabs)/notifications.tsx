@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, FilterChip, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { NotificationItem } from "../../src/shared/types";
+import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAppState } from "../../src/state/AppState";
 
 type NotificationFilter = "unread" | "all";
@@ -18,6 +19,7 @@ export default function NotificationsScreen() {
     notifications,
     refresh
   } = useAppState();
+  useRefreshOnFocus(refresh);
   const visibleNotifications = filter === "unread" ? notifications.filter((notification) => !notification.readAt) : notifications;
 
   async function openNotification(notification: NotificationItem) {

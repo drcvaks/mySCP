@@ -2,6 +2,7 @@ import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
+import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
@@ -23,6 +24,7 @@ export default function DashboardScreen() {
     notificationUnreadCount,
     selectedChaburahId
   } = useAppState();
+  useRefreshOnFocus(refresh);
   const currentChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const visibleFiles = learningFiles.filter((file) => file.visibility === "everyone" || file.chaburahId === selectedChaburahId);
   const latestUploadedFile = visibleFiles[0];
@@ -38,13 +40,7 @@ export default function DashboardScreen() {
       question.week <= currentReviewWeek + 3 &&
       (question.visibility === "everyone" || question.chaburahId === selectedChaburahId)
   );
-  const cumulativeReview = reviewSessions.reduce(
-    (total, session) => ({
-      correct: total.correct + session.correctAnswers,
-      questions: total.questions + session.totalQuestions
-    }),
-    { correct: 0, questions: 0 }
-  );
+  const cumulativeReview = summarizeCumulativeReview(reviewSessions);
   const cumulativeReviewScore =
     cumulativeReview.questions > 0
       ? Math.round((cumulativeReview.correct / cumulativeReview.questions) * 100)
@@ -237,4 +233,56 @@ export default function DashboardScreen() {
       ) : null}
     </Screen>
   );
+}
+
+function summarizeCumulativeReview(
+  reviewSessions: {
+    week: number | "all";
+    totalQuestions: number;
+    correctAnswers: number;
+    completedAt: string;
+  }[]
+) {
+  const bestByWeek = new Map<number, { correctAnswers: number; totalQuestions: number; completedAt: string }>();
+  let bestAllWeeksSession: { correctAnswers: number; totalQuestions: number; completedAt: string } | undefined;
+
+  reviewSessions.forEach((session) => {
+    if (session.totalQuestions <= 0) return;
+    if (session.week === "all") {
+      if (!bestAllWeeksSession || isBetterReviewSession(session, bestAllWeeksSession)) {
+        bestAllWeeksSession = session;
+      }
+      return;
+    }
+
+    const currentBest = bestByWeek.get(session.week);
+    if (!currentBest || isBetterReviewSession(session, currentBest)) {
+      bestByWeek.set(session.week, session);
+    }
+  });
+
+  if (bestByWeek.size === 0 && bestAllWeeksSession) {
+    return {
+      correct: bestAllWeeksSession.correctAnswers,
+      questions: bestAllWeeksSession.totalQuestions
+    };
+  }
+
+  return Array.from(bestByWeek.values()).reduce(
+    (total, session) => ({
+      correct: total.correct + session.correctAnswers,
+      questions: total.questions + session.totalQuestions
+    }),
+    { correct: 0, questions: 0 }
+  );
+}
+
+function isBetterReviewSession(
+  candidate: { correctAnswers: number; totalQuestions: number; completedAt: string },
+  current: { correctAnswers: number; totalQuestions: number; completedAt: string }
+) {
+  const candidateScore = candidate.correctAnswers / candidate.totalQuestions;
+  const currentScore = current.correctAnswers / current.totalQuestions;
+  if (candidateScore !== currentScore) return candidateScore > currentScore;
+  return new Date(candidate.completedAt).getTime() > new Date(current.completedAt).getTime();
 }

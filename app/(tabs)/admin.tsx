@@ -22,6 +22,7 @@ import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLa
 import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { formatSchedule, meridiems, parseSchedule, weekDays } from "../../src/shared/schedule";
 import { ChaburahMembership, FileCoverage, FileType, LearningFile, Visibility } from "../../src/shared/types";
+import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
@@ -51,6 +52,7 @@ export default function AdminScreen() {
     selectedChaburahId,
     updateMembershipStatus
   } = useAppState();
+  useRefreshOnFocus(refresh);
   const [adminChaburahId, setAdminChaburahId] = useState<string | undefined>(undefined);
   const [chaburahSearch, setChaburahSearch] = useState("");
   const isGlobalAdmin = profile?.role === "global_admin";

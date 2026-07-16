@@ -31,6 +31,8 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added Supabase tables for beta feedback and per-user checklist progress with RLS and no seed data.
 - Tidied beta navigation by grouping Beta Feedback, Help / How to Use, and Tester Checklist together, adding web left-rail badges, and highlighting those entries at the top of the mobile drawer.
 - Replaced the web left-rail beta tab badges with inline right-side pills so they no longer overlap the icons and remain fully readable.
+- Fixed Dashboard Cumulative Review Score so it uses the signed-in user's review history across completed weeks instead of recent/managed review rows, using the best saved score per week.
+- Added throttled refresh-on-focus behavior for important tabs so Dashboard, My Chaburah, Files, Notifications, Admin, and Rabbi Hub quietly refresh stale data while preserving manual refresh buttons.
 
 Primary files:
 
@@ -564,6 +566,8 @@ Primary file:
 - Checkpoint 7 beta tester support `expo-doctor` reported the same unrelated Expo patch mismatch: installed `expo` 54.0.35, expected `~54.0.36`.
 - Checkpoint 7 beta navigation polish TypeScript validation passed.
 - Checkpoint 7 web beta badge alignment TypeScript validation passed.
+- Checkpoint 7 cumulative review score TypeScript validation passed.
+- Checkpoint 7 refresh-on-focus TypeScript validation passed.
 
 ## Still To Do
 

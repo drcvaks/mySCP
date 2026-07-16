@@ -15,6 +15,7 @@ import {
 import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLabel } from "../../src/shared/format";
 import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { FileCoverage, FileType, Visibility } from "../../src/shared/types";
+import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { openLearningFile } from "../../src/shared/openLearningFile";
@@ -32,6 +33,7 @@ export default function FilesScreen() {
   const { chaburos, currentReviewWeek, learningFiles, loading, refresh, selectedChaburahId } = useAppState();
   const { profile } = useAuthState();
   const isGlobalAdmin = profile?.role === "global_admin";
+  useRefreshOnFocus(refresh);
 
   useEffect(() => {
     setSelectedWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));

@@ -5,6 +5,7 @@ import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, 
 import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 import { theme } from "../../src/shared/theme";
+import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
@@ -33,6 +34,7 @@ export default function MyChaburahScreen() {
     selectedChaburahId,
     submitDiscussionMessage
   } = useAppState();
+  useRefreshOnFocus(refresh);
   const [discussionBody, setDiscussionBody] = useState("");
   const [discussionMessage, setDiscussionMessage] = useState("");
   const [postingDiscussion, setPostingDiscussion] = useState(false);

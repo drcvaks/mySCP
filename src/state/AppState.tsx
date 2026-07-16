@@ -129,7 +129,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         supabase.from("announcements").select("*").order("created_at", { ascending: false }),
         supabase.from("learning_files").select("*").order("created_at", { ascending: false }),
         supabase.from("review_questions").select("*").order("week").order("created_at"),
-        supabase.from("review_sessions").select("*").order("completed_at", { ascending: false }).limit(25),
+        supabase.from("review_sessions").select("*").eq("user_id", session.user.id).order("completed_at", { ascending: false }),
         supabase.from("ask_rav_questions").select("*").order("submitted_at", { ascending: false }),
         supabase.from("discussion_messages").select("*").order("created_at", { ascending: false }).limit(100),
         profile?.chaburahId
