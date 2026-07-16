@@ -163,6 +163,10 @@ export default function AdminScreen() {
   }
 
   function jumpToSection(section: AdminSection) {
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      document.getElementById(adminSectionDomId(section))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     const offset = sectionOffsets[section];
     if (offset === undefined) return;
     scrollRef.current?.scrollTo({ y: Math.max(offset - 12, 0), animated: true });
@@ -170,6 +174,13 @@ export default function AdminScreen() {
 
   useEffect(() => {
     if (!targetSection || scrolledToTargetRef.current === targetSection) return;
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      scrolledToTargetRef.current = targetSection;
+      requestAnimationFrame(() => {
+        document.getElementById(adminSectionDomId(targetSection))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
     const offset = sectionOffsets[targetSection];
     if (offset === undefined) return;
     scrolledToTargetRef.current = targetSection;
@@ -352,6 +363,7 @@ export default function AdminScreen() {
     setVisibility(file.visibility);
     setSelectedFile(null);
     setMessage("Editing file.");
+    requestAnimationFrame(() => jumpToSection("publish"));
   }
 
   async function restoreFileRecord(file: LearningFile) {
@@ -531,7 +543,7 @@ export default function AdminScreen() {
       </Card>
 
       {isGlobalAdmin ? (
-        <View onLayout={(event) => trackSection("chaburah", event.nativeEvent.layout.y)}>
+        <View nativeID={adminSectionDomId("chaburah")} onLayout={(event) => trackSection("chaburah", event.nativeEvent.layout.y)}>
           <Card>
           <Row>
             <View style={{ flex: 1, minWidth: 220 }}>
@@ -593,7 +605,7 @@ export default function AdminScreen() {
       />
 
       {isGlobalAdmin ? (
-        <View onLayout={(event) => trackSection("leadership", event.nativeEvent.layout.y)}>
+        <View nativeID={adminSectionDomId("leadership")} onLayout={(event) => trackSection("leadership", event.nativeEvent.layout.y)}>
           <Card>
           <Row>
             <View style={{ flex: 1, minWidth: 220 }}>
@@ -630,7 +642,7 @@ export default function AdminScreen() {
         </View>
       ) : null}
 
-      <View onLayout={(event) => trackSection("settings", event.nativeEvent.layout.y)}>
+      <View nativeID={adminSectionDomId("settings")} onLayout={(event) => trackSection("settings", event.nativeEvent.layout.y)}>
         <Card>
         <SectionTitle>Chaburah Settings</SectionTitle>
         {!managedChaburahId ? (
@@ -692,7 +704,7 @@ export default function AdminScreen() {
         </Card>
       </View>
 
-      <View onLayout={(event) => trackSection("requests", event.nativeEvent.layout.y)}>
+      <View nativeID={adminSectionDomId("requests")} onLayout={(event) => trackSection("requests", event.nativeEvent.layout.y)}>
         <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
@@ -735,7 +747,7 @@ export default function AdminScreen() {
         </Card>
       </View>
 
-      <View onLayout={(event) => trackSection("members", event.nativeEvent.layout.y)}>
+      <View nativeID={adminSectionDomId("members")} onLayout={(event) => trackSection("members", event.nativeEvent.layout.y)}>
         <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
@@ -816,7 +828,7 @@ export default function AdminScreen() {
         </Card>
       </View>
 
-      <View onLayout={(event) => trackSection("publish", event.nativeEvent.layout.y)}>
+      <View nativeID={adminSectionDomId("publish")} onLayout={(event) => trackSection("publish", event.nativeEvent.layout.y)}>
         <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
@@ -911,7 +923,7 @@ export default function AdminScreen() {
         </Card>
       </View>
 
-      <View onLayout={(event) => trackSection("files", event.nativeEvent.layout.y)}>
+      <View nativeID={adminSectionDomId("files")} onLayout={(event) => trackSection("files", event.nativeEvent.layout.y)}>
         <Card>
         <SectionTitle>Manage Files</SectionTitle>
         {localFiles.map((file) => (
@@ -983,4 +995,8 @@ function base64ToArrayBuffer(base64: string) {
 
 function isAdminSection(value: unknown): value is AdminSection {
   return typeof value === "string" && adminSections.includes(value as AdminSection);
+}
+
+function adminSectionDomId(section: AdminSection) {
+  return `admin-section-${section}`;
 }

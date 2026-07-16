@@ -728,7 +728,7 @@ export default function RabbiHubScreen() {
         </Row>
         <Button
           disabled={saving || !managedChaburahId || buildWeekModelQuestions.length === 0}
-          label={saving ? "Staging..." : `Stage All Model Questions (${buildWeekModelQuestions.length})`}
+          label={saving ? "Staging..." : `Stage All Week ${buildWeek} Model Questions (${buildWeekModelQuestions.length})`}
           onPress={cloneAllModelQuestions}
         />
         {buildWeekModelQuestions.length === 0 ? (

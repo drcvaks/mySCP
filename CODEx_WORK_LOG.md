@@ -23,7 +23,14 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added Supabase-backed `app_settings.current_review_week` with Global Admin controls so the current review week can be changed without a code edit.
 - Updated Dashboard, Review, Files, Admin uploads, and Rabbi Hub to use the live current week setting with a local fallback.
 - Fixed Rabbi Hub Stage All Model Questions so it uses model questions from the selected Build Questions week, independent of the Public Question Library browse filter.
+- Clarified the Rabbi Hub Stage All button label to include the selected week number.
 - Fixed participant Review and Dashboard review counts to exclude public-library source questions; only Rabbi-published chaburah copies count as available review questions.
+- Made Admin Manage Files Edit jump back to the Publish/Edit Learning File section after loading the selected file into the form.
+- Fixed the Admin web edit jump by using section DOM anchors and `scrollIntoView` on web, while keeping native offset scrolling on Android/iOS.
+- Added temporary beta tester infrastructure: Beta Feedback, Help / How to Use, Tester Checklist, a visible beta notice, EAS preview/production profiles, and private beta testing/build documentation.
+- Added Supabase tables for beta feedback and per-user checklist progress with RLS and no seed data.
+- Tidied beta navigation by grouping Beta Feedback, Help / How to Use, and Tester Checklist together, adding web left-rail badges, and highlighting those entries at the top of the mobile drawer.
+- Replaced the web left-rail beta tab badges with inline right-side pills so they no longer overlap the icons and remain fully readable.
 
 Primary files:
 
@@ -33,15 +40,24 @@ Primary files:
 - `app/(tabs)/review.tsx`
 - `app/(tabs)/files.tsx`
 - `app/(tabs)/admin.tsx`
+- `app/(tabs)/beta-feedback.tsx`
+- `app/(tabs)/help.tsx`
+- `app/(tabs)/testing-checklist.tsx`
+- `app/(tabs)/_layout.tsx`
 - `app/(tabs)/rabbi-hub.tsx`
 - `src/state/AppState.tsx`
 - `src/shared/reviewWeeks.ts`
+- `src/shared/components.tsx`
 - `src/lib/database.types.ts`
 - `src/state/AuthState.tsx`
 - `supabase/migrations/202607150001_app_settings_current_review_week.sql`
+- `supabase/migrations/202607150002_beta_tester_support.sql`
 - `supabase/pilot_cleanup.sql`
 - `supabase/import_public_review_questions_weeks_1_7.sql`
 - `supabase/import_public_review_questions_weeks_8_12.sql`
+- `eas.json`
+- `TESTING.md`
+- `DEVELOPER_BUILD_NOTES.md`
 
 ### Checkpoint 6 Chaburah Communication
 
@@ -540,6 +556,14 @@ Primary file:
 - Checkpoint 7 Rabbi Hub build-week model staging `expo-doctor` reported an unrelated Expo patch mismatch: installed `expo` 54.0.35, expected `~54.0.36`.
 - Checkpoint 7 participant review-count filtering TypeScript validation passed.
 - Checkpoint 7 participant review-count filtering `expo-doctor` reported the same unrelated Expo patch mismatch: installed `expo` 54.0.35, expected `~54.0.36`.
+- Checkpoint 7 Rabbi Hub Stage All label TypeScript validation passed.
+- Checkpoint 7 Admin file edit jump TypeScript validation passed.
+- Checkpoint 7 Admin web file edit jump TypeScript validation passed.
+- Checkpoint 7 Admin web file edit jump `expo-doctor` reported the same unrelated Expo patch mismatch: installed `expo` 54.0.35, expected `~54.0.36`.
+- Checkpoint 7 beta tester support TypeScript validation passed.
+- Checkpoint 7 beta tester support `expo-doctor` reported the same unrelated Expo patch mismatch: installed `expo` 54.0.35, expected `~54.0.36`.
+- Checkpoint 7 beta navigation polish TypeScript validation passed.
+- Checkpoint 7 web beta badge alignment TypeScript validation passed.
 
 ## Still To Do
 

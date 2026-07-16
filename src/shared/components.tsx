@@ -29,13 +29,16 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
   const canManageAskRavSetting = profile?.role === "local_admin" || profile?.role === "local_rabbi" || profile?.role === "global_admin";
   const drawerItems = [
+    { label: "Beta Feedback", href: "/(tabs)/beta-feedback", icon: "chatbubbles-outline" as const, show: true, beta: true },
+    { label: "Help / How to Use", href: "/(tabs)/help", icon: "help-circle-outline" as const, show: true, beta: true },
+    { label: "Tester Checklist", href: "/(tabs)/testing-checklist", icon: "checkbox-outline" as const, show: true, beta: true },
     { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" as const, show: true },
     { label: "Ask Rav", href: "/(tabs)/ask-rav", icon: "chatbubble-ellipses-outline" as const, show: askRavEnabled || canManageAskRavSetting },
     {
       label: "Rabbi Hub",
       href: "/(tabs)/rabbi-hub",
       icon: "library-outline" as const,
-      show: profile?.role === "local_rabbi" || profile?.role === "global_admin"
+      show: false
     },
     {
       label: "Admin",
@@ -103,6 +106,12 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
         onScroll={onScroll}
         scrollEventThrottle={16}
       >
+        <View style={styles.betaNotice}>
+          <Ionicons name="flask-outline" color={theme.colors.primary} size={18} />
+          <Text style={styles.betaNoticeText}>
+            You are using a beta version of mySCP. Please report bugs or confusing parts in Beta Feedback.
+          </Text>
+        </View>
         {children}
       </ScrollView>
       <Modal animationType="fade" transparent visible={menuOpen} onRequestClose={() => setMenuOpen(false)}>
@@ -122,9 +131,19 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
             {drawerItems.map((item) => {
               const active = isActiveDrawerItem(item.href);
               return (
-                <Pressable key={item.href} onPress={() => navigateTo(item.href)} style={[styles.drawerItem, active && styles.drawerItemActive]}>
-                  <Ionicons name={item.icon} color={active ? theme.colors.primary : theme.colors.muted} size={22} />
-                  <Text style={[styles.drawerItemText, active && styles.drawerItemTextActive]}>{item.label}</Text>
+                <Pressable
+                  key={item.href}
+                  onPress={() => navigateTo(item.href)}
+                  style={[styles.drawerItem, item.beta && styles.drawerItemBeta, active && styles.drawerItemActive]}
+                >
+                  <Ionicons
+                    name={item.icon}
+                    color={active || item.beta ? theme.colors.primary : theme.colors.muted}
+                    size={22}
+                  />
+                  <Text style={[styles.drawerItemText, item.beta && styles.drawerItemBetaText, active && styles.drawerItemTextActive]}>
+                    {item.label}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -454,6 +473,13 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.primarySoft,
     borderColor: theme.colors.border
   },
+  drawerItemBeta: {
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: "#F2D37A"
+  },
+  drawerItemBetaText: {
+    color: theme.colors.primary
+  },
   drawerItemText: {
     color: theme.colors.ink,
     fontSize: 17,
@@ -659,6 +685,24 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 21,
     textAlign: "center"
+  },
+  betaNotice: {
+    alignItems: "center",
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: "#F2D37A",
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm
+  },
+  betaNoticeText: {
+    color: theme.colors.primary,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "800",
+    lineHeight: 20
   },
   secondaryButtonText: {
     color: theme.colors.primary

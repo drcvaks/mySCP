@@ -203,6 +203,29 @@ type AppSettingsRow = {
   updated_at: string;
 };
 
+type BetaFeedbackRow = {
+  id: string;
+  user_id: string;
+  role: Database["public"]["Enums"]["app_role"];
+  category: Database["public"]["Enums"]["beta_feedback_category"];
+  body: string;
+  platform: "web" | "android" | "ios" | "unknown";
+  screen_name: string | null;
+  admin_response: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type BetaChecklistProgressRow = {
+  user_id: string;
+  task_key: string;
+  completed: boolean;
+  completed_at: string | null;
+  updated_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -248,6 +271,16 @@ export interface Database {
       notifications: Table<
         NotificationRow,
         Pick<NotificationRow, "user_id" | "type" | "title" | "body"> & Partial<Omit<NotificationRow, "user_id" | "type" | "title" | "body">>
+      >;
+      beta_feedback: Table<
+        BetaFeedbackRow,
+        Pick<BetaFeedbackRow, "user_id" | "role" | "category" | "body" | "platform"> &
+          Partial<Omit<BetaFeedbackRow, "user_id" | "role" | "category" | "body" | "platform">>
+      >;
+      beta_checklist_progress: Table<
+        BetaChecklistProgressRow,
+        Pick<BetaChecklistProgressRow, "user_id" | "task_key"> &
+          Partial<Omit<BetaChecklistProgressRow, "user_id" | "task_key">>
       >;
     };
     Views: Record<string, never>;
@@ -364,6 +397,7 @@ export interface Database {
       review_question_kind: "multiple_choice" | "true_false";
       ask_rav_status: "submitted" | "answered" | "archived";
       discussion_message_status: "active" | "hidden" | "deleted";
+      beta_feedback_category: "liked" | "confusing" | "improvement" | "praise";
       notification_type:
         | "review_questions"
         | "discussion_posts"
