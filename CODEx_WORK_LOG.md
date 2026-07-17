@@ -33,6 +33,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Replaced the web left-rail beta tab badges with inline right-side pills so they no longer overlap the icons and remain fully readable.
 - Fixed Dashboard Cumulative Review Score so it uses the signed-in user's review history across completed weeks instead of recent/managed review rows, using the best saved score per week.
 - Added throttled refresh-on-focus behavior for important tabs so Dashboard, My Chaburah, Files, Notifications, Admin, and Rabbi Hub quietly refresh stale data while preserving manual refresh buttons.
+- Made the web/tablet left navigation adapt to shorter screens by tightening row height, label sizing, and allowing the rail to scroll instead of hiding lower menu items.
 
 Primary files:
 
@@ -568,6 +569,7 @@ Primary file:
 - Checkpoint 7 web beta badge alignment TypeScript validation passed.
 - Checkpoint 7 cumulative review score TypeScript validation passed.
 - Checkpoint 7 refresh-on-focus TypeScript validation passed.
+- Checkpoint 7 responsive left navigation TypeScript validation passed.
 
 ## Still To Do
 

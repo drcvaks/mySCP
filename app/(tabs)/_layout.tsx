@@ -33,11 +33,20 @@ function tabIcon(name: TabName) {
   );
 }
 
-function betaSupportLabel(label: string, badge: string, leftRailNav: boolean) {
+function betaSupportLabel(label: string, badge: string, leftRailNav: boolean, compactLeftRail: boolean) {
   if (!leftRailNav) return label;
   return ({ color }: { color: string }) => (
-    <View style={{ alignItems: "center", flexDirection: "row", gap: 6, justifyContent: "space-between", width: 150 }}>
-      <Text style={{ color, flex: 1, fontSize: 12, fontWeight: "700", lineHeight: 15 }} numberOfLines={1}>
+    <View style={{ alignItems: "center", flexDirection: "row", gap: 6, justifyContent: "space-between", width: compactLeftRail ? 142 : 150 }}>
+      <Text
+        style={{
+          color,
+          flex: 1,
+          fontSize: compactLeftRail ? 11 : 12,
+          fontWeight: "700",
+          lineHeight: compactLeftRail ? 14 : 15
+        }}
+        numberOfLines={1}
+      >
         {label}
       </Text>
       <View
@@ -59,7 +68,7 @@ function betaSupportLabel(label: string, badge: string, leftRailNav: boolean) {
 export default function TabLayout() {
   const { loading, profile, session } = useAuthState();
   const { chaburos, error: dataError, hydrated, loading: dataLoading, refresh, selectedChaburahId } = useAppState();
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const compactPhoneNav = Platform.OS !== "web" && width < 768;
   if (loading || (session && !hydrated)) {
     return (
@@ -88,6 +97,8 @@ export default function TabLayout() {
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
   const showAskRav = askRavEnabled || showAdmin;
   const leftRailNav = Platform.OS === "web" || width >= 768;
+  const compactLeftRail = leftRailNav && height < 760;
+  const denseLeftRail = leftRailNav && height < 640;
 
   return (
     <Tabs
@@ -96,22 +107,31 @@ export default function TabLayout() {
         tabBarActiveBackgroundColor: leftRailNav ? undefined : theme.colors.primarySoft,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.muted,
-        tabBarIconStyle: { marginTop: 2 },
+        tabBarIconStyle: { marginTop: denseLeftRail ? 0 : 2 },
         tabBarItemStyle: leftRailNav
-          ? undefined
+          ? {
+              minHeight: denseLeftRail ? 34 : compactLeftRail ? 40 : 46,
+              paddingVertical: denseLeftRail ? 0 : 2
+            }
           : {
               borderRadius: 12,
               marginHorizontal: 4,
               marginVertical: 4
             },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: "700", lineHeight: 15 },
+        tabBarLabelStyle: {
+          fontSize: denseLeftRail ? 10 : compactLeftRail ? 11 : 12,
+          fontWeight: "700",
+          lineHeight: denseLeftRail ? 13 : compactLeftRail ? 14 : 15
+        },
         tabBarPosition: leftRailNav ? "left" : "bottom",
         tabBarStyle: {
           borderTopColor: theme.colors.border,
           borderRightColor: leftRailNav ? theme.colors.border : undefined,
+          height: leftRailNav ? "100%" : undefined,
           minHeight: leftRailNav ? undefined : 72,
+          overflow: leftRailNav ? "scroll" : "visible",
           paddingBottom: leftRailNav ? 0 : 10,
-          paddingTop: 8,
+          paddingTop: denseLeftRail ? 2 : compactLeftRail ? 4 : 8,
           width: leftRailNav ? 220 : undefined
         }
       }}
@@ -140,7 +160,7 @@ export default function TabLayout() {
         name="beta-feedback"
         options={{
           title: "Beta Feedback",
-          tabBarLabel: betaSupportLabel("Beta Feedback", "Beta", leftRailNav),
+          tabBarLabel: betaSupportLabel("Beta Feedback", "Beta", leftRailNav, compactLeftRail),
           tabBarIcon: tabIcon("beta-feedback"),
           href: compactPhoneNav ? null : undefined
         }}
@@ -149,7 +169,7 @@ export default function TabLayout() {
         name="help"
         options={{
           title: "Help / How to Use",
-          tabBarLabel: betaSupportLabel("Help / How to Use", "Guide", leftRailNav),
+          tabBarLabel: betaSupportLabel("Help / How to Use", "Guide", leftRailNav, compactLeftRail),
           tabBarIcon: tabIcon("help"),
           href: compactPhoneNav ? null : undefined
         }}
@@ -158,7 +178,7 @@ export default function TabLayout() {
         name="testing-checklist"
         options={{
           title: "Tester Checklist",
-          tabBarLabel: betaSupportLabel("Tester Checklist", "Tasks", leftRailNav),
+          tabBarLabel: betaSupportLabel("Tester Checklist", "Tasks", leftRailNav, compactLeftRail),
           tabBarIcon: tabIcon("testing-checklist"),
           href: compactPhoneNav ? null : undefined
         }}
