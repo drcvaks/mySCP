@@ -12,7 +12,8 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0F5132"
-      }
+      },
+      "package": "com.chaimvaks.myscp"
     },
     "web": {
       "bundler": "metro",
@@ -25,6 +26,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8beef5fe-5fa9-464c-b7e1-eb4a4ac5d445"
+      }
     }
   }
 }
