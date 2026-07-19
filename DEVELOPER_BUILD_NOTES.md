@@ -61,6 +61,8 @@ npx expo export --platform web
 
 Then host the exported web files with the chosen private beta hosting provider. Windows testers should use the hosted URL in a modern browser such as Chrome or Edge.
 
+For Vercel hosting, keep `vercel.json` in the repo. It rewrites deep links such as `/dashboard`, `/files`, and `/review` back to the Expo web app entry point so browser refreshes work on nested routes.
+
 ## Tester Instructions To Send
 
 Ask testers to report:
