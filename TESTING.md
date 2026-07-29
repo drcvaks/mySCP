@@ -22,9 +22,9 @@ Use the in-app Tester Checklist to track your own progress. Please also report a
 ### Rabbi Checklist
 
 - Open Rabbi Hub.
-- Stage questions for a week.
-- Stage all model questions for the selected week.
-- Publish staged questions.
+- Save draft questions for a week.
+- Add all model questions to drafts for the selected week.
+- Publish draft questions.
 - Check Ask Rav questions if Ask Rav is enabled.
 - Check discussion and announcements from the rabbi perspective.
 

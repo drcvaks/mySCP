@@ -147,10 +147,10 @@ For pilot testing, use `CHECKPOINT_5_QA.md` as the manual test checklist. When r
 - Ask the Rav questions are visible to the asker and the assigned active rabbi for that chaburah.
 - Ask Rav can be enabled or disabled per chaburah; when disabled, it is hidden from Dashboard.
 - Assigned rabbonim can answer Ask the Rav questions.
-- Rabbi Hub stages review questions before participants see them.
+- Rabbi Hub saves review questions as drafts before participants see them.
 - Rabbonim can build questions for one week while browsing public library questions from another week.
-- Rabbonim can copy public library questions into their chaburah, edit the staged copies, and publish the full week when ready.
-- Global Admin public-library questions are staged first, then published to the library when ready.
+- Rabbonim can copy public library questions into their chaburah, edit the draft copies, and publish the full week when ready.
+- Global Admin public-library questions are saved as drafts first, then published to the library when ready.
 - Review answer keys remain in the protected `review_question_answers` table.
 - Mobile bottom navigation shows Rabbi Hub for rabbi/global admin accounts.
 

@@ -35,6 +35,7 @@ The project remains the source of truth. `C:\Users\Family\ws\ReplitSCP` was used
 - Added throttled refresh-on-focus behavior for important tabs so Dashboard, My Chaburah, Files, Notifications, Admin, and Rabbi Hub quietly refresh stale data while preserving manual refresh buttons.
 - Made the web/tablet left navigation adapt to shorter screens by tightening row height, label sizing, and allowing the rail to scroll instead of hiding lower menu items.
 - Added Vercel SPA rewrites so custom-domain deep links like `/dashboard` refresh correctly instead of requiring users to return to the root URL.
+- Updated Rabbi Hub user-facing review-question workflow language from stage/staged/staging to draft/drafts so rabbonim understand questions are saved privately until published.
 
 Primary files:
 
@@ -572,6 +573,7 @@ Primary file:
 - Checkpoint 7 refresh-on-focus TypeScript validation passed.
 - Checkpoint 7 responsive left navigation TypeScript validation passed.
 - Checkpoint 7 Vercel deep-link rewrite TypeScript validation passed.
+- Checkpoint 7 Rabbi Hub draft wording TypeScript validation passed.
 
 ## Still To Do
 

@@ -298,8 +298,8 @@ export default function RabbiHubScreen() {
       editingQuestionId
         ? "Review question updated."
         : visibility === "everyone"
-          ? "Library question staged."
-          : "Review question staged."
+          ? "Library draft saved."
+          : "Draft question saved."
     );
     await refresh();
     if (shouldScrollToStaged) {
@@ -326,7 +326,7 @@ export default function RabbiHubScreen() {
       setMessage(error.message);
       return;
     }
-    setMessage(`Question copied to Week ${buildWeek} staging.`);
+    setMessage(`Question copied to Week ${buildWeek} drafts.`);
     await refresh();
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ y: Math.max(stagedQuestionsOffset - 12, 0), animated: true });
@@ -356,7 +356,7 @@ export default function RabbiHubScreen() {
         setSaving(false);
         setMessage(
           copiedCount > 0
-            ? `${copiedCount} model question${copiedCount === 1 ? "" : "s"} staged before an error: ${error.message}`
+            ? `${copiedCount} model question${copiedCount === 1 ? "" : "s"} added to drafts before an error: ${error.message}`
             : error.message
         );
         await refresh();
@@ -365,7 +365,7 @@ export default function RabbiHubScreen() {
       copiedCount += 1;
     }
     setSaving(false);
-    setMessage(`${copiedCount} model question${copiedCount === 1 ? "" : "s"} staged for Week ${buildWeek}.`);
+    setMessage(`${copiedCount} model question${copiedCount === 1 ? "" : "s"} added to Week ${buildWeek} drafts.`);
     await refresh();
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ y: Math.max(stagedQuestionsOffset - 12, 0), animated: true });
@@ -392,7 +392,7 @@ export default function RabbiHubScreen() {
       target_chaburah_id: managedChaburahId,
       target_week: buildWeek
     });
-    setMessage(`${data ?? 0} staged question${data === 1 ? "" : "s"} published for Week ${buildWeek}.`);
+    setMessage(`${data ?? 0} draft question${data === 1 ? "" : "s"} published for Week ${buildWeek}.`);
     await refresh();
   }
 
@@ -414,7 +414,7 @@ export default function RabbiHubScreen() {
       setMessage(error.message);
       return;
     }
-    setMessage(`${stagedLibraryQuestions.length} library question${stagedLibraryQuestions.length === 1 ? "" : "s"} published for Week ${buildWeek}.`);
+    setMessage(`${stagedLibraryQuestions.length} library draft question${stagedLibraryQuestions.length === 1 ? "" : "s"} published for Week ${buildWeek}.`);
     await refresh();
   }
 
@@ -444,7 +444,7 @@ export default function RabbiHubScreen() {
     if (editingQuestionId === question.id) {
       resetReviewForm();
     }
-    setMessage("Staged question removed.");
+    setMessage("Draft question removed.");
     await refresh();
   }
 
@@ -469,6 +469,7 @@ export default function RabbiHubScreen() {
             ? "info"
             : message.includes("saved") ||
                 message.includes("published") ||
+                message.includes("draft") ||
                 message.includes("staged") ||
                 message.includes("copied") ||
                 message.includes("updated") ||
@@ -528,7 +529,7 @@ export default function RabbiHubScreen() {
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Review Question Builder</SectionTitle>
             <Text style={styles.muted}>
-              Build a staged set for your chaburah, then publish the week when the questions are ready.
+              Build a draft set for your chaburah, then publish the week when the questions are ready.
             </Text>
           </View>
           <Pill label={`Week ${buildWeek}`} tone="primary" />
@@ -547,15 +548,15 @@ export default function RabbiHubScreen() {
           </View>
         </View>
         <Row>
-          <Pill label={`${stagedQuestions.length} staged`} tone={stagedQuestions.length ? "accent" : "neutral"} />
+          <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
           <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
         </Row>
       </Card>
 
       <View onLayout={(event) => setQuestionFormOffset(event.nativeEvent.layout.y)}>
         <Card>
-        <SectionTitle>{editingQuestionId ? "Edit Review Question" : "Create Staged Question"}</SectionTitle>
-        <Text style={styles.muted}>New questions stay staged until you publish the selected week.</Text>
+        <SectionTitle>{editingQuestionId ? "Edit Review Question" : "Create Draft Question"}</SectionTitle>
+        <Text style={styles.muted}>New questions are saved as drafts and are not visible to participants until you publish them.</Text>
         {profile?.role === "global_admin" ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <FilterChip label="Public Library" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
@@ -572,7 +573,7 @@ export default function RabbiHubScreen() {
         {profile?.role === "global_admin" && visibility === "everyone" ? (
           <View style={{ gap: 8 }}>
             <MetaText>Library Use</MetaText>
-            <Text style={styles.muted}>Model questions are quick defaults rabbonim can stage when they do not have time to build a full set.</Text>
+            <Text style={styles.muted}>Model questions are quick defaults rabbonim can add to drafts when they do not have time to build a full set.</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               <FilterChip label="Model Question" onPress={() => setIsModelQuestion(true)} selected={isModelQuestion} />
               <FilterChip label="Regular Library" onPress={() => setIsModelQuestion(false)} selected={!isModelQuestion} />
@@ -645,7 +646,7 @@ export default function RabbiHubScreen() {
         <TextArea onChangeText={setExplanation} placeholder="Explanation shown after the answer" value={explanation} />
         <Button
           disabled={saving}
-          label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : visibility === "everyone" ? "Stage Library Question" : "Stage Question"}
+          label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : visibility === "everyone" ? "Save Library Draft" : "Save Draft Question"}
           onPress={saveReviewQuestion}
         />
         {editingQuestionId ? <Button label="Cancel Edit" onPress={resetReviewForm} variant="ghost" /> : null}
@@ -654,13 +655,13 @@ export default function RabbiHubScreen() {
 
       <View onLayout={(event) => setStagedQuestionsOffset(event.nativeEvent.layout.y)}>
         <Card>
-          <SectionTitle>Staged Questions</SectionTitle>
+          <SectionTitle>Draft Questions</SectionTitle>
           <Row>
-            <Text style={styles.muted}>These Week {buildWeek} questions are not visible to participants yet.</Text>
-            <Pill label={`${stagedQuestions.length} staged`} tone={stagedQuestions.length ? "accent" : "neutral"} />
+            <Text style={styles.muted}>These Week {buildWeek} questions are saved as drafts and are not visible to participants yet.</Text>
+            <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
           </Row>
           {stagedQuestions.length === 0 ? (
-            <Text style={styles.muted}>No staged questions for this week yet. Create one or use the public library below.</Text>
+            <Text style={styles.muted}>No draft questions for this week yet. Create one or use the public library below.</Text>
           ) : null}
           {stagedQuestions.length > 0 ? (
             <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
@@ -691,13 +692,13 @@ export default function RabbiHubScreen() {
 
       {profile?.role === "global_admin" ? (
         <Card>
-          <SectionTitle>Staged Library Questions</SectionTitle>
+          <SectionTitle>Draft Library Questions</SectionTitle>
           <Row>
-            <Text style={styles.muted}>These Week {buildWeek} questions are not visible in the public library yet.</Text>
-            <Pill label={`${stagedLibraryQuestions.length} staged`} tone={stagedLibraryQuestions.length ? "accent" : "neutral"} />
+            <Text style={styles.muted}>These Week {buildWeek} public-library questions are saved as drafts and are not visible to participants yet.</Text>
+            <Pill label={`${stagedLibraryQuestions.length} drafts`} tone={stagedLibraryQuestions.length ? "accent" : "neutral"} />
           </Row>
           {stagedLibraryQuestions.length === 0 ? (
-            <Text style={styles.muted}>No staged public-library questions for this week yet.</Text>
+            <Text style={styles.muted}>No draft public-library questions for this week yet.</Text>
           ) : null}
           {stagedLibraryQuestions.map((question, index) => (
             <ReviewQuestionManagerRow
@@ -724,13 +725,13 @@ export default function RabbiHubScreen() {
         <SectionTitle>Model Questions</SectionTitle>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <Text style={styles.muted}>Quick-stage the full model set into Week {buildWeek}. Browse individual model questions in the Public Question Library below.</Text>
+            <Text style={styles.muted}>Add the model questions to Week {buildWeek} drafts. You can review them before publishing.</Text>
           </View>
           <Pill label={`${buildWeekModelQuestions.length} model`} tone={buildWeekModelQuestions.length ? "accent" : "neutral"} />
         </Row>
         <Button
           disabled={saving || !managedChaburahId || buildWeekModelQuestions.length === 0}
-          label={saving ? "Staging..." : `Stage All Week ${buildWeek} Model Questions (${buildWeekModelQuestions.length})`}
+          label={saving ? "Adding..." : `Add All Week ${buildWeek} Model Questions to Drafts (${buildWeekModelQuestions.length})`}
           onPress={cloneAllModelQuestions}
         />
         {buildWeekModelQuestions.length === 0 ? (
@@ -743,7 +744,7 @@ export default function RabbiHubScreen() {
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <Text style={styles.muted}>
-              Browse all published public library questions, including model and regular questions, and copy useful ones into Week {buildWeek} staging.
+              Browse all published public library questions, including model and regular questions, and copy useful ones into Week {buildWeek} drafts.
             </Text>
           </View>
           <Pill
@@ -874,7 +875,7 @@ function ReviewQuestionManagerRow({
         </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <Pill
-            label={question.publicationStatus === "published" ? "Published" : "Staged"}
+            label={question.publicationStatus === "published" ? "Published" : "Draft"}
             tone={question.publicationStatus === "published" ? "success" : "accent"}
           />
           {!staged ? <Pill label={question.enabled ? "Enabled" : "Disabled"} tone={question.enabled ? "success" : "danger"} /> : null}

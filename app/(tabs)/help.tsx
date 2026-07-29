@@ -19,8 +19,8 @@ const guides = [
     role: "Rabbi",
     audience: ["local_rabbi", "global_admin"],
     steps: [
-      "Rabbi Hub: build weekly questions in the staging area before publishing.",
-      "Model Questions: stage all model questions for the selected week when you are short on time.",
+      "Rabbi Hub: build weekly questions as drafts before publishing.",
+      "Model Questions: add all model questions to drafts for the selected week when you are short on time.",
       "Public Question Library: browse public/model questions, copy useful ones, and adjust them before publishing.",
       "Ask Rav: answer participant questions when Ask Rav is enabled for the chaburah.",
       "My Chaburah: watch discussion and announcements from the participant view."

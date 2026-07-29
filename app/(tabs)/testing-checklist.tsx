@@ -35,8 +35,8 @@ const adminTasks: ChecklistTask[] = [
 ];
 
 const rabbiTasks: ChecklistTask[] = [
-  { key: "rabbi_stage_questions", label: "Stage review questions", detail: "Stage model or public questions for a selected week.", group: "Rabbi" },
-  { key: "rabbi_publish_questions", label: "Publish staged questions", detail: "Publish after reviewing the staged set.", group: "Rabbi" },
+  { key: "rabbi_stage_questions", label: "Save draft review questions", detail: "Add model or public questions to drafts for a selected week.", group: "Rabbi" },
+  { key: "rabbi_publish_questions", label: "Publish draft questions", detail: "Publish after reviewing the draft set.", group: "Rabbi" },
   { key: "rabbi_ask_rav", label: "Check Ask Rav", detail: "Confirm new questions appear for rabbi response.", group: "Rabbi" },
   { key: "rabbi_communication", label: "Check communication", detail: "Review discussion and announcements from the rabbi perspective.", group: "Rabbi" }
 ];
