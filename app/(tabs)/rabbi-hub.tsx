@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import {
   Button,
   Card,
@@ -18,6 +18,7 @@ import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
+import { theme } from "../../src/shared/theme";
 import { ReviewQuestion, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 
@@ -29,6 +30,7 @@ type LibraryKind = "all" | "model";
 export default function RabbiHubScreen() {
   const { profile } = useAuthState();
   const scrollRef = useRef<ScrollView | null>(null);
+  const { width } = useWindowDimensions();
   const { askRavQuestions, chaburos, currentReviewWeek, loading, memberships, refresh, reviewQuestions, selectedChaburahId } = useAppState();
   useRefreshOnFocus(refresh);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function RabbiHubScreen() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const reviewWeeks = buildReviewWeeks(currentReviewWeek);
+  const webQuestionWorkspace = Platform.OS === "web" && width >= 980;
 
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const managedChaburah = chaburos.find((chaburah) => chaburah.id === managedChaburahId);
@@ -450,6 +453,325 @@ export default function RabbiHubScreen() {
 
   return (
     <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
+      {webQuestionWorkspace ? (
+        <View style={localStyles.webWorkspace}>
+          <Card>
+            <Row>
+              <View style={{ flex: 1, minWidth: 320 }}>
+                <SectionTitle>Review Question Workspace</SectionTitle>
+                <Text style={styles.muted}>
+                  Build Week {buildWeek} drafts, review the draft list, and compare published questions without scrolling through one long page.
+                </Text>
+              </View>
+              <Pill label={`Week ${buildWeek}`} tone="primary" />
+            </Row>
+            <View style={{ gap: 8 }}>
+              <MetaText>Build Questions For</MetaText>
+              <View style={localStyles.webChipRow}>
+                {reviewWeeks.map((reviewWeek) => (
+                  <FilterChip
+                    key={reviewWeek}
+                    label={`Week ${reviewWeek}`}
+                    onPress={() => setBuildWeek(reviewWeek)}
+                    selected={buildWeek === reviewWeek}
+                  />
+                ))}
+              </View>
+            </View>
+            <Row>
+              <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
+              <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
+              <Pill label={`${buildWeekModelQuestions.length} model`} tone={buildWeekModelQuestions.length ? "accent" : "neutral"} />
+            </Row>
+          </Card>
+
+          <View style={localStyles.webQuestionColumns}>
+            <View style={localStyles.webBuilderColumn} onLayout={(event) => setQuestionFormOffset(event.nativeEvent.layout.y)}>
+              <Card>
+                <SectionTitle>{editingQuestionId ? "Edit Review Question" : "Create Draft Question"}</SectionTitle>
+                <Text style={styles.muted}>New questions are saved as drafts and are not visible to participants until you publish them.</Text>
+                {profile?.role === "global_admin" ? (
+                  <View style={localStyles.webChipRow}>
+                    <FilterChip label="Public Library" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
+                    <FilterChip
+                      label="Current Chaburah"
+                      onPress={() => {
+                        setVisibility("chaburah");
+                        setIsModelQuestion(false);
+                      }}
+                      selected={visibility === "chaburah"}
+                    />
+                  </View>
+                ) : null}
+                {profile?.role === "global_admin" && visibility === "everyone" ? (
+                  <View style={{ gap: 8 }}>
+                    <MetaText>Library Use</MetaText>
+                    <Text style={styles.muted}>Model questions are quick defaults rabbonim can add to drafts when they do not have time to build a full set.</Text>
+                    <View style={localStyles.webChipRow}>
+                      <FilterChip label="Model Question" onPress={() => setIsModelQuestion(true)} selected={isModelQuestion} />
+                      <FilterChip label="Regular Library" onPress={() => setIsModelQuestion(false)} selected={!isModelQuestion} />
+                    </View>
+                  </View>
+                ) : null}
+                <MetaText>Saving to Week {buildWeek}. Current week is Week {currentReviewWeek}.</MetaText>
+                <View style={{ gap: 8 }}>
+                  <MetaText>Question Type</MetaText>
+                  <View style={localStyles.webChipRow}>
+                    <FilterChip
+                      label="True / False"
+                      onPress={() => {
+                        setQuestionKind("true_false");
+                        setCorrectChoiceIndex("0");
+                      }}
+                      selected={questionKind === "true_false"}
+                    />
+                    <FilterChip
+                      label="Multiple Choice"
+                      onPress={() => {
+                        setQuestionKind("multiple_choice");
+                        setCorrectChoiceIndex("0");
+                      }}
+                      selected={questionKind === "multiple_choice"}
+                    />
+                  </View>
+                </View>
+                <TextArea
+                  onChangeText={setPrompt}
+                  placeholder="Write the review question exactly as participants should see it..."
+                  value={prompt}
+                />
+                {questionKind === "multiple_choice" ? (
+                  <View style={{ gap: 8 }}>
+                    <MetaText>How many answer options?</MetaText>
+                    <View style={localStyles.webChipRow}>
+                      {optionCounts.map((count) => (
+                        <FilterChip
+                          key={count}
+                          label={`${count}`}
+                          onPress={() => updateOptionCount(count)}
+                          selected={optionCount === count}
+                        />
+                      ))}
+                    </View>
+                    {multipleChoiceOptions.slice(0, optionCount).map((option, index) => (
+                      <FormInput
+                        key={index}
+                        onChangeText={(value) => updateMultipleChoiceOption(index, value)}
+                        placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                        value={option}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+                <View style={{ gap: 8 }}>
+                  <MetaText>Correct Answer</MetaText>
+                  <View style={localStyles.webChipRow}>
+                    {correctAnswerOptions.map((choice, index) => (
+                      <FilterChip
+                        key={`${choice}-${index}`}
+                        label={questionKind === "multiple_choice" ? String.fromCharCode(65 + index) : choice}
+                        onPress={() => setCorrectChoiceIndex(String(index))}
+                        selected={correctChoiceIndex === String(index)}
+                      />
+                    ))}
+                  </View>
+                </View>
+                <TextArea onChangeText={setExplanation} placeholder="Explanation shown after the answer" value={explanation} />
+                <Button
+                  disabled={saving}
+                  label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : visibility === "everyone" ? "Save Library Draft" : "Save Draft Question"}
+                  onPress={saveReviewQuestion}
+                />
+                {editingQuestionId ? <Button label="Cancel Edit" onPress={resetReviewForm} variant="ghost" /> : null}
+              </Card>
+            </View>
+
+            <View style={localStyles.webListColumn} onLayout={(event) => setStagedQuestionsOffset(event.nativeEvent.layout.y)}>
+              <Card>
+                <SectionTitle>Draft Questions</SectionTitle>
+                <Row>
+                  <Text style={styles.muted}>Week {buildWeek} drafts are private until published.</Text>
+                  <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
+                </Row>
+                <Button
+                  disabled={saving || !managedChaburahId || buildWeekModelQuestions.length === 0}
+                  label={saving ? "Adding..." : `Add All Week ${buildWeek} Model Questions (${buildWeekModelQuestions.length})`}
+                  onPress={cloneAllModelQuestions}
+                />
+                {stagedQuestions.length === 0 ? (
+                  <Text style={styles.muted}>No draft questions for this week yet. Create one or use the public library below.</Text>
+                ) : null}
+                {stagedQuestions.length > 0 ? (
+                  <ScrollView style={localStyles.webQuestionList} nestedScrollEnabled>
+                    <View style={{ gap: 12 }}>
+                      {stagedQuestions.map((question, index) => (
+                        <ReviewQuestionManagerRow
+                          key={question.id}
+                          compact
+                          index={index}
+                          question={question}
+                          saving={saving}
+                          onEdit={startEditReviewQuestion}
+                          onRemove={removeStagedQuestion}
+                          onToggle={toggleReviewQuestion}
+                        />
+                      ))}
+                    </View>
+                  </ScrollView>
+                ) : null}
+                {stagedQuestions.length > 0 ? (
+                  <Button
+                    disabled={saving}
+                    label={saving ? "Publishing..." : `Publish Week ${buildWeek}`}
+                    onPress={publishStagedWeek}
+                  />
+                ) : null}
+              </Card>
+            </View>
+
+            <View style={localStyles.webListColumn}>
+              <Card>
+                <SectionTitle>Published Questions</SectionTitle>
+                <Row>
+                  <Text style={styles.muted}>Live for participants to review.</Text>
+                  <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
+                </Row>
+                {publishedQuestions.length === 0 ? (
+                  <Text style={styles.muted}>No published questions for this week yet.</Text>
+                ) : null}
+                {publishedQuestions.length > 0 ? (
+                  <ScrollView style={localStyles.webQuestionList} nestedScrollEnabled>
+                    <View style={{ gap: 12 }}>
+                      {publishedQuestions.map((question, index) => (
+                        <ReviewQuestionManagerRow
+                          key={question.id}
+                          compact
+                          index={index}
+                          question={question}
+                          saving={saving}
+                          onEdit={startEditReviewQuestion}
+                          onRemove={removeStagedQuestion}
+                          onToggle={toggleReviewQuestion}
+                        />
+                      ))}
+                    </View>
+                  </ScrollView>
+                ) : null}
+              </Card>
+            </View>
+          </View>
+
+          {profile?.role === "global_admin" ? (
+            <Card>
+              <SectionTitle>Draft Library Questions</SectionTitle>
+              <Row>
+                <Text style={styles.muted}>These Week {buildWeek} public-library questions are saved as drafts and are not visible to participants yet.</Text>
+                <Pill label={`${stagedLibraryQuestions.length} drafts`} tone={stagedLibraryQuestions.length ? "accent" : "neutral"} />
+              </Row>
+              {stagedLibraryQuestions.length === 0 ? (
+                <Text style={styles.muted}>No draft public-library questions for this week yet.</Text>
+              ) : null}
+              {stagedLibraryQuestions.length > 0 ? (
+                <ScrollView style={{ maxHeight: 360 }} nestedScrollEnabled>
+                  <View style={{ gap: 12 }}>
+                    {stagedLibraryQuestions.map((question, index) => (
+                      <ReviewQuestionManagerRow
+                        key={question.id}
+                        index={index}
+                        question={question}
+                        saving={saving}
+                        onEdit={startEditReviewQuestion}
+                        onRemove={removeStagedQuestion}
+                        onToggle={toggleReviewQuestion}
+                      />
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+              {stagedLibraryQuestions.length > 0 ? (
+                <Button
+                  disabled={saving}
+                  label={saving ? "Publishing..." : `Publish Library Week ${buildWeek}`}
+                  onPress={publishStagedLibraryWeek}
+                />
+              ) : null}
+            </Card>
+          ) : null}
+
+          <Card>
+            <SectionTitle>Public Question Library</SectionTitle>
+            <Row>
+              <View style={{ flex: 1, minWidth: 320 }}>
+                <Text style={styles.muted}>
+                  Browse published public library questions, including model and regular questions, and copy useful ones into Week {buildWeek} drafts.
+                </Text>
+              </View>
+              <Pill label={`${visibleLibraryQuestions.length} shown`} tone="accent" />
+            </Row>
+            <View style={localStyles.webLibraryControls}>
+              <View style={{ gap: 8 }}>
+                <MetaText>Question Type</MetaText>
+                <View style={localStyles.webChipRow}>
+                  <FilterChip label="All" onPress={() => setLibraryKind("all")} selected={libraryKind === "all"} />
+                  <FilterChip label="Model Questions" onPress={() => setLibraryKind("model")} selected={libraryKind === "model"} />
+                </View>
+              </View>
+              <View style={{ gap: 8, flex: 1 }}>
+                <MetaText>Browse Library From</MetaText>
+                <View style={localStyles.webChipRow}>
+                  <FilterChip label="All Weeks" onPress={() => setLibraryWeek("all")} selected={libraryWeek === "all"} />
+                  {reviewWeeks.map((reviewWeek) => (
+                    <FilterChip
+                      key={reviewWeek}
+                      label={`Week ${reviewWeek}`}
+                      onPress={() => setLibraryWeek(reviewWeek)}
+                      selected={libraryWeek === reviewWeek}
+                    />
+                  ))}
+                </View>
+              </View>
+            </View>
+            {publicLibraryQuestions.length === 0 ? (
+              <Text style={styles.muted}>No published public library questions match this week yet.</Text>
+            ) : null}
+            {publicLibraryQuestions.length > 0 && visibleLibraryQuestions.length === 0 ? (
+              <Text style={styles.muted}>No model questions match this library week yet.</Text>
+            ) : null}
+            {visibleLibraryQuestions.length > 0 ? (
+              <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
+                <View style={localStyles.webLibraryGrid}>
+                  {visibleLibraryQuestions.map((question) => (
+                    <View key={question.id} style={localStyles.webLibraryItem}>
+                      <Row>
+                        <View style={{ flex: 1, minWidth: 220 }}>
+                          <Text style={styles.body}>{question.prompt}</Text>
+                          <MetaText>
+                            Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
+                          </MetaText>
+                        </View>
+                        <View style={localStyles.webChipRow}>
+                          {question.isModelQuestion ? <Pill label="Model" tone="accent" /> : null}
+                          <Pill label="Library" tone="primary" />
+                        </View>
+                      </Row>
+                      <Row>
+                        <MetaText>Copies into Week {buildWeek}</MetaText>
+                        <View style={localStyles.webChipRow}>
+                          <Button disabled={saving || !managedChaburahId} label="Use Question" onPress={() => cloneLibraryQuestion(question.id)} variant="secondary" />
+                          {profile?.role === "global_admin" ? (
+                            <Button disabled={saving} label="Edit Library" onPress={() => startEditReviewQuestion(question)} variant="ghost" />
+                          ) : null}
+                        </View>
+                      </Row>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+          </Card>
+        </View>
+      ) : (
+        <>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
@@ -833,6 +1155,8 @@ export default function RabbiHubScreen() {
           />
         ))}
       </Card>
+        </>
+      )}
 
       <Card>
         <SectionTitle>Recently Answered</SectionTitle>
@@ -849,6 +1173,7 @@ export default function RabbiHubScreen() {
 }
 
 function ReviewQuestionManagerRow({
+  compact = false,
   index,
   question,
   saving,
@@ -856,6 +1181,7 @@ function ReviewQuestionManagerRow({
   onRemove,
   onToggle
 }: {
+  compact?: boolean;
   index: number;
   question: ReviewQuestion;
   saving: boolean;
@@ -865,9 +1191,9 @@ function ReviewQuestionManagerRow({
 }) {
   const staged = question.publicationStatus === "draft";
   return (
-    <View style={{ gap: 8 }}>
+    <View style={[{ gap: 8 }, compact && localStyles.compactQuestionRow]}>
       <Row>
-        <View style={{ flex: 1, minWidth: 220 }}>
+        <View style={{ flex: 1, minWidth: compact ? 160 : 220 }}>
           <MetaText>
             Question {index + 1} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
           </MetaText>
@@ -884,7 +1210,7 @@ function ReviewQuestionManagerRow({
       <Row>
         <MetaText>{question.sourceQuestionId ? "Copied from public library" : "Original question"}</MetaText>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          <Button disabled={saving} label="Edit" onPress={() => onEdit(question)} variant="secondary" />
+          <Button disabled={saving} label="View/Edit" onPress={() => onEdit(question)} variant="secondary" />
           {staged ? (
             <Button disabled={saving} label="Remove" onPress={() => onRemove(question)} variant="ghost" />
           ) : (
@@ -900,3 +1226,58 @@ function ReviewQuestionManagerRow({
     </View>
   );
 }
+
+const localStyles = StyleSheet.create({
+  compactQuestionRow: {
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    padding: theme.spacing.sm
+  },
+  webBuilderColumn: {
+    flex: 1.28,
+    minWidth: 340
+  },
+  webChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  webLibraryControls: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.md
+  },
+  webLibraryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.md,
+    paddingRight: 2
+  },
+  webLibraryItem: {
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexBasis: 320,
+    flexGrow: 1,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md
+  },
+  webListColumn: {
+    flex: 1,
+    minWidth: 280
+  },
+  webQuestionColumns: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: theme.spacing.md
+  },
+  webQuestionList: {
+    maxHeight: 560
+  },
+  webWorkspace: {
+    gap: theme.spacing.md,
+    width: "100%"
+  }
+});
