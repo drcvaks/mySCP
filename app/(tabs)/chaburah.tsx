@@ -90,6 +90,14 @@ export default function MyChaburahScreen() {
     if (section === "discussion") await markDiscussionRead();
   }
 
+  async function openChaburahFile(file: (typeof learningFiles)[number]) {
+    if (file.fileType === "custom_review_packet" && file.reviewPacketId) {
+      router.push({ pathname: "/(tabs)/shiur-packet", params: { id: file.reviewPacketId } });
+      return;
+    }
+    await openLearningFile(file);
+  }
+
   useEffect(() => {
     if (!targetSection || scrolledToTargetRef.current === targetSection) return;
     const offset = sectionOffsets[targetSection];
@@ -400,8 +408,8 @@ export default function MyChaburahScreen() {
                   </View>
                   <View style={localStyles.fileActions}>
                     <Button
-                      label={file.url || file.storagePath ? "Open" : "Details"}
-                      onPress={() => openLearningFile(file)}
+                      label={file.fileType === "custom_review_packet" || file.url || file.storagePath ? "Open" : "Details"}
+                      onPress={() => openChaburahFile(file)}
                       variant="secondary"
                     />
                   </View>

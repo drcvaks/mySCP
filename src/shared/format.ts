@@ -18,7 +18,8 @@ export function fileTypeLabel(type: FileType) {
     video: "Video",
     pdf: "PDF",
     other: "Other",
-    link: "Link"
+    link: "Link",
+    custom_review_packet: "Review Packet"
   };
   return labels[type];
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import {
   Button,
@@ -26,8 +27,11 @@ const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
 type LibraryWeek = number | "all";
 type LibraryKind = "all" | "model";
+type RabbiHubTool = "ask-rav" | "shiur-builder" | "quick-review";
 
 export default function RabbiHubScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
   const { profile } = useAuthState();
   const scrollRef = useRef<ScrollView | null>(null);
   const { width } = useWindowDimensions();
@@ -39,6 +43,7 @@ export default function RabbiHubScreen() {
   const [buildWeek, setBuildWeek] = useState(fallbackCurrentReviewWeek);
   const [libraryWeek, setLibraryWeek] = useState<LibraryWeek>(fallbackCurrentReviewWeek);
   const [libraryKind, setLibraryKind] = useState<LibraryKind>("all");
+  const [activeTool, setActiveTool] = useState<RabbiHubTool>("quick-review");
   const [questionKind, setQuestionKind] = useState<QuestionKind>("true_false");
   const [prompt, setPrompt] = useState("");
   const [optionCount, setOptionCount] = useState(4);
@@ -130,6 +135,13 @@ export default function RabbiHubScreen() {
     setBuildWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
     setLibraryWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
   }, [currentReviewWeek]);
+
+  useEffect(() => {
+    const requestedTool = Array.isArray(params.tool) ? params.tool[0] : params.tool;
+    if (requestedTool === "ask-rav" || requestedTool === "quick-review") {
+      setActiveTool(requestedTool);
+    }
+  }, [params.tool]);
 
   function updateOptionCount(count: number) {
     setOptionCount(count);
@@ -453,14 +465,146 @@ export default function RabbiHubScreen() {
 
   return (
     <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
-      {webQuestionWorkspace ? (
+      <Card>
+        <SectionTitle>Rabbi Tools</SectionTitle>
+        <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
+        <View style={localStyles.toolCards}>
+          <RabbiToolCard
+            active={activeTool === "ask-rav"}
+            count={submittedQuestions.length}
+            label="Ask Rav Inbox"
+            meta="Participant questions waiting for a Rav response."
+            onPress={() => setActiveTool("ask-rav")}
+          />
+          <RabbiToolCard
+            active={activeTool === "shiur-builder"}
+            label="Shiur Builder"
+            meta="Longer packets and table-talk review from official SCP material."
+            onPress={() => router.push("/(tabs)/shiur-builder")}
+          />
+          <RabbiToolCard
+            active={activeTool === "quick-review"}
+            count={stagedQuestions.length}
+            label="Quick Review Questions"
+            meta="Short weekly quiz questions for participants to answer in Review."
+            onPress={() => setActiveTool("quick-review")}
+          />
+        </View>
+      </Card>
+
+      <StatusBanner
+        message={message}
+        tone={
+          message.includes("Editing")
+            ? "info"
+            : message.includes("saved") ||
+                message.includes("published") ||
+                message.includes("draft") ||
+                message.includes("staged") ||
+                message.includes("copied") ||
+                message.includes("updated") ||
+                message.includes("enabled") ||
+                message.includes("disabled") ||
+                message.includes("removed")
+              ? "success"
+              : "error"
+        }
+      />
+
+      {activeTool === "shiur-builder" ? (
+        <Card>
+        <Row>
+          <View style={{ flex: 1, minWidth: 260 }}>
+            <SectionTitle>Shiur Builder</SectionTitle>
+            <Text style={styles.muted}>
+              Build longer review packets from official notes and Q&A. This is for after-shiur material, Shabbos table discussion, and a clearer take-home packet.
+            </Text>
+          </View>
+          <View style={{ minWidth: 160 }}>
+            <Button label="Open Builder" onPress={() => router.push("/(tabs)/shiur-builder")} />
+          </View>
+        </Row>
+        </Card>
+      ) : null}
+
+      {activeTool === "ask-rav" ? (
+        <>
+          <Card>
+            <Row>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <SectionTitle>Ask Rav Inbox</SectionTitle>
+                <Text style={styles.muted}>
+                  {managedChaburah ? managedChaburah.name : "Current chaburah"} questions that need a response.
+                </Text>
+              </View>
+              <Pill label={`${submittedQuestions.length} open`} tone={submittedQuestions.length ? "accent" : "success"} />
+            </Row>
+          </Card>
+
+          {submittedQuestions.length === 0 ? (
+            <Card>
+              <SectionTitle>No Open Questions</SectionTitle>
+              <Text style={styles.muted}>Submitted questions will appear here for the assigned rabbi.</Text>
+            </Card>
+          ) : (
+            submittedQuestions.map((question) => (
+              <Card key={question.id}>
+                <Row>
+                  <View style={{ flex: 1, minWidth: 220 }}>
+                    <Pill label="Submitted" tone="accent" />
+                    <MetaText>
+                      From {question.askerName || question.askerEmail || "Unknown participant"} - {new Date(question.submittedAt).toLocaleDateString()}
+                    </MetaText>
+                  </View>
+                </Row>
+                <Text style={styles.body}>{question.question}</Text>
+                {activeQuestionId === question.id ? (
+                  <>
+                    <TextArea onChangeText={setAnswer} placeholder="Write the answer..." value={answer} />
+                    <Row>
+                      <View style={{ minWidth: 130 }}>
+                        <Button disabled={saving || answer.trim().length < 5} label="Save Answer" onPress={() => submitAnswer(question.id)} />
+                      </View>
+                      <View style={{ minWidth: 100 }}>
+                        <Button label="Cancel" onPress={() => setActiveQuestionId(null)} variant="ghost" />
+                      </View>
+                    </Row>
+                  </>
+                ) : (
+                  <Button
+                    label="Answer Question"
+                    onPress={() => {
+                      setActiveQuestionId(question.id);
+                      setAnswer("");
+                    }}
+                    variant="secondary"
+                  />
+                )}
+              </Card>
+            ))
+          )}
+
+          <Card>
+            <SectionTitle>Recently Answered</SectionTitle>
+            {answeredQuestions.slice(0, 4).map((question) => (
+              <View key={question.id} style={{ gap: 4 }}>
+                <MetaText>{new Date(question.answeredAt ?? question.submittedAt).toLocaleDateString()}</MetaText>
+                <Text style={styles.muted}>{question.question}</Text>
+              </View>
+            ))}
+            {answeredQuestions.length === 0 ? <Text style={styles.muted}>No answered questions yet.</Text> : null}
+          </Card>
+        </>
+      ) : null}
+
+      {activeTool === "quick-review" && webQuestionWorkspace ? (
         <View style={localStyles.webWorkspace}>
           <Card>
             <Row>
               <View style={{ flex: 1, minWidth: 320 }}>
-                <SectionTitle>Review Question Workspace</SectionTitle>
+                <SectionTitle>Quick Review Question Workspace</SectionTitle>
                 <Text style={styles.muted}>
-                  Build Week {buildWeek} drafts, review the draft list, and compare published questions without scrolling through one long page.
+                  Build short weekly quiz questions for participants to answer in the Review tab.
                 </Text>
               </View>
               <Pill label={`Week ${buildWeek}`} tone="primary" />
@@ -770,82 +914,8 @@ export default function RabbiHubScreen() {
             ) : null}
           </Card>
         </View>
-      ) : (
+      ) : activeTool === "quick-review" ? (
         <>
-      <Card>
-        <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Ask the Rav Queue</SectionTitle>
-            <Text style={styles.muted}>
-              {managedChaburah ? managedChaburah.name : "Current chaburah"} questions that need a response.
-            </Text>
-          </View>
-          <Pill label={`${submittedQuestions.length} open`} tone={submittedQuestions.length ? "accent" : "success"} />
-        </Row>
-      </Card>
-
-      <StatusBanner
-        message={message}
-        tone={
-          message.includes("Editing")
-            ? "info"
-            : message.includes("saved") ||
-                message.includes("published") ||
-                message.includes("draft") ||
-                message.includes("staged") ||
-                message.includes("copied") ||
-                message.includes("updated") ||
-                message.includes("enabled") ||
-                message.includes("disabled") ||
-                message.includes("removed")
-              ? "success"
-              : "error"
-        }
-      />
-
-      {submittedQuestions.length === 0 ? (
-        <Card>
-          <SectionTitle>No Open Questions</SectionTitle>
-          <Text style={styles.muted}>Submitted questions will appear here for the assigned rabbi.</Text>
-        </Card>
-      ) : (
-        submittedQuestions.map((question) => (
-          <Card key={question.id}>
-            <Row>
-              <View style={{ flex: 1, minWidth: 220 }}>
-                <Pill label="Submitted" tone="accent" />
-                <MetaText>
-                  From {question.askerName || question.askerEmail || "Unknown participant"} - {new Date(question.submittedAt).toLocaleDateString()}
-                </MetaText>
-              </View>
-            </Row>
-            <Text style={styles.body}>{question.question}</Text>
-            {activeQuestionId === question.id ? (
-              <>
-                <TextArea onChangeText={setAnswer} placeholder="Write the answer..." value={answer} />
-                <Row>
-                  <View style={{ minWidth: 130 }}>
-                    <Button disabled={saving || answer.trim().length < 5} label="Save Answer" onPress={() => submitAnswer(question.id)} />
-                  </View>
-                  <View style={{ minWidth: 100 }}>
-                    <Button label="Cancel" onPress={() => setActiveQuestionId(null)} variant="ghost" />
-                  </View>
-                </Row>
-              </>
-            ) : (
-              <Button
-                label="Answer Question"
-                onPress={() => {
-                  setActiveQuestionId(question.id);
-                  setAnswer("");
-                }}
-                variant="secondary"
-              />
-            )}
-          </Card>
-        ))
-      )}
-
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
@@ -1156,19 +1226,35 @@ export default function RabbiHubScreen() {
         ))}
       </Card>
         </>
-      )}
-
-      <Card>
-        <SectionTitle>Recently Answered</SectionTitle>
-        {answeredQuestions.slice(0, 4).map((question) => (
-          <View key={question.id} style={{ gap: 4 }}>
-            <MetaText>{new Date(question.answeredAt ?? question.submittedAt).toLocaleDateString()}</MetaText>
-            <Text style={styles.muted}>{question.question}</Text>
-          </View>
-        ))}
-        {answeredQuestions.length === 0 ? <Text style={styles.muted}>No answered questions yet.</Text> : null}
-      </Card>
+      ) : null}
     </Screen>
+  );
+}
+
+function RabbiToolCard({
+  active,
+  count,
+  label,
+  meta,
+  onPress
+}: {
+  active: boolean;
+  count?: number;
+  label: string;
+  meta: string;
+  onPress: () => void;
+}) {
+  return (
+    <View style={[localStyles.toolCard, active && localStyles.toolCardActive]}>
+      <Row>
+        <View style={{ flex: 1, minWidth: 180 }}>
+          <Text style={[localStyles.toolCardTitle, active && localStyles.toolCardTitleActive]}>{label}</Text>
+          <Text style={[styles.muted, active && localStyles.toolCardMetaActive]}>{meta}</Text>
+        </View>
+        {count !== undefined ? <Pill label={`${count}`} tone={count > 0 ? "accent" : "neutral"} /> : null}
+      </Row>
+      <Button label={active ? "Selected" : "Open"} onPress={onPress} variant={active ? "primary" : "secondary"} />
+    </View>
   );
 }
 
@@ -1228,6 +1314,38 @@ function ReviewQuestionManagerRow({
 }
 
 const localStyles = StyleSheet.create({
+  toolCards: {
+    alignItems: "stretch",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.md
+  },
+  toolCard: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexBasis: 260,
+    flexGrow: 1,
+    gap: theme.spacing.md,
+    padding: theme.spacing.md
+  },
+  toolCardActive: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary
+  },
+  toolCardTitle: {
+    color: theme.colors.ink,
+    fontSize: 16,
+    fontWeight: "900",
+    lineHeight: 21
+  },
+  toolCardTitleActive: {
+    color: theme.colors.primary
+  },
+  toolCardMetaActive: {
+    color: theme.colors.ink
+  },
   compactQuestionRow: {
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,

@@ -1,0 +1,95 @@
+Add a Rabbi Hub feature called “Shiur Builder.”
+
+Purpose:
+Rabbonim often cover only part of the official SCP weekly material. Rabbi Goldwicht’s instructions say Rabbeim should send the section of notes and Q&A covered after each chabura. We need a tool that lets the Rabbi select the specific official sections he covered and generate a custom Review Packet.
+
+Build only the first pilot using Siman 95 Part 1.
+
+UI:
+- Add Rabbi Hub card/button: “Shiur Builder.”
+- Page layout should be similar to a two-panel selector:
+  - Left panel: Official SCP Material grouped by Siman > Section > Chunk.
+  - Middle: Add / Remove buttons or simple tap-to-add.
+  - Right panel: My Review Packet.
+- Rabbi can select chunks from the official notes and Q&A.
+- Rabbi can reorder selected chunks in the Review Packet.
+- Rabbi can preview the packet.
+- Rabbi can save as Draft.
+- Rabbi can Publish to current Chaburah.
+- Published packet should appear in Files for participants.
+- Use user-facing language Draft / Published, not Staged.
+
+Important:
+- Do not use AI rewriting.
+- Do not summarize or alter halacha text.
+- Version 1 should combine selected official content exactly as stored.
+- Keep the original content markdown intact.
+- Rabbi may edit the packet title, but not the official body text in v1.
+- If PDF generation is already available, generate a PDF; otherwise create the packet preview and store content for later PDF generation.
+
+Database:
+Create or adapt these tables:
+1. content_chunks
+2. content_chunk_links
+3. review_packets
+4. review_packet_items
+
+content_chunks should support:
+- chunk_code
+- source_type: notes, qa, intro, pace
+- siman
+- workbook_title
+- section_key
+- section_title
+- chunk_title
+- chunk_summary
+- content_markdown
+- sort_order
+- official_shiur_number
+- estimated_minutes
+- difficulty: core, advanced, practical
+- tags
+- source_file_name
+- source_start_page
+- source_end_page
+- is_selectable
+
+content_chunk_links should connect note chunks to related Q&A chunks.
+
+Pilot chunks:
+Use Siman 95 Part 1 and manually seed these chunks:
+
+95-A1 Introduction to the Zman
+95-B1 Nat Bar Nat — Opening Kitchen Cases
+95-B2 Basar B’chalav Flavor Background
+95-B3 Gemara: Rav vs. Shmuel
+95-B4 Why Nat Bar Nat Works
+95-B5 Nat Bar Nat Does Not Apply to Issurim
+95-B6 Rishonim Dispute
+95-B7 S”A vs. Rama
+95-B8 Eino Ben-Yomo and Practical Placement
+95-B9 Intentionally Cooking Pareve for Later Dairy/Meat
+95-B10 Summary Rules
+
+Also seed Q&A chunks:
+95-Q1 through 95-Q18, each as a separate selectable item.
+
+Smart suggestions:
+When a Rabbi adds a note chunk, show related Q&A suggestions based on content_chunk_links.
+Example:
+- Adding 95-B7 should suggest Q&A 2–8.
+- Adding 95-B3 or 95-B4 should suggest Q&A 1–2.
+- Adding 95-B5 should suggest Q&A 13.
+
+Files integration:
+When a Review Packet is published:
+- create a file/listing visible in Files
+- file_type = custom_review_packet
+- scope_type = chaburah
+- status = published
+- linked to chaburah_id and packet_id
+
+Do not redesign the existing Files page.
+Do not change existing auth/roles unless needed.
+Only Rabbi and Global Admin roles should access Shiur Builder.
+Participants should only see published packets in Files.

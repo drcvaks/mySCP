@@ -94,9 +94,63 @@ type LearningFileRow = {
   visibility: Database["public"]["Enums"]["content_visibility"];
   storage_path: string | null;
   external_url: string | null;
+  review_packet_id: string | null;
   uploaded_by: string;
   created_at: string;
   updated_at: string;
+};
+
+type ContentChunkRow = {
+  id: string;
+  chunk_code: string;
+  source_type: Database["public"]["Enums"]["content_source_type"];
+  siman: string;
+  workbook_title: string;
+  section_key: string;
+  section_title: string;
+  chunk_title: string;
+  chunk_summary: string | null;
+  content_markdown: string;
+  sort_order: number;
+  official_shiur_number: number | null;
+  estimated_minutes: number | null;
+  difficulty: Database["public"]["Enums"]["content_difficulty"];
+  tags: string[];
+  source_file_name: string | null;
+  source_start_page: number | null;
+  source_end_page: number | null;
+  is_selectable: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type ContentChunkLinkRow = {
+  id: string;
+  parent_chunk_id: string;
+  related_chunk_id: string;
+  relation_type: "related_qa" | "related_note";
+  created_at: string;
+};
+
+type ReviewPacketRow = {
+  id: string;
+  chaburah_id: string;
+  title: string;
+  week: number;
+  siman: string;
+  status: Database["public"]["Enums"]["review_packet_status"];
+  created_by: string;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ReviewPacketItemRow = {
+  id: string;
+  packet_id: string;
+  chunk_id: string;
+  sort_order: number;
+  created_at: string;
 };
 
 type ReviewQuestionRow = {
@@ -247,6 +301,18 @@ export interface Database {
       chaburah_members: Table<ChaburahMemberRow>;
       announcements: Table<AnnouncementRow>;
       learning_files: Table<LearningFileRow>;
+      content_chunks: Table<ContentChunkRow>;
+      content_chunk_links: Table<ContentChunkLinkRow>;
+      review_packets: Table<
+        ReviewPacketRow,
+        Pick<ReviewPacketRow, "chaburah_id" | "title" | "week" | "siman" | "created_by"> &
+          Partial<Omit<ReviewPacketRow, "chaburah_id" | "title" | "week" | "siman" | "created_by">>
+      >;
+      review_packet_items: Table<
+        ReviewPacketItemRow,
+        Pick<ReviewPacketItemRow, "packet_id" | "chunk_id" | "sort_order"> &
+          Partial<Omit<ReviewPacketItemRow, "packet_id" | "chunk_id" | "sort_order">>
+      >;
       review_questions: Table<ReviewQuestionRow>;
       review_question_answers: Table<ReviewQuestionAnswerRow>;
       review_sessions: Table<ReviewSessionRow>;
@@ -384,6 +450,10 @@ export interface Database {
         Args: { target_membership_id: string };
         Returns: number;
       };
+      publish_review_packet: {
+        Args: { target_packet_id: string };
+        Returns: LearningFileRow;
+      };
     };
     Enums: {
       app_role: "participant" | "local_rabbi" | "local_admin" | "global_admin";
@@ -392,7 +462,10 @@ export interface Database {
       membership_status: "pending" | "active" | "suspended" | "left";
       content_visibility: "everyone" | "chaburah";
       file_coverage: "week" | "bechina_review" | "entire_zman";
-      learning_file_type: "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link";
+      learning_file_type: "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link" | "custom_review_packet";
+      content_source_type: "notes" | "qa" | "intro" | "pace";
+      content_difficulty: "core" | "advanced" | "practical";
+      review_packet_status: "draft" | "published" | "archived";
       review_publication_status: "draft" | "published" | "archived";
       review_question_kind: "multiple_choice" | "true_false";
       ask_rav_status: "submitted" | "answered" | "archived";

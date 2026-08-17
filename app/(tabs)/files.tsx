@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
 import {
   Button,
@@ -20,11 +21,12 @@ import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 
-const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "recording", "video", "pdf", "other"];
+const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "custom_review_packet", "recording", "video", "pdf", "other"];
 const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
 const coverages: Array<FileCoverage | "all"> = ["all", "week", "bechina_review", "entire_zman"];
 
 export default function FilesScreen() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<FileType | "all">("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
@@ -89,6 +91,10 @@ export default function FilesScreen() {
   async function openFile(fileId: string) {
     const file = learningFiles.find((item) => item.id === fileId);
     if (!file) return;
+    if (file.fileType === "custom_review_packet" && file.reviewPacketId) {
+      router.push({ pathname: "/(tabs)/shiur-packet", params: { id: file.reviewPacketId } });
+      return;
+    }
     await openLearningFile(file);
   }
 
@@ -192,7 +198,7 @@ export default function FilesScreen() {
                 <Pill label={fileTypeLabel(file.fileType)} tone="accent" />
                 <View style={{ minWidth: 112 }}>
                   <Button
-                    label={file.url || file.storagePath ? "Open" : "Details"}
+                    label={file.fileType === "custom_review_packet" || file.url || file.storagePath ? "Open" : "Details"}
                     onPress={() => openFile(file.id)}
                     variant="secondary"
                   />

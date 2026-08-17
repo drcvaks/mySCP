@@ -123,6 +123,7 @@ export default function TabLayout() {
           fontWeight: "700",
           lineHeight: denseLeftRail ? 13 : compactLeftRail ? 14 : 15
         },
+        tabBarLabelPosition: leftRailNav ? "beside-icon" : "below-icon",
         tabBarPosition: leftRailNav ? "left" : "bottom",
         tabBarStyle: {
           borderTopColor: theme.colors.border,
@@ -197,6 +198,8 @@ export default function TabLayout() {
         options={{ title: "Notifications", tabBarIcon: tabIcon("notifications"), href: compactPhoneNav ? null : undefined }}
       />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: tabIcon("settings"), href: compactPhoneNav ? null : undefined }} />
+      <Tabs.Screen name="shiur-builder" options={{ title: "Shiur Builder", href: null }} />
+      <Tabs.Screen name="shiur-packet" options={{ title: "Review Packet", href: null }} />
     </Tabs>
   );
 }

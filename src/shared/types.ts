@@ -1,5 +1,5 @@
 export type UserRole = "participant" | "local_rabbi" | "local_admin" | "global_admin";
-export type FileType = "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link";
+export type FileType = "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link" | "custom_review_packet";
 export type Visibility = "everyone" | "chaburah";
 export type FileCoverage = "week" | "bechina_review" | "entire_zman";
 export type ReviewPublicationStatus = "draft" | "published" | "archived";
@@ -88,7 +88,62 @@ export interface LearningFile {
   fileType: FileType;
   url?: string;
   storagePath?: string;
+  reviewPacketId?: string;
   description?: string;
+}
+
+export type ContentSourceType = "notes" | "qa" | "intro" | "pace";
+export type ContentDifficulty = "core" | "advanced" | "practical";
+export type ReviewPacketStatus = "draft" | "published" | "archived";
+
+export interface ContentChunk {
+  id: string;
+  chunkCode: string;
+  sourceType: ContentSourceType;
+  siman: string;
+  workbookTitle: string;
+  sectionKey: string;
+  sectionTitle: string;
+  chunkTitle: string;
+  chunkSummary?: string;
+  contentMarkdown: string;
+  sortOrder: number;
+  officialShiurNumber?: number;
+  estimatedMinutes?: number;
+  difficulty: ContentDifficulty;
+  tags: string[];
+  sourceFileName?: string;
+  sourceStartPage?: number;
+  sourceEndPage?: number;
+  isSelectable: boolean;
+}
+
+export interface ContentChunkLink {
+  id: string;
+  parentChunkId: string;
+  relatedChunkId: string;
+  relationType: "related_qa" | "related_note";
+}
+
+export interface ReviewPacket {
+  id: string;
+  chaburahId: string;
+  title: string;
+  week: number;
+  siman: string;
+  status: ReviewPacketStatus;
+  createdBy: string;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewPacketItem {
+  id: string;
+  packetId: string;
+  chunkId: string;
+  sortOrder: number;
+  chunk?: ContentChunk;
 }
 
 export interface ReviewQuestion {

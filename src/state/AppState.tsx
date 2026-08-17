@@ -290,6 +290,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             fileType: row.file_type,
             url: row.external_url ?? undefined,
             storagePath: row.storage_path ?? undefined,
+            reviewPacketId: row.review_packet_id ?? undefined,
             description: row.description ?? undefined
           };
         })
