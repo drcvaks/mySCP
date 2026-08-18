@@ -899,6 +899,12 @@ function DocumentChunk({ chunk, index, showNumber = true }: { chunk: ContentChun
             </View>
           );
         }
+        if (block.kind === "table") {
+          return <DocumentTable key={`${chunk.id}-${blockIndex}`} rows={block.rows} />;
+        }
+        if (block.kind === "footnotes") {
+          return <DocumentFootnotes key={`${chunk.id}-${blockIndex}`} notes={block.notes} />;
+        }
         return (
           <Text key={`${chunk.id}-${blockIndex}`} style={localStyles.documentParagraph}>
             {block.text}
@@ -912,7 +918,9 @@ function DocumentChunk({ chunk, index, showNumber = true }: { chunk: ContentChun
 type DocumentBlock =
   | { kind: "answer" | "question"; label: string; text: string }
   | { kind: "bullet" | "numbered"; lead?: string; level: number; marker: string; text: string }
-  | { kind: "paragraph"; text: string };
+  | { kind: "footnotes"; notes: { label: string; text: string }[] }
+  | { kind: "paragraph"; text: string }
+  | { kind: "table"; rows: string[][] };
 
 function buildDocumentBlocks(chunk: ContentChunk): DocumentBlock[] {
   const paragraphs = chunk.contentMarkdown
@@ -927,9 +935,13 @@ function buildDocumentBlocks(chunk: ContentChunk): DocumentBlock[] {
     const answerMatch = trimmedParagraph.match(/^(A:\s*)(.*)$/i);
     const numberedMatch = paragraph.match(/^(\s*)(\d+)[.)]\s+([\s\S]+)$/);
     const bulletMatch = paragraph.match(/^(\s*)([-*]|o)\s+([\s\S]+)$/);
+    const tableRows = parseMarkdownTable(trimmedParagraph);
+    const footnotes = parseFootnotes(trimmedParagraph);
 
     if (questionMatch) return { kind: "question", label: questionMatch[1].trim(), text: questionMatch[2].trim() };
     if (answerMatch) return { kind: "answer", label: answerMatch[1].trim(), text: answerMatch[2].trim() };
+    if (tableRows) return { kind: "table", rows: tableRows };
+    if (footnotes) return { kind: "footnotes", notes: footnotes };
     if (numberedMatch) {
       const listText = splitListLead(normalizeB6ListText(numberedMatch[3].trim()));
       return { kind: "numbered", level: listLevel(numberedMatch[1]), marker: `${numberedMatch[2]}.`, ...listText };
@@ -952,6 +964,69 @@ function buildDocumentBlocks(chunk: ContentChunk): DocumentBlock[] {
 
     return { kind: "paragraph", text: trimmedParagraph };
   });
+}
+
+function DocumentTable({ rows }: { rows: string[][] }) {
+  return (
+    <ScrollView horizontal style={localStyles.documentTableScroll}>
+      <View style={localStyles.documentTable}>
+        {rows.map((row, rowIndex) => (
+          <View key={rowIndex} style={[localStyles.documentTableRow, rowIndex === 0 && localStyles.documentTableHeaderRow]}>
+            {row.map((cell, cellIndex) => (
+              <View key={`${rowIndex}-${cellIndex}`} style={[localStyles.documentTableCell, cellIndex === 0 && localStyles.documentTableCaseCell]}>
+                <Text style={[localStyles.documentTableText, rowIndex === 0 && localStyles.documentTableHeaderText]}>{cell}</Text>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+function DocumentFootnotes({ notes }: { notes: { label: string; text: string }[] }) {
+  return (
+    <View style={localStyles.documentFootnotes}>
+      <Text style={localStyles.documentFootnotesTitle}>Source Notes</Text>
+      {notes.map((note) => (
+        <View key={note.label} style={localStyles.documentFootnoteRow}>
+          <Text style={localStyles.documentFootnoteMarker}>[{note.label}]</Text>
+          <Text style={localStyles.documentFootnoteText}>{note.text}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function parseMarkdownTable(text: string) {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2 || !lines.every((line) => line.includes("|"))) return null;
+  const rows = lines
+    .filter((line) => !/^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/.test(line))
+    .map((line) =>
+      line
+        .replace(/^\|/, "")
+        .replace(/\|$/, "")
+        .split("|")
+        .map((cell) => cell.trim())
+    )
+    .filter((row) => row.some(Boolean));
+  return rows.length >= 2 ? rows : null;
+}
+
+function parseFootnotes(text: string) {
+  const notes = text
+    .split("\n")
+    .map((line) => line.trim())
+    .map((line) => {
+      const match = line.match(/^\[\^?(\d+)\]:\s+([\s\S]+)$/);
+      return match ? { label: match[1], text: match[2].trim() } : null;
+    })
+    .filter((note): note is { label: string; text: string } => Boolean(note));
+  return notes.length > 0 ? notes : null;
 }
 
 function listLevel(indent: string) {
@@ -1636,6 +1711,82 @@ const localStyles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: 15,
     lineHeight: 24,
+    textAlign: "left",
+    writingDirection: "ltr"
+  },
+  documentTableScroll: {
+    marginVertical: theme.spacing.sm
+  },
+  documentTable: {
+    borderBottomColor: theme.colors.border,
+    borderBottomWidth: 1,
+    borderLeftColor: theme.colors.border,
+    borderLeftWidth: 1,
+    minWidth: 860
+  },
+  documentTableRow: {
+    flexDirection: "row"
+  },
+  documentTableHeaderRow: {
+    backgroundColor: "#F1F5F9"
+  },
+  documentTableCell: {
+    borderRightColor: theme.colors.border,
+    borderRightWidth: 1,
+    borderTopColor: theme.colors.border,
+    borderTopWidth: 1,
+    justifyContent: "center",
+    minHeight: 48,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    width: 128
+  },
+  documentTableCaseCell: {
+    width: 82
+  },
+  documentTableText: {
+    color: theme.colors.ink,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
+    writingDirection: "ltr"
+  },
+  documentTableHeaderText: {
+    fontWeight: "900"
+  },
+  documentFootnotes: {
+    borderTopColor: theme.colors.border,
+    borderTopWidth: 1,
+    gap: 6,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm
+  },
+  documentFootnotesTitle: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: "900",
+    lineHeight: 17,
+    textTransform: "uppercase"
+  },
+  documentFootnoteRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 8
+  },
+  documentFootnoteMarker: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    lineHeight: 18,
+    minWidth: 28,
+    textAlign: "right"
+  },
+  documentFootnoteText: {
+    color: theme.colors.muted,
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    minWidth: 0,
     textAlign: "left",
     writingDirection: "ltr"
   },
