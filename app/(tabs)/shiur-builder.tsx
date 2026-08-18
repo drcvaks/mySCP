@@ -864,43 +864,115 @@ export default function ShiurBuilderScreen() {
 }
 
 function DocumentChunk({ chunk, index, showNumber = true }: { chunk: ContentChunk; index: number; showNumber?: boolean }) {
-  const paragraphs = chunk.contentMarkdown
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
+  const blocks = buildDocumentBlocks(chunk);
   const isQa = chunk.sourceType === "qa" || /^95-Q\d+/i.test(chunk.chunkCode);
 
   return (
     <View style={[localStyles.documentChunk, index === 0 && localStyles.documentChunkFirst]}>
       <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunk.chunkCode}</MetaText>
       <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text>
-      {paragraphs.map((paragraph, paragraphIndex) => {
-        const questionMatch = paragraph.match(/^(95-Q\d+:\s*)(.*)$/i);
-        const answerMatch = paragraph.match(/^(A:\s*)(.*)$/i);
-        if (questionMatch) {
+      {blocks.map((block, blockIndex) => {
+        if (block.kind === "question") {
           return (
-            <View key={`${chunk.id}-${paragraphIndex}`} style={localStyles.documentQuestionBlock}>
-              <Text style={localStyles.documentQuestionLabel}>{questionMatch[1].trim()}</Text>
-              <Text style={localStyles.documentQuestionText}>{questionMatch[2].trim()}</Text>
+            <View key={`${chunk.id}-${blockIndex}`} style={localStyles.documentQuestionBlock}>
+              <Text style={localStyles.documentQuestionLabel}>{block.label}</Text>
+              <Text style={localStyles.documentQuestionText}>{block.text}</Text>
             </View>
           );
         }
-        if (answerMatch) {
+        if (block.kind === "answer") {
           return (
-            <View key={`${chunk.id}-${paragraphIndex}`} style={localStyles.documentAnswerBlock}>
-              <Text style={localStyles.documentAnswerLabel}>{answerMatch[1].trim()}</Text>
-              <Text style={localStyles.documentAnswerText}>{answerMatch[2].trim()}</Text>
+            <View key={`${chunk.id}-${blockIndex}`} style={localStyles.documentAnswerBlock}>
+              <Text style={localStyles.documentAnswerLabel}>{block.label}</Text>
+              <Text style={localStyles.documentAnswerText}>{block.text}</Text>
+            </View>
+          );
+        }
+        if (block.kind === "numbered" || block.kind === "bullet") {
+          return (
+            <View key={`${chunk.id}-${blockIndex}`} style={[localStyles.documentListRow, block.level > 0 && localStyles.documentNestedListRow]}>
+              <Text style={block.kind === "numbered" ? localStyles.documentNumberMarker : localStyles.documentBulletMarker}>{block.marker}</Text>
+              <View style={localStyles.documentListContent}>
+                {block.lead ? <Text style={localStyles.documentListLead}>{block.lead}</Text> : null}
+                <Text style={localStyles.documentListText}>{block.text}</Text>
+              </View>
             </View>
           );
         }
         return (
-          <Text key={`${chunk.id}-${paragraphIndex}`} style={localStyles.documentParagraph}>
-            {paragraph}
+          <Text key={`${chunk.id}-${blockIndex}`} style={localStyles.documentParagraph}>
+            {block.text}
           </Text>
         );
       })}
     </View>
   );
+}
+
+type DocumentBlock =
+  | { kind: "answer" | "question"; label: string; text: string }
+  | { kind: "bullet" | "numbered"; lead?: string; level: number; marker: string; text: string }
+  | { kind: "paragraph"; text: string };
+
+function buildDocumentBlocks(chunk: ContentChunk): DocumentBlock[] {
+  const paragraphs = chunk.contentMarkdown
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.replace(/\r/g, "").trimEnd())
+    .filter((paragraph) => paragraph.trim().length > 0);
+  let autoNumber = 0;
+
+  return paragraphs.map((paragraph, index) => {
+    const trimmedParagraph = paragraph.trim();
+    const questionMatch = trimmedParagraph.match(/^(95-Q\d+:\s*)(.*)$/i);
+    const answerMatch = trimmedParagraph.match(/^(A:\s*)(.*)$/i);
+    const numberedMatch = paragraph.match(/^(\s*)(\d+)[.)]\s+([\s\S]+)$/);
+    const bulletMatch = paragraph.match(/^(\s*)([-*]|o)\s+([\s\S]+)$/);
+
+    if (questionMatch) return { kind: "question", label: questionMatch[1].trim(), text: questionMatch[2].trim() };
+    if (answerMatch) return { kind: "answer", label: answerMatch[1].trim(), text: answerMatch[2].trim() };
+    if (numberedMatch) {
+      const listText = splitListLead(normalizeB6ListText(numberedMatch[3].trim()));
+      return { kind: "numbered", level: listLevel(numberedMatch[1]), marker: `${numberedMatch[2]}.`, ...listText };
+    }
+    if (bulletMatch) {
+      const listText = splitListLead(bulletMatch[3].trim());
+      return { kind: "bullet", level: listLevel(bulletMatch[1]), marker: bulletMatch[2] === "o" ? "o" : "-", ...listText };
+    }
+
+    if (chunk.chunkCode === "95-B6" && index > 0) {
+      autoNumber += 1;
+      const listText = splitListLead(normalizeB6ListText(trimmedParagraph));
+      return { kind: "numbered", level: 0, marker: `${autoNumber}.`, ...listText };
+    }
+    if (chunk.chunkCode === "95-B9" && index > 0) {
+      const isNested = /^Gra\s|^חכ״א\s/.test(trimmedParagraph);
+      const listText = splitListLead(trimmedParagraph);
+      return { kind: "bullet", level: isNested ? 1 : 0, marker: isNested ? "o" : "-", ...listText };
+    }
+
+    return { kind: "paragraph", text: trimmedParagraph };
+  });
+}
+
+function listLevel(indent: string) {
+  return indent.replace(/\t/g, "  ").length >= 2 ? 1 : 0;
+}
+
+function normalizeB6ListText(text: string) {
+  return text
+    .replace(/^ריב״ןquoting/, "ריב״ן - quoting")
+    .replace(/^ספר התרומה, רא״ש וטור–/, "ספר התרומה, רא״ש וטור - ")
+    .replace(/^רמב״ם –/, "רמב״ם - ")
+    .replace(/^איסור והיתר\(quoted by the דרכי משה\) –/, "איסור והיתר (quoted by the דרכי משה) - ");
+}
+
+function splitListLead(text: string) {
+  const match = text.match(/^(.{1,70}?)(?:\s+[–-]\s*|[–-]\s+)([\s\S]+)$/);
+  if (!match) return { text };
+  return {
+    lead: match[1].trim(),
+    text: match[2].trim()
+  };
 }
 
 function PacketGroup({
@@ -1459,18 +1531,70 @@ const localStyles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: 19,
     fontWeight: "900",
-    lineHeight: 25
+    lineHeight: 25,
+    textAlign: "left",
+    writingDirection: "ltr"
   },
   documentQaTitle: {
     color: theme.colors.primary,
     fontSize: 18,
     fontWeight: "900",
-    lineHeight: 24
+    lineHeight: 24,
+    textAlign: "left",
+    writingDirection: "ltr"
   },
   documentParagraph: {
     color: theme.colors.ink,
     fontSize: 15,
-    lineHeight: 25
+    lineHeight: 25,
+    textAlign: "left",
+    writingDirection: "ltr"
+  },
+  documentListRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 10,
+    paddingLeft: theme.spacing.md,
+    paddingRight: theme.spacing.sm
+  },
+  documentNestedListRow: {
+    paddingLeft: theme.spacing.xl
+  },
+  documentNumberMarker: {
+    color: theme.colors.primary,
+    fontSize: 15,
+    fontWeight: "900",
+    lineHeight: 25,
+    minWidth: 28,
+    textAlign: "right"
+  },
+  documentBulletMarker: {
+    color: theme.colors.primary,
+    fontSize: 18,
+    fontWeight: "900",
+    lineHeight: 24,
+    minWidth: 28,
+    textAlign: "right"
+  },
+  documentListContent: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0
+  },
+  documentListLead: {
+    color: theme.colors.ink,
+    fontSize: 15,
+    fontWeight: "900",
+    lineHeight: 22,
+    textAlign: "left",
+    writingDirection: "ltr"
+  },
+  documentListText: {
+    color: theme.colors.ink,
+    fontSize: 15,
+    lineHeight: 25,
+    textAlign: "left",
+    writingDirection: "ltr"
   },
   documentQuestionBlock: {
     backgroundColor: "#F8FAFC",
@@ -1491,7 +1615,9 @@ const localStyles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: 15,
     fontWeight: "800",
-    lineHeight: 23
+    lineHeight: 23,
+    textAlign: "left",
+    writingDirection: "ltr"
   },
   documentAnswerBlock: {
     borderLeftColor: theme.colors.accent,
@@ -1509,7 +1635,9 @@ const localStyles = StyleSheet.create({
   documentAnswerText: {
     color: theme.colors.ink,
     fontSize: 15,
-    lineHeight: 24
+    lineHeight: 24,
+    textAlign: "left",
+    writingDirection: "ltr"
   },
   previewChunk: {
     borderTopColor: theme.colors.border,
