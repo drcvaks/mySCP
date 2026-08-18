@@ -680,11 +680,9 @@ export default function ShiurBuilderScreen() {
                                 <Text style={localStyles.fileTitle} numberOfLines={2}>{chunk.chunkTitle}</Text>
                                 <MetaText>{chunk.chunkCode}</MetaText>
                               </View>
-                              <View style={localStyles.packetFileActions}>
-                                <Button label={packetPreviewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => previewPacketChunk(chunk.id)} variant="ghost" />
-                              </View>
                             </View>
                             <View style={localStyles.packetFileOrderActions}>
+                              <Button label={packetPreviewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => previewPacketChunk(chunk.id)} variant="ghost" />
                               <Button
                                 label="Up"
                                 onPress={() => movePacketChunk(chunk.id, -1)}
@@ -755,15 +753,27 @@ export default function ShiurBuilderScreen() {
       </View>
 
       <Card>
-        <SectionTitle>Packet Preview</SectionTitle>
-        {selectedChunks.length === 0 ? <Text style={styles.muted}>Select sections to preview the packet.</Text> : null}
-        {selectedChunks.map((chunk, index) => (
-          <View key={chunk.id} style={localStyles.previewChunk}>
-            <MetaText>{index + 1}. {chunk.chunkCode}</MetaText>
-            <Text style={localStyles.previewTitle}>{chunk.chunkTitle}</Text>
-            <Text style={localStyles.previewBody}>{chunk.contentMarkdown}</Text>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Packet Preview</SectionTitle>
+            <Text style={styles.muted}>A document-style view of what the Rabbi is preparing.</Text>
           </View>
-        ))}
+          {selectedChunks.length > 0 ? <Pill label={`${selectedChunks.length} section${selectedChunks.length === 1 ? "" : "s"}`} /> : null}
+        </Row>
+        {selectedChunks.length === 0 ? <Text style={styles.muted}>Select sections to preview the packet.</Text> : null}
+        {selectedChunks.length > 0 ? (
+          <View style={localStyles.documentPreviewShell}>
+            <View style={localStyles.documentPage}>
+              <Text style={localStyles.documentPacketTitle}>{title || "Untitled Packet"}</Text>
+              <Text style={localStyles.documentPacketMeta}>
+                {managedChaburah?.name ?? "My Chaburah"} - Week {week}
+              </Text>
+              {selectedChunks.map((chunk, index) => (
+                <DocumentChunk key={chunk.id} chunk={chunk} index={index} />
+              ))}
+            </View>
+          </View>
+        ) : null}
       </Card>
 
       <Modal
@@ -803,21 +813,19 @@ export default function ShiurBuilderScreen() {
                   <Button label="Close" onPress={clearPreview} variant="secondary" />
                 </Row>
                 <ScrollView contentContainerStyle={localStyles.previewPageContent} style={localStyles.previewPage}>
-                  {modalPreviewChunks.map((chunk) => (
-                    <View key={chunk.id} style={localStyles.modalChunkBlock}>
-                      {previewSection || previewingPacket || packetPreviewChunk ? (
-                        <>
-                          <MetaText>{chunk.chunkCode}</MetaText>
-                          <Text style={localStyles.modalChunkTitle}>{chunk.chunkTitle}</Text>
-                        </>
-                      ) : null}
-                      {chunk.contentMarkdown.split(/\n\s*\n/).map((paragraph, index) => (
-                        <Text key={`${chunk.id}-${index}`} style={localStyles.previewParagraph}>
-                          {paragraph.trim()}
+                  <View style={localStyles.modalDocumentPage}>
+                    {previewingPacket ? (
+                      <>
+                        <Text style={localStyles.documentPacketTitle}>{title || "Untitled Packet"}</Text>
+                        <Text style={localStyles.documentPacketMeta}>
+                          {managedChaburah?.name ?? "My Chaburah"} - Week {week}
                         </Text>
-                      ))}
-                    </View>
-                  ))}
+                      </>
+                    ) : null}
+                    {modalPreviewChunks.map((chunk, index) => (
+                      <DocumentChunk key={chunk.id} chunk={chunk} index={index} showNumber={previewingPacket} />
+                    ))}
+                  </View>
                 </ScrollView>
                 {!previewingPacket ? (
                   <Row>
@@ -852,6 +860,46 @@ export default function ShiurBuilderScreen() {
         </Pressable>
       </Modal>
     </Screen>
+  );
+}
+
+function DocumentChunk({ chunk, index, showNumber = true }: { chunk: ContentChunk; index: number; showNumber?: boolean }) {
+  const paragraphs = chunk.contentMarkdown
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  const isQa = chunk.sourceType === "qa" || /^95-Q\d+/i.test(chunk.chunkCode);
+
+  return (
+    <View style={[localStyles.documentChunk, index === 0 && localStyles.documentChunkFirst]}>
+      <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunk.chunkCode}</MetaText>
+      <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text>
+      {paragraphs.map((paragraph, paragraphIndex) => {
+        const questionMatch = paragraph.match(/^(95-Q\d+:\s*)(.*)$/i);
+        const answerMatch = paragraph.match(/^(A:\s*)(.*)$/i);
+        if (questionMatch) {
+          return (
+            <View key={`${chunk.id}-${paragraphIndex}`} style={localStyles.documentQuestionBlock}>
+              <Text style={localStyles.documentQuestionLabel}>{questionMatch[1].trim()}</Text>
+              <Text style={localStyles.documentQuestionText}>{questionMatch[2].trim()}</Text>
+            </View>
+          );
+        }
+        if (answerMatch) {
+          return (
+            <View key={`${chunk.id}-${paragraphIndex}`} style={localStyles.documentAnswerBlock}>
+              <Text style={localStyles.documentAnswerLabel}>{answerMatch[1].trim()}</Text>
+              <Text style={localStyles.documentAnswerText}>{answerMatch[2].trim()}</Text>
+            </View>
+          );
+        }
+        return (
+          <Text key={`${chunk.id}-${paragraphIndex}`} style={localStyles.documentParagraph}>
+            {paragraph}
+          </Text>
+        );
+      })}
+    </View>
   );
 }
 
@@ -1355,6 +1403,114 @@ const localStyles = StyleSheet.create({
     flexBasis: 260,
     flexGrow: 1
   },
+  documentPreviewShell: {
+    alignItems: "center",
+    backgroundColor: "#EEF2F7",
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.lg
+  },
+  documentPage: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D8DEE8",
+    borderRadius: 3,
+    borderWidth: 1,
+    maxWidth: 820,
+    paddingHorizontal: 52,
+    paddingVertical: 44,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    width: "100%"
+  },
+  documentPacketTitle: {
+    color: theme.colors.ink,
+    fontSize: 25,
+    fontWeight: "900",
+    lineHeight: 32,
+    textAlign: "center"
+  },
+  documentPacketMeta: {
+    borderBottomColor: theme.colors.border,
+    borderBottomWidth: 1,
+    color: theme.colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    textAlign: "center"
+  },
+  documentChunk: {
+    borderTopColor: theme.colors.border,
+    borderTopWidth: 1,
+    gap: 8,
+    paddingTop: theme.spacing.lg,
+    marginTop: theme.spacing.lg
+  },
+  documentChunkFirst: {
+    borderTopWidth: 0,
+    marginTop: 0,
+    paddingTop: 0
+  },
+  documentSectionTitle: {
+    color: theme.colors.ink,
+    fontSize: 19,
+    fontWeight: "900",
+    lineHeight: 25
+  },
+  documentQaTitle: {
+    color: theme.colors.primary,
+    fontSize: 18,
+    fontWeight: "900",
+    lineHeight: 24
+  },
+  documentParagraph: {
+    color: theme.colors.ink,
+    fontSize: 15,
+    lineHeight: 25
+  },
+  documentQuestionBlock: {
+    backgroundColor: "#F8FAFC",
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    gap: 4,
+    padding: theme.spacing.sm
+  },
+  documentQuestionLabel: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    lineHeight: 17,
+    textTransform: "uppercase"
+  },
+  documentQuestionText: {
+    color: theme.colors.ink,
+    fontSize: 15,
+    fontWeight: "800",
+    lineHeight: 23
+  },
+  documentAnswerBlock: {
+    borderLeftColor: theme.colors.accent,
+    borderLeftWidth: 3,
+    gap: 3,
+    paddingLeft: theme.spacing.sm
+  },
+  documentAnswerLabel: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: "900",
+    lineHeight: 17,
+    textTransform: "uppercase"
+  },
+  documentAnswerText: {
+    color: theme.colors.ink,
+    fontSize: 15,
+    lineHeight: 24
+  },
   previewChunk: {
     borderTopColor: theme.colors.border,
     borderTopWidth: 1,
@@ -1406,16 +1562,26 @@ const localStyles = StyleSheet.create({
     lineHeight: 24
   },
   previewPage: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: "#EEF2F7",
     borderColor: theme.colors.border,
     borderRadius: 4,
     borderWidth: 1,
     maxHeight: 560
   },
   previewPageContent: {
-    gap: theme.spacing.md,
+    alignItems: "center",
+    paddingHorizontal: 34,
+    paddingVertical: 34
+  },
+  modalDocumentPage: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D8DEE8",
+    borderRadius: 3,
+    borderWidth: 1,
+    maxWidth: 760,
     paddingHorizontal: 48,
-    paddingVertical: 40
+    paddingVertical: 42,
+    width: "100%"
   },
   previewParagraph: {
     color: theme.colors.ink,
