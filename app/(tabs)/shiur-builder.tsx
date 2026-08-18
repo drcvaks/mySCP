@@ -39,12 +39,14 @@ export default function ShiurBuilderScreen() {
   const [activePacketStatus, setActivePacketStatus] = useState<ReviewPacket["status"]>("draft");
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null);
   const [previewSectionKey, setPreviewSectionKey] = useState<string | null>(null);
+  const [packetPreviewChunkId, setPacketPreviewChunkId] = useState<string | null>(null);
   const [previewingPacket, setPreviewingPacket] = useState(false);
   const [title, setTitle] = useState("");
   const [week, setWeek] = useState(fallbackCurrentReviewWeek);
   const [sourceFilter, setSourceFilter] = useState<"all" | "notes" | "qa">("all");
   const [coverageFilter, setCoverageFilter] = useState<"all" | "covered" | "not-covered">("all");
   const [expandedSectionKeys, setExpandedSectionKeys] = useState<string[]>([]);
+  const [expandedPacketSectionKeys, setExpandedPacketSectionKeys] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,6 +58,7 @@ export default function ShiurBuilderScreen() {
   const chunkById = useMemo(() => new Map(chunks.map((chunk) => [chunk.id, chunk])), [chunks]);
   const selectedChunks = selectedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
   const previewChunk = previewChunkId ? chunkById.get(previewChunkId) : undefined;
+  const packetPreviewChunk = packetPreviewChunkId ? chunkById.get(packetPreviewChunkId) : undefined;
   const coverageByChunkId = useMemo(() => {
     const coverageMap = new Map<string, ReviewPacketCoverage[]>();
     coverageRows.forEach((coverage) => {
@@ -75,6 +78,7 @@ export default function ShiurBuilderScreen() {
     return matchesSource && matchesCoverage;
   });
   const materialSections = groupChunksBySection(filteredChunks);
+  const packetSections = groupSelectedChunksBySection(selectedChunks);
   const previewSection = previewSectionKey ? materialSections.find((section) => section.key === previewSectionKey) : undefined;
   const openAskRavCount = askRavQuestions.filter((question) => question.chaburahId === managedChaburahId && question.status === "submitted").length;
   const quickReviewDraftCount = reviewQuestions.filter(
@@ -88,6 +92,19 @@ export default function ShiurBuilderScreen() {
   const previousPreviewChunk = previewChunkIndex > 0 ? filteredChunks[previewChunkIndex - 1] : undefined;
   const nextPreviewChunk =
     previewChunkIndex >= 0 && previewChunkIndex < filteredChunks.length - 1 ? filteredChunks[previewChunkIndex + 1] : undefined;
+  const packetPreviewChunkIndex = packetPreviewChunkId ? selectedChunks.findIndex((chunk) => chunk.id === packetPreviewChunkId) : -1;
+  const previousPacketPreviewChunk = packetPreviewChunkIndex > 0 ? selectedChunks[packetPreviewChunkIndex - 1] : undefined;
+  const nextPacketPreviewChunk =
+    packetPreviewChunkIndex >= 0 && packetPreviewChunkIndex < selectedChunks.length - 1 ? selectedChunks[packetPreviewChunkIndex + 1] : undefined;
+  const modalPreviewChunks = previewingPacket
+    ? selectedChunks
+    : previewSection
+      ? previewSection.chunks
+      : packetPreviewChunk
+        ? [packetPreviewChunk]
+        : previewChunk
+          ? [previewChunk]
+          : [];
   const draftPackets = packets.filter((packet) => packet.status === "draft" && packet.week === week);
   const publishedPackets = packets.filter((packet) => packet.status === "published" && packet.week === week);
   const suggestedChunks = links
@@ -144,8 +161,16 @@ export default function ShiurBuilderScreen() {
     return counts;
   }
 
+  function normalizePacketIds(ids: string[]) {
+    return groupSelectedChunksBySection(ids.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk))).flatMap(
+      (section) => section.chunks.map((chunk) => chunk.id)
+    );
+  }
+
   function addChunk(chunkId: string) {
-    setSelectedIds((current) => (current.includes(chunkId) ? current : [...current, chunkId]));
+    setSelectedIds((current) => (current.includes(chunkId) ? current : normalizePacketIds([...current, chunkId])));
+    const chunk = chunkById.get(chunkId);
+    if (chunk) expandPacketSection(sectionKeyForChunk(chunk));
   }
 
   function addSection(sectionChunks: ContentChunk[]) {
@@ -154,8 +179,10 @@ export default function ShiurBuilderScreen() {
       sectionChunks.forEach((chunk) => {
         if (!next.includes(chunk.id)) next.push(chunk.id);
       });
-      return next;
+      return normalizePacketIds(next);
     });
+    const firstChunk = sectionChunks[0];
+    if (firstChunk) expandPacketSection(sectionKeyForChunk(firstChunk));
   }
 
   function toggleSection(sectionKey: string) {
@@ -164,14 +191,42 @@ export default function ShiurBuilderScreen() {
     );
   }
 
+  function expandPacketSection(sectionKey: string) {
+    setExpandedPacketSectionKeys((current) => (current.includes(sectionKey) ? current : [...current, sectionKey]));
+  }
+
+  function togglePacketSection(sectionKey: string) {
+    setExpandedPacketSectionKeys((current) =>
+      current.includes(sectionKey) ? current.filter((key) => key !== sectionKey) : [...current, sectionKey]
+    );
+  }
+
   function toggleChunkPreview(chunkId: string) {
+    setPacketPreviewChunkId(null);
     setPreviewSectionKey(null);
+    setPreviewingPacket(false);
     setPreviewChunkId(chunkId);
   }
 
   function previewWholeSection(sectionKey: string) {
+    setPacketPreviewChunkId(null);
     setPreviewChunkId(null);
+    setPreviewingPacket(false);
     setPreviewSectionKey(sectionKey);
+  }
+
+  function previewPacketChunk(chunkId: string) {
+    setPreviewChunkId(null);
+    setPreviewSectionKey(null);
+    setPreviewingPacket(false);
+    setPacketPreviewChunkId(chunkId);
+  }
+
+  function clearPreview() {
+    setPreviewChunkId(null);
+    setPreviewSectionKey(null);
+    setPacketPreviewChunkId(null);
+    setPreviewingPacket(false);
   }
 
   function moveChunkPreview(direction: -1 | 1) {
@@ -183,16 +238,61 @@ export default function ShiurBuilderScreen() {
     setSelectedIds((current) => current.filter((id) => id !== chunkId));
   }
 
-  function moveChunk(chunkId: string, direction: -1 | 1) {
+  function removePacketSection(sectionKey: string) {
+    setSelectedIds((current) =>
+      current.filter((id) => {
+        const chunk = chunkById.get(id);
+        return chunk ? sectionKeyForChunk(chunk) !== sectionKey : true;
+      })
+    );
+  }
+
+  function movePacketSection(sectionKey: string, direction: -1 | 1) {
     setSelectedIds((current) => {
-      const index = current.indexOf(chunkId);
+      const sections = groupSelectedChunksBySection(
+        current.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk))
+      );
+      const index = sections.findIndex((section) => section.key === sectionKey);
       const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
-      const next = [...current];
-      const [item] = next.splice(index, 1);
-      next.splice(nextIndex, 0, item);
-      return next;
+      if (index < 0 || nextIndex < 0 || nextIndex >= sections.length) return current;
+      const nextSections = [...sections];
+      const [section] = nextSections.splice(index, 1);
+      nextSections.splice(nextIndex, 0, section);
+      return nextSections.flatMap((nextSection) => nextSection.chunks.map((chunk) => chunk.id));
     });
+  }
+
+  function movePacketChunk(chunkId: string, direction: -1 | 1) {
+    setSelectedIds((current) => {
+      const sections = groupSelectedChunksBySection(
+        current.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk))
+      );
+      const section = sections.find((candidate) => candidate.chunks.some((chunk) => chunk.id === chunkId));
+      if (!section) return current;
+      const chunkIndex = section.chunks.findIndex((chunk) => chunk.id === chunkId);
+      const nextChunkIndex = chunkIndex + direction;
+      if (chunkIndex < 0 || nextChunkIndex < 0 || nextChunkIndex >= section.chunks.length) return current;
+      const nextSections = sections.map((candidate) => {
+        if (candidate.key !== section.key) return candidate;
+        const nextChunks = [...candidate.chunks];
+        const [chunk] = nextChunks.splice(chunkIndex, 1);
+        nextChunks.splice(nextChunkIndex, 0, chunk);
+        return { ...candidate, chunks: nextChunks };
+      });
+      return nextSections.flatMap((nextSection) => nextSection.chunks.map((chunk) => chunk.id));
+    });
+  }
+
+  function movePacketPreview(direction: -1 | 1) {
+    const targetChunk = direction === -1 ? previousPacketPreviewChunk : nextPacketPreviewChunk;
+    if (targetChunk) setPacketPreviewChunkId(targetChunk.id);
+  }
+
+  function removePreviewedPacketChunk() {
+    if (!packetPreviewChunkId) return;
+    const fallbackChunk = nextPacketPreviewChunk ?? previousPacketPreviewChunk;
+    removeChunk(packetPreviewChunkId);
+    setPacketPreviewChunkId(fallbackChunk?.id ?? null);
   }
 
   function startNewDraft() {
@@ -219,6 +319,8 @@ export default function ShiurBuilderScreen() {
     setActivePacketId(null);
     setActivePacketStatus("draft");
     setSelectedIds([]);
+    setExpandedPacketSectionKeys([]);
+    clearPreview();
     setTitle(`${managedChaburah?.name ?? "My Chaburah"} Week ${week} Review Packet`);
     setMessage("Started a new draft packet.");
   }
@@ -240,7 +342,13 @@ export default function ShiurBuilderScreen() {
     setActivePacketStatus(packet.status);
     setTitle(packet.title);
     setWeek(packet.week);
-    setSelectedIds((data ?? []).map((item) => item.chunk_id));
+    const loadedIds = (data ?? []).map((item) => item.chunk_id);
+    setSelectedIds(loadedIds);
+    const loadedSections = groupSelectedChunksBySection(
+      loadedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk))
+    );
+    setExpandedPacketSectionKeys(loadedSections.map((section) => section.key));
+    clearPreview();
     setMessage(packet.status === "draft" ? "Draft loaded." : "Published packet loaded for preview.");
   }
 
@@ -524,20 +632,80 @@ export default function ShiurBuilderScreen() {
             </View>
             <Text style={styles.muted}>The official packet text below is controlled and cannot be edited here.</Text>
             <ScrollView contentContainerStyle={{ gap: 8 }} style={localStyles.packetScroll}>
-              {selectedChunks.length === 0 ? <Text style={styles.muted}>Add official sections to begin the draft packet.</Text> : null}
-              {selectedChunks.map((chunk, index) => (
-                <View key={chunk.id} style={localStyles.packetItem}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <MetaText>{index + 1}. {chunk.chunkCode}</MetaText>
-                    <Text style={localStyles.packetTitle} numberOfLines={2}>{chunk.chunkTitle}</Text>
+              {packetSections.length === 0 ? <Text style={styles.muted}>Add official sections to begin the draft packet.</Text> : null}
+              {packetSections.map((section, sectionIndex) => {
+                const expanded = expandedPacketSectionKeys.includes(section.key);
+                return (
+                  <View key={section.key} style={localStyles.folderShell}>
+                    <View style={localStyles.packetFolderBody}>
+                      <Pressable accessibilityRole="button" onPress={() => togglePacketSection(section.key)} style={localStyles.packetFolderHeader}>
+                        <Ionicons name={expanded ? "chevron-down" : "chevron-forward"} color={theme.colors.muted} size={18} />
+                        <Ionicons name={expanded ? "folder-open-outline" : "folder-outline"} color={theme.colors.accent} size={23} />
+                        <View style={localStyles.folderText}>
+                          <Text style={localStyles.folderTitle}>{section.title}</Text>
+                          <MetaText>
+                            {section.sourceLabel} - {section.chunks.length} item{section.chunks.length === 1 ? "" : "s"}
+                          </MetaText>
+                        </View>
+                      </Pressable>
+                      <View style={localStyles.packetFolderActions}>
+                        <Button
+                          label="Up"
+                          onPress={() => movePacketSection(section.key, -1)}
+                          disabled={sectionIndex === 0 || activePacketStatus !== "draft"}
+                          variant="ghost"
+                        />
+                        <Button
+                          label="Down"
+                          onPress={() => movePacketSection(section.key, 1)}
+                          disabled={sectionIndex === packetSections.length - 1 || activePacketStatus !== "draft"}
+                          variant="ghost"
+                        />
+                        <Button
+                          label="Remove Section"
+                          onPress={() => removePacketSection(section.key)}
+                          disabled={activePacketStatus !== "draft"}
+                          variant="ghost"
+                        />
+                      </View>
+                    </View>
+                    {expanded ? (
+                      <View style={localStyles.folderChildren}>
+                        {section.chunks.map((chunk, chunkIndex) => (
+                          <View key={chunk.id} style={localStyles.packetFileRow}>
+                            <View style={localStyles.packetFileMain}>
+                              <View style={localStyles.treeLine} />
+                              <Ionicons name="document-text-outline" color={theme.colors.muted} size={19} />
+                              <View style={localStyles.fileText}>
+                                <Text style={localStyles.fileTitle} numberOfLines={2}>{chunk.chunkTitle}</Text>
+                                <MetaText>{chunk.chunkCode}</MetaText>
+                              </View>
+                              <View style={localStyles.packetFileActions}>
+                                <Button label={packetPreviewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => previewPacketChunk(chunk.id)} variant="ghost" />
+                              </View>
+                            </View>
+                            <View style={localStyles.packetFileOrderActions}>
+                              <Button
+                                label="Up"
+                                onPress={() => movePacketChunk(chunk.id, -1)}
+                                disabled={chunkIndex === 0 || activePacketStatus !== "draft"}
+                                variant="ghost"
+                              />
+                              <Button
+                                label="Down"
+                                onPress={() => movePacketChunk(chunk.id, 1)}
+                                disabled={chunkIndex === section.chunks.length - 1 || activePacketStatus !== "draft"}
+                                variant="ghost"
+                              />
+                              <Button label="Remove" onPress={() => removeChunk(chunk.id)} disabled={activePacketStatus !== "draft"} variant="ghost" />
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
                   </View>
-                  <View style={localStyles.itemActions}>
-                    <Button label="Up" onPress={() => moveChunk(chunk.id, -1)} disabled={index === 0 || activePacketStatus !== "draft"} variant="ghost" />
-                    <Button label="Down" onPress={() => moveChunk(chunk.id, 1)} disabled={index === selectedChunks.length - 1 || activePacketStatus !== "draft"} variant="ghost" />
-                    <Button label="Remove" onPress={() => removeChunk(chunk.id)} disabled={activePacketStatus !== "draft"} variant="ghost" />
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </ScrollView>
             {uniqueSuggestedChunks.length > 0 && activePacketStatus === "draft" ? (
               <View style={localStyles.suggestionBox}>
@@ -553,7 +721,12 @@ export default function ShiurBuilderScreen() {
             <View style={localStyles.publishActions}>
               <Button
                 label="Preview Packet"
-                onPress={() => setPreviewingPacket(true)}
+                onPress={() => {
+                  setPreviewChunkId(null);
+                  setPreviewSectionKey(null);
+                  setPacketPreviewChunkId(null);
+                  setPreviewingPacket(true);
+                }}
                 disabled={selectedChunks.length === 0}
                 variant={selectedChunks.length > 0 ? "primary" : "secondary"}
               />
@@ -596,45 +769,43 @@ export default function ShiurBuilderScreen() {
       <Modal
         animationType="fade"
         transparent
-        visible={Boolean(previewChunk || previewSection || previewingPacket)}
-        onRequestClose={() => {
-          setPreviewChunkId(null);
-          setPreviewSectionKey(null);
-          setPreviewingPacket(false);
-        }}
+        visible={Boolean(previewChunk || previewSection || packetPreviewChunk || previewingPacket)}
+        onRequestClose={clearPreview}
       >
         <Pressable
           style={localStyles.previewBackdrop}
-          onPress={() => {
-            setPreviewChunkId(null);
-            setPreviewSectionKey(null);
-            setPreviewingPacket(false);
-          }}
+          onPress={clearPreview}
         >
           <Pressable style={localStyles.previewModal}>
-            {previewChunk || previewSection || previewingPacket ? (
+            {previewChunk || previewSection || packetPreviewChunk || previewingPacket ? (
               <>
                 <Row>
                   <View style={{ flex: 1, minWidth: 260 }}>
                     <MetaText>
-                      {previewingPacket ? `Week ${week} Review Packet` : previewSection ? previewSection.sourceLabel : `${previewChunk?.chunkCode} - ${previewChunk?.sectionTitle}`}
+                      {previewingPacket
+                        ? `Week ${week} Review Packet`
+                        : previewSection
+                          ? previewSection.sourceLabel
+                          : packetPreviewChunk
+                            ? "My Review Packet"
+                            : `${previewChunk?.chunkCode} - ${previewChunk?.sectionTitle}`}
                     </MetaText>
-                    <Text style={localStyles.modalTitle}>{previewingPacket ? title || "Untitled Packet" : previewSection ? previewSection.title : previewChunk?.chunkTitle}</Text>
+                    <Text style={localStyles.modalTitle}>
+                      {previewingPacket
+                        ? title || "Untitled Packet"
+                        : previewSection
+                          ? previewSection.title
+                          : packetPreviewChunk
+                            ? packetPreviewChunk.chunkTitle
+                            : previewChunk?.chunkTitle}
+                    </Text>
                   </View>
-                  <Button
-                    label="Close"
-                    onPress={() => {
-                      setPreviewChunkId(null);
-                      setPreviewSectionKey(null);
-                      setPreviewingPacket(false);
-                    }}
-                    variant="secondary"
-                  />
+                  <Button label="Close" onPress={clearPreview} variant="secondary" />
                 </Row>
                 <ScrollView contentContainerStyle={localStyles.previewPageContent} style={localStyles.previewPage}>
-                  {(previewingPacket ? selectedChunks : previewSection ? previewSection.chunks : previewChunk ? [previewChunk] : []).map((chunk) => (
+                  {modalPreviewChunks.map((chunk) => (
                     <View key={chunk.id} style={localStyles.modalChunkBlock}>
-                      {previewSection || previewingPacket ? (
+                      {previewSection || previewingPacket || packetPreviewChunk ? (
                         <>
                           <MetaText>{chunk.chunkCode}</MetaText>
                           <Text style={localStyles.modalChunkTitle}>{chunk.chunkTitle}</Text>
@@ -665,6 +836,12 @@ export default function ShiurBuilderScreen() {
                         />
                         <Button label="Previous" onPress={() => moveChunkPreview(-1)} disabled={!previousPreviewChunk} variant="secondary" />
                         <Button label="Next" onPress={() => moveChunkPreview(1)} disabled={!nextPreviewChunk} variant="secondary" />
+                      </>
+                    ) : packetPreviewChunk ? (
+                      <>
+                        <Button label="Remove from Packet" onPress={removePreviewedPacketChunk} disabled={activePacketStatus !== "draft"} variant="secondary" />
+                        <Button label="Previous" onPress={() => movePacketPreview(-1)} disabled={!previousPacketPreviewChunk} variant="secondary" />
+                        <Button label="Next" onPress={() => movePacketPreview(1)} disabled={!nextPacketPreviewChunk} variant="secondary" />
                       </>
                     ) : null}
                   </Row>
@@ -781,6 +958,47 @@ function groupChunksBySection(chunks: ContentChunk[]) {
     ...section,
     chunks: section.chunks.sort((a, b) => a.sortOrder - b.sortOrder)
   }));
+}
+
+function groupSelectedChunksBySection(chunks: ContentChunk[]) {
+  const sectionMap = new Map<
+    string,
+    {
+      chunks: ContentChunk[];
+      key: string;
+      sourceLabel: string;
+      title: string;
+    }
+  >();
+
+  chunks.forEach((chunk) => {
+    const key = sectionKeyForChunk(chunk);
+    const existing = sectionMap.get(key);
+    if (existing) {
+      existing.chunks.push(chunk);
+      return;
+    }
+    sectionMap.set(key, {
+      chunks: [chunk],
+      key,
+      sourceLabel: chunk.sourceType === "qa" ? "Q&A folder" : "Notes folder",
+      title: sectionTitleForChunk(chunk)
+    });
+  });
+
+  return Array.from(sectionMap.values());
+}
+
+function sectionKeyForChunk(chunk: ContentChunk) {
+  const sectionCodeMatch = chunk.chunkCode.match(/^95-([A-Z])/);
+  const sectionCode = chunk.sourceType === "qa" ? "Q&A" : sectionCodeMatch?.[1] ?? chunk.sectionKey.toUpperCase();
+  return `${chunk.sourceType}-${sectionCode}`;
+}
+
+function sectionTitleForChunk(chunk: ContentChunk) {
+  const sectionCodeMatch = chunk.chunkCode.match(/^95-([A-Z])/);
+  const sectionCode = chunk.sourceType === "qa" ? "Q&A" : sectionCodeMatch?.[1] ?? chunk.sectionKey.toUpperCase();
+  return chunk.sourceType === "qa" ? "Q&A - Siman 95" : `Section ${sectionCode} - ${chunk.sectionTitle}`;
 }
 
 function mapContentChunk(row: any): ContentChunk {
@@ -951,6 +1169,23 @@ const localStyles = StyleSheet.create({
     justifyContent: "flex-end",
     minWidth: 154
   },
+  packetFolderBody: {
+    gap: 8,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm
+  },
+  packetFolderHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 38
+  },
+  packetFolderActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "flex-start"
+  },
   folderChildren: {
     backgroundColor: theme.colors.surface,
     borderTopColor: theme.colors.border,
@@ -995,6 +1230,33 @@ const localStyles = StyleSheet.create({
     gap: 8,
     justifyContent: "flex-end",
     minWidth: 136
+  },
+  packetFileRow: {
+    borderRadius: theme.radius.sm,
+    gap: 6,
+    minHeight: 70,
+    paddingHorizontal: 8,
+    paddingVertical: 7
+  },
+  packetFileMain: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    minWidth: 0,
+    width: "100%"
+  },
+  packetFileActions: {
+    flexDirection: "row",
+    flexShrink: 0,
+    gap: 6,
+    justifyContent: "flex-end"
+  },
+  packetFileOrderActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "flex-end",
+    paddingLeft: 36
   },
   coveragePills: {
     flexDirection: "row",
