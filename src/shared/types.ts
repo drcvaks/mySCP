@@ -146,6 +146,19 @@ export interface ReviewPacketItem {
   chunk?: ContentChunk;
 }
 
+export interface ReviewPacketCoverage {
+  chaburahId: string;
+  week: number;
+  packetId: string;
+  packetTitle: string;
+  chunkId: string;
+  chunkCode: string;
+  sectionKey: string;
+  sectionTitle: string;
+  sourceType: ContentSourceType;
+  publishedAt?: string;
+}
+
 export interface ReviewQuestion {
   id: string;
   chaburahId?: string;

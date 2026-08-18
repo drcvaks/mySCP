@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -19,7 +19,7 @@ import { supabase } from "../../src/lib/supabase";
 import { formatSupabaseError } from "../../src/lib/errors";
 import { theme } from "../../src/shared/theme";
 import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
-import { ContentChunk, ContentChunkLink, ReviewPacket } from "../../src/shared/types";
+import { ContentChunk, ContentChunkLink, ReviewPacket, ReviewPacketCoverage } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 
@@ -33,6 +33,7 @@ export default function ShiurBuilderScreen() {
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
   const [links, setLinks] = useState<ContentChunkLink[]>([]);
   const [packets, setPackets] = useState<PacketListItem[]>([]);
+  const [coverageRows, setCoverageRows] = useState<ReviewPacketCoverage[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activePacketId, setActivePacketId] = useState<string | null>(null);
   const [activePacketStatus, setActivePacketStatus] = useState<ReviewPacket["status"]>("draft");
@@ -41,6 +42,7 @@ export default function ShiurBuilderScreen() {
   const [title, setTitle] = useState("");
   const [week, setWeek] = useState(fallbackCurrentReviewWeek);
   const [sourceFilter, setSourceFilter] = useState<"all" | "notes" | "qa">("all");
+  const [coverageFilter, setCoverageFilter] = useState<"all" | "covered" | "not-covered">("all");
   const [expandedSectionKeys, setExpandedSectionKeys] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -53,7 +55,24 @@ export default function ShiurBuilderScreen() {
   const chunkById = useMemo(() => new Map(chunks.map((chunk) => [chunk.id, chunk])), [chunks]);
   const selectedChunks = selectedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
   const previewChunk = previewChunkId ? chunkById.get(previewChunkId) : undefined;
-  const filteredChunks = chunks.filter((chunk) => sourceFilter === "all" || chunk.sourceType === sourceFilter);
+  const coverageByChunkId = useMemo(() => {
+    const coverageMap = new Map<string, ReviewPacketCoverage[]>();
+    coverageRows.forEach((coverage) => {
+      const rows = coverageMap.get(coverage.chunkId) ?? [];
+      rows.push(coverage);
+      coverageMap.set(coverage.chunkId, rows.sort((a, b) => a.week - b.week));
+    });
+    return coverageMap;
+  }, [coverageRows]);
+  const filteredChunks = chunks.filter((chunk) => {
+    const matchesSource = sourceFilter === "all" || chunk.sourceType === sourceFilter;
+    const hasCoverage = coverageByChunkId.has(chunk.id);
+    const matchesCoverage =
+      coverageFilter === "all" ||
+      (coverageFilter === "covered" && hasCoverage) ||
+      (coverageFilter === "not-covered" && !hasCoverage);
+    return matchesSource && matchesCoverage;
+  });
   const materialSections = groupChunksBySection(filteredChunks);
   const previewSection = previewSectionKey ? materialSections.find((section) => section.key === previewSectionKey) : undefined;
   const openAskRavCount = askRavQuestions.filter((question) => question.chaburahId === managedChaburahId && question.status === "submitted").length;
@@ -94,14 +113,15 @@ export default function ShiurBuilderScreen() {
     if (!managedChaburahId) return;
     setLoading(true);
     setMessage("");
-    const [chunksResult, linksResult, packetsResult] = await Promise.all([
+    const [chunksResult, linksResult, packetsResult, coverageResult] = await Promise.all([
       supabase.from("content_chunks").select("*").eq("is_selectable", true).order("sort_order"),
       supabase.from("content_chunk_links").select("*"),
-      supabase.from("review_packets").select("*").eq("chaburah_id", managedChaburahId).order("updated_at", { ascending: false })
+      supabase.from("review_packets").select("*").eq("chaburah_id", managedChaburahId).order("updated_at", { ascending: false }),
+      supabase.from("review_packet_content_coverage").select("*").eq("chaburah_id", managedChaburahId)
     ]);
     setLoading(false);
 
-    const firstError = [chunksResult.error, linksResult.error, packetsResult.error].find(Boolean);
+    const firstError = [chunksResult.error, linksResult.error, packetsResult.error, coverageResult.error].find(Boolean);
     if (firstError) {
       setMessage(formatSupabaseError(firstError));
       return;
@@ -109,6 +129,7 @@ export default function ShiurBuilderScreen() {
 
     setChunks((chunksResult.data ?? []).map(mapContentChunk));
     setLinks((linksResult.data ?? []).map(mapContentChunkLink));
+    setCoverageRows((coverageResult.data ?? []).map(mapCoverage));
     const packetRows = (packetsResult.data ?? []).map(mapPacket);
     const packetCounts = await countPacketItems(packetRows.map((packet) => packet.id));
     setPackets(packetRows.map((packet) => ({ ...packet, itemCount: packetCounts.get(packet.id) ?? 0 })));
@@ -174,6 +195,26 @@ export default function ShiurBuilderScreen() {
   }
 
   function startNewDraft() {
+    if (selectedIds.length > 0 || title.trim().length > 0) {
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        const confirmed = window.confirm("Start a new draft? This will clear the current packet from the screen. Saved drafts will remain available.");
+        if (!confirmed) return;
+      } else {
+        Alert.alert("Start New Draft?", "This will clear the current packet from the screen. Saved drafts will remain available.", [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Start New Draft",
+            style: "destructive",
+            onPress: () => resetDraftState()
+          }
+        ]);
+        return;
+      }
+    }
+    resetDraftState();
+  }
+
+  function resetDraftState() {
     setActivePacketId(null);
     setActivePacketStatus("draft");
     setSelectedIds([]);
@@ -347,7 +388,6 @@ export default function ShiurBuilderScreen() {
             </Text>
           </View>
           <Pill label={`Week ${week}`} tone="primary" />
-          <Button label="New Draft" onPress={startNewDraft} variant="secondary" />
         </Row>
         <MetaText>{managedChaburah?.name ?? "Current Chaburah"} - official text is controlled and cannot be edited in this version.</MetaText>
         <View style={localStyles.weekRow}>
@@ -383,10 +423,20 @@ export default function ShiurBuilderScreen() {
               <FilterChip label="Notes" onPress={() => setSourceFilter("notes")} selected={sourceFilter === "notes"} />
               <FilterChip label="Q&A" onPress={() => setSourceFilter("qa")} selected={sourceFilter === "qa"} />
             </View>
+            <View style={localStyles.weekRow}>
+              <FilterChip label="All Coverage" onPress={() => setCoverageFilter("all")} selected={coverageFilter === "all"} />
+              <FilterChip label="Covered" onPress={() => setCoverageFilter("covered")} selected={coverageFilter === "covered"} />
+              <FilterChip label="Not Covered" onPress={() => setCoverageFilter("not-covered")} selected={coverageFilter === "not-covered"} />
+            </View>
+            <MetaText>Covered means already published to Files. Draft packets are not counted.</MetaText>
             <ScrollView contentContainerStyle={{ gap: 8 }} style={localStyles.columnScroll}>
+              {materialSections.length === 0 ? (
+                <Text style={styles.muted}>No official material matches these filters.</Text>
+              ) : null}
               {materialSections.map((section) => {
                 const expanded = expandedSectionKeys.includes(section.key);
                 const addedCount = section.chunks.filter((chunk) => selectedIds.includes(chunk.id)).length;
+                const coveredCount = section.chunks.filter((chunk) => coverageByChunkId.has(chunk.id)).length;
                 return (
                   <View key={section.key} style={localStyles.folderShell}>
                     <Pressable accessibilityRole="button" onPress={() => toggleSection(section.key)} style={localStyles.folderRow}>
@@ -394,8 +444,8 @@ export default function ShiurBuilderScreen() {
                       <Ionicons name={expanded ? "folder-open-outline" : "folder-outline"} color={theme.colors.accent} size={23} />
                       <View style={localStyles.folderText}>
                         <Text style={localStyles.folderTitle}>{section.title}</Text>
-                        <MetaText>
-                          {section.sourceLabel} - {section.chunks.length} chunk{section.chunks.length === 1 ? "" : "s"} - {addedCount} added
+                      <MetaText>
+                          {section.sourceLabel} - {section.chunks.length} chunk{section.chunks.length === 1 ? "" : "s"} - {addedCount} added - {coveredCount} covered
                         </MetaText>
                       </View>
                       <View style={localStyles.folderActions}>
@@ -417,6 +467,7 @@ export default function ShiurBuilderScreen() {
                             <View style={localStyles.fileText}>
                               <Text style={localStyles.fileTitle}>{chunk.chunkTitle}</Text>
                               <MetaText>{chunk.chunkCode}{chunk.chunkSummary ? ` - ${chunk.chunkSummary}` : ""}</MetaText>
+                              <CoverageLine coverage={coverageByChunkId.get(chunk.id) ?? []} />
                             </View>
                             <View style={localStyles.fileActions}>
                               <Button label={previewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => toggleChunkPreview(chunk.id)} variant="ghost" />
@@ -441,8 +492,17 @@ export default function ShiurBuilderScreen() {
         <View style={localStyles.packetColumn}>
           <Card>
             <SectionTitle>My Review Packet</SectionTitle>
+            <View style={localStyles.packetTopAction}>
+              <Button label="New Draft" onPress={startNewDraft} variant="secondary" />
+            </View>
             <Text style={styles.muted}>Selected sections. Move items up/down to control packet order.</Text>
-            <FormInput onChangeText={setTitle} placeholder="Packet title" value={title} />
+            <View style={localStyles.titleRow}>
+              <Text style={localStyles.titleLabel}>Title:</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <FormInput onChangeText={setTitle} placeholder="Packet title" value={title} />
+              </View>
+            </View>
+            <Text style={styles.muted}>The official packet text below is controlled and cannot be edited here.</Text>
             <ScrollView contentContainerStyle={{ gap: 8 }} style={localStyles.packetScroll}>
               {selectedChunks.length === 0 ? <Text style={styles.muted}>Add official sections to begin the draft packet.</Text> : null}
               {selectedChunks.map((chunk, index) => (
@@ -636,6 +696,12 @@ function BuilderToolCard({
   );
 }
 
+function CoverageLine({ coverage }: { coverage: ReviewPacketCoverage[] }) {
+  if (coverage.length === 0) return null;
+  const weeks = coverage.map((item) => `Week ${item.week}`).join(", ");
+  return <Text style={localStyles.coverageLine}>Covered {weeks}</Text>;
+}
+
 function groupChunksBySection(chunks: ContentChunk[]) {
   const sectionMap = new Map<
     string,
@@ -718,6 +784,21 @@ function mapPacket(row: any): ReviewPacket {
   };
 }
 
+function mapCoverage(row: any): ReviewPacketCoverage {
+  return {
+    chaburahId: row.chaburah_id,
+    week: row.week,
+    packetId: row.packet_id,
+    packetTitle: row.packet_title,
+    chunkId: row.chunk_id,
+    chunkCode: row.chunk_code,
+    sectionKey: row.section_key,
+    sectionTitle: row.section_title,
+    sourceType: row.source_type,
+    publishedAt: row.published_at ?? undefined
+  };
+}
+
 const localStyles = StyleSheet.create({
   toolCards: {
     alignItems: "stretch",
@@ -770,6 +851,21 @@ const localStyles = StyleSheet.create({
   },
   packetScroll: {
     maxHeight: 430
+  },
+  packetTopAction: {
+    alignSelf: "flex-start",
+    minWidth: 130
+  },
+  titleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.sm
+  },
+  titleLabel: {
+    color: theme.colors.ink,
+    fontSize: 17,
+    fontWeight: "900",
+    lineHeight: 23
   },
   weekRow: {
     flexDirection: "row",
@@ -852,6 +948,12 @@ const localStyles = StyleSheet.create({
     gap: 8,
     justifyContent: "flex-end",
     minWidth: 136
+  },
+  coverageLine: {
+    color: theme.colors.success,
+    fontSize: 12,
+    fontWeight: "800",
+    lineHeight: 16
   },
   chunkRow: {
     alignItems: "center",

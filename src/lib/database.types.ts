@@ -153,6 +153,19 @@ type ReviewPacketItemRow = {
   created_at: string;
 };
 
+type ReviewPacketContentCoverageRow = {
+  chaburah_id: string;
+  week: number;
+  packet_id: string;
+  packet_title: string;
+  chunk_id: string;
+  chunk_code: string;
+  section_key: string;
+  section_title: string;
+  source_type: Database["public"]["Enums"]["content_source_type"];
+  published_at: string | null;
+};
+
 type ReviewQuestionRow = {
   id: string;
   chaburah_id: string | null;
@@ -349,7 +362,12 @@ export interface Database {
           Partial<Omit<BetaChecklistProgressRow, "user_id" | "task_key">>
       >;
     };
-    Views: Record<string, never>;
+    Views: {
+      review_packet_content_coverage: {
+        Row: ReviewPacketContentCoverageRow;
+        Relationships: [];
+      };
+    };
     Functions: {
       join_chaburah: {
         Args: { target_chaburah_id: string };
