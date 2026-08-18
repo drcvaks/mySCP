@@ -39,6 +39,7 @@ export default function ShiurBuilderScreen() {
   const [activePacketStatus, setActivePacketStatus] = useState<ReviewPacket["status"]>("draft");
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null);
   const [previewSectionKey, setPreviewSectionKey] = useState<string | null>(null);
+  const [previewingPacket, setPreviewingPacket] = useState(false);
   const [title, setTitle] = useState("");
   const [week, setWeek] = useState(fallbackCurrentReviewWeek);
   const [sourceFilter, setSourceFilter] = useState<"all" | "notes" | "qa">("all");
@@ -308,8 +309,27 @@ export default function ShiurBuilderScreen() {
   }
 
   async function publishPacket() {
-    const packetId = activePacketId ?? (await saveDraft());
+    const packetId = await saveDraft();
     if (!packetId) return;
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      const confirmed = window.confirm("Publish this review packet to Files? Participants in this chaburah will be able to open it.");
+      if (!confirmed) return;
+    } else {
+      Alert.alert("Publish Packet?", "Participants in this chaburah will be able to open this packet in Files.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Publish",
+          onPress: () => {
+            void publishConfirmedPacket(packetId);
+          }
+        }
+      ]);
+      return;
+    }
+    await publishConfirmedPacket(packetId);
+  }
+
+  async function publishConfirmedPacket(packetId: string) {
     setSaving(true);
     setMessage("");
     const { data, error } = await supabase.rpc("publish_review_packet", { target_packet_id: packetId });
@@ -531,13 +551,30 @@ export default function ShiurBuilderScreen() {
               </View>
             ) : null}
             <View style={localStyles.publishActions}>
-              <Button label={saving ? "Saving..." : "Save Draft"} onPress={saveDraft} disabled={saving || activePacketStatus !== "draft"} />
               <Button
-                label={saving ? "Publishing..." : "Publish to Files"}
-                onPress={publishPacket}
-                disabled={saving || activePacketStatus !== "draft" || selectedIds.length === 0}
-                variant={selectedIds.length > 0 ? "primary" : "secondary"}
+                label="Preview Packet"
+                onPress={() => setPreviewingPacket(true)}
+                disabled={selectedChunks.length === 0}
+                variant={selectedChunks.length > 0 ? "primary" : "secondary"}
               />
+              <View style={localStyles.savePublishActions}>
+                <View style={localStyles.packetActionButton}>
+                  <Button
+                    label={saving ? "Saving..." : "Save Draft"}
+                    onPress={saveDraft}
+                    disabled={saving || activePacketStatus !== "draft" || selectedIds.length === 0}
+                    variant={selectedIds.length > 0 ? "primary" : "secondary"}
+                  />
+                </View>
+                <View style={localStyles.packetActionButton}>
+                  <Button
+                    label={saving ? "Publishing..." : "Publish to Files"}
+                    onPress={publishPacket}
+                    disabled={saving || activePacketStatus !== "draft" || selectedIds.length === 0}
+                    variant={selectedIds.length > 0 ? "primary" : "secondary"}
+                  />
+                </View>
+              </View>
             </View>
           </Card>
         </View>
@@ -559,10 +596,11 @@ export default function ShiurBuilderScreen() {
       <Modal
         animationType="fade"
         transparent
-        visible={Boolean(previewChunk || previewSection)}
+        visible={Boolean(previewChunk || previewSection || previewingPacket)}
         onRequestClose={() => {
           setPreviewChunkId(null);
           setPreviewSectionKey(null);
+          setPreviewingPacket(false);
         }}
       >
         <Pressable
@@ -570,31 +608,33 @@ export default function ShiurBuilderScreen() {
           onPress={() => {
             setPreviewChunkId(null);
             setPreviewSectionKey(null);
+            setPreviewingPacket(false);
           }}
         >
           <Pressable style={localStyles.previewModal}>
-            {previewChunk || previewSection ? (
+            {previewChunk || previewSection || previewingPacket ? (
               <>
                 <Row>
                   <View style={{ flex: 1, minWidth: 260 }}>
                     <MetaText>
-                      {previewSection ? previewSection.sourceLabel : `${previewChunk?.chunkCode} - ${previewChunk?.sectionTitle}`}
+                      {previewingPacket ? `Week ${week} Review Packet` : previewSection ? previewSection.sourceLabel : `${previewChunk?.chunkCode} - ${previewChunk?.sectionTitle}`}
                     </MetaText>
-                    <Text style={localStyles.modalTitle}>{previewSection ? previewSection.title : previewChunk?.chunkTitle}</Text>
+                    <Text style={localStyles.modalTitle}>{previewingPacket ? title || "Untitled Packet" : previewSection ? previewSection.title : previewChunk?.chunkTitle}</Text>
                   </View>
                   <Button
                     label="Close"
                     onPress={() => {
                       setPreviewChunkId(null);
                       setPreviewSectionKey(null);
+                      setPreviewingPacket(false);
                     }}
                     variant="secondary"
                   />
                 </Row>
                 <ScrollView contentContainerStyle={localStyles.previewPageContent} style={localStyles.previewPage}>
-                  {(previewSection ? previewSection.chunks : previewChunk ? [previewChunk] : []).map((chunk) => (
+                  {(previewingPacket ? selectedChunks : previewSection ? previewSection.chunks : previewChunk ? [previewChunk] : []).map((chunk) => (
                     <View key={chunk.id} style={localStyles.modalChunkBlock}>
-                      {previewSection ? (
+                      {previewSection || previewingPacket ? (
                         <>
                           <MetaText>{chunk.chunkCode}</MetaText>
                           <Text style={localStyles.modalChunkTitle}>{chunk.chunkTitle}</Text>
@@ -608,25 +648,27 @@ export default function ShiurBuilderScreen() {
                     </View>
                   ))}
                 </ScrollView>
-                <Row>
-                  {previewSection ? (
-                    <Button
-                      label={previewSection.chunks.every((chunk) => selectedIds.includes(chunk.id)) ? "Section Added" : "Add Section to Packet ->"}
-                      onPress={() => addSection(previewSection.chunks)}
-                      disabled={previewSection.chunks.every((chunk) => selectedIds.includes(chunk.id))}
-                    />
-                  ) : previewChunk ? (
-                    <>
+                {!previewingPacket ? (
+                  <Row>
+                    {previewSection ? (
                       <Button
-                        label={selectedIds.includes(previewChunk.id) ? "Already Added" : "Add to Packet"}
-                        onPress={() => addChunk(previewChunk.id)}
-                        disabled={selectedIds.includes(previewChunk.id)}
+                        label={previewSection.chunks.every((chunk) => selectedIds.includes(chunk.id)) ? "Section Added" : "Add Section to Packet ->"}
+                        onPress={() => addSection(previewSection.chunks)}
+                        disabled={previewSection.chunks.every((chunk) => selectedIds.includes(chunk.id))}
                       />
-                      <Button label="Previous" onPress={() => moveChunkPreview(-1)} disabled={!previousPreviewChunk} variant="secondary" />
-                      <Button label="Next" onPress={() => moveChunkPreview(1)} disabled={!nextPreviewChunk} variant="secondary" />
-                    </>
-                  ) : null}
-                </Row>
+                    ) : previewChunk ? (
+                      <>
+                        <Button
+                          label={selectedIds.includes(previewChunk.id) ? "Already Added" : "Add to Packet"}
+                          onPress={() => addChunk(previewChunk.id)}
+                          disabled={selectedIds.includes(previewChunk.id)}
+                        />
+                        <Button label="Previous" onPress={() => moveChunkPreview(-1)} disabled={!previousPreviewChunk} variant="secondary" />
+                        <Button label="Next" onPress={() => moveChunkPreview(1)} disabled={!nextPreviewChunk} variant="secondary" />
+                      </>
+                    ) : null}
+                  </Row>
+                ) : null}
               </>
             ) : null}
           </Pressable>
@@ -698,8 +740,13 @@ function BuilderToolCard({
 
 function CoverageLine({ coverage }: { coverage: ReviewPacketCoverage[] }) {
   if (coverage.length === 0) return null;
-  const weeks = coverage.map((item) => `Week ${item.week}`).join(", ");
-  return <Text style={localStyles.coverageLine}>Covered {weeks}</Text>;
+  return (
+    <View style={localStyles.coveragePills}>
+      {coverage.map((item) => (
+        <Pill key={`${item.packetId}-${item.chunkId}`} label={`Covered Week ${item.week}`} tone="success" />
+      ))}
+    </View>
+  );
 }
 
 function groupChunksBySection(chunks: ContentChunk[]) {
@@ -949,11 +996,11 @@ const localStyles = StyleSheet.create({
     justifyContent: "flex-end",
     minWidth: 136
   },
-  coverageLine: {
-    color: theme.colors.success,
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 16
+  coveragePills: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingTop: 4
   },
   chunkRow: {
     alignItems: "center",
@@ -993,9 +1040,17 @@ const localStyles = StyleSheet.create({
     minWidth: 126
   },
   publishActions: {
+    alignItems: "stretch",
+    gap: 8
+  },
+  savePublishActions: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8
+  },
+  packetActionButton: {
+    flex: 1,
+    minWidth: 150
   },
   suggestionBox: {
     backgroundColor: theme.colors.accentSoft,
