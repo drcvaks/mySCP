@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import {
   Button,
   Card,
@@ -36,9 +37,11 @@ export default function ShiurBuilderScreen() {
   const [activePacketId, setActivePacketId] = useState<string | null>(null);
   const [activePacketStatus, setActivePacketStatus] = useState<ReviewPacket["status"]>("draft");
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null);
+  const [previewSectionKey, setPreviewSectionKey] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [week, setWeek] = useState(fallbackCurrentReviewWeek);
   const [sourceFilter, setSourceFilter] = useState<"all" | "notes" | "qa">("all");
+  const [expandedSectionKeys, setExpandedSectionKeys] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -51,6 +54,8 @@ export default function ShiurBuilderScreen() {
   const selectedChunks = selectedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
   const previewChunk = previewChunkId ? chunkById.get(previewChunkId) : undefined;
   const filteredChunks = chunks.filter((chunk) => sourceFilter === "all" || chunk.sourceType === sourceFilter);
+  const materialSections = groupChunksBySection(filteredChunks);
+  const previewSection = previewSectionKey ? materialSections.find((section) => section.key === previewSectionKey) : undefined;
   const openAskRavCount = askRavQuestions.filter((question) => question.chaburahId === managedChaburahId && question.status === "submitted").length;
   const quickReviewDraftCount = reviewQuestions.filter(
     (question) =>
@@ -121,8 +126,30 @@ export default function ShiurBuilderScreen() {
     setSelectedIds((current) => (current.includes(chunkId) ? current : [...current, chunkId]));
   }
 
+  function addSection(sectionChunks: ContentChunk[]) {
+    setSelectedIds((current) => {
+      const next = [...current];
+      sectionChunks.forEach((chunk) => {
+        if (!next.includes(chunk.id)) next.push(chunk.id);
+      });
+      return next;
+    });
+  }
+
+  function toggleSection(sectionKey: string) {
+    setExpandedSectionKeys((current) =>
+      current.includes(sectionKey) ? current.filter((key) => key !== sectionKey) : [...current, sectionKey]
+    );
+  }
+
   function toggleChunkPreview(chunkId: string) {
-    setPreviewChunkId((current) => (current === chunkId ? null : chunkId));
+    setPreviewSectionKey(null);
+    setPreviewChunkId(chunkId);
+  }
+
+  function previewWholeSection(sectionKey: string) {
+    setPreviewChunkId(null);
+    setPreviewSectionKey(sectionKey);
   }
 
   function moveChunkPreview(direction: -1 | 1) {
@@ -331,92 +358,130 @@ export default function ShiurBuilderScreen() {
         <MetaText>Current week is Week {currentReviewWeek}.</MetaText>
       </Card>
 
-      <View style={localStyles.workspace}>
-        <Card>
-          <SectionTitle>Official SCP Material</SectionTitle>
-          <Text style={styles.muted}>Preview a section before adding it. Suggested Q&A appears after adding related notes.</Text>
-          <View style={localStyles.weekRow}>
-            <FilterChip label="All" onPress={() => setSourceFilter("all")} selected={sourceFilter === "all"} />
-            <FilterChip label="Notes" onPress={() => setSourceFilter("notes")} selected={sourceFilter === "notes"} />
-            <FilterChip label="Q&A" onPress={() => setSourceFilter("qa")} selected={sourceFilter === "qa"} />
+      <Card>
+        <Row>
+          <View style={{ flex: 1, minWidth: 260 }}>
+            <SectionTitle>Existing Packets</SectionTitle>
+            <Text style={styles.muted}>Load a draft or view a published packet before building.</Text>
           </View>
-          <ScrollView contentContainerStyle={{ gap: 10 }} style={localStyles.columnScroll}>
-            {filteredChunks.map((chunk) => {
-              const isPreviewing = previewChunkId === chunk.id;
-              return (
-                <View key={chunk.id} style={[localStyles.chunkShell, selectedIds.includes(chunk.id) && localStyles.selectedChunk]}>
-                  <View style={localStyles.chunkRow}>
-                    <View style={{ flex: 1 }}>
-                      <MetaText>{chunk.chunkCode} - {chunk.sectionTitle}</MetaText>
-                      <Text style={localStyles.chunkTitle}>{chunk.chunkTitle}</Text>
-                      {chunk.chunkSummary ? <Text style={styles.muted}>{chunk.chunkSummary}</Text> : null}
-                    </View>
-                    <View style={localStyles.chunkActions}>
-                      <Button label={isPreviewing ? "Viewing" : "Preview"} onPress={() => toggleChunkPreview(chunk.id)} variant="ghost" />
+          <Pill label={`${draftPackets.length} drafts`} tone={draftPackets.length ? "accent" : "neutral"} />
+          <Pill label={`${publishedPackets.length} published`} tone={publishedPackets.length ? "success" : "neutral"} />
+        </Row>
+        <View style={localStyles.existingPacketBands}>
+          <PacketGroup title="Drafts" packets={draftPackets} onLoad={loadPacket} compact />
+          <PacketGroup title="Published" packets={publishedPackets} onLoad={loadPacket} compact />
+        </View>
+      </Card>
+
+      <View style={localStyles.workspace}>
+        <View style={localStyles.sourceColumn}>
+          <Card>
+            <SectionTitle>Official SCP Material</SectionTitle>
+            <Text style={styles.muted}>Open a folder to choose smaller chunks, or add/view the whole section at once.</Text>
+            <View style={localStyles.weekRow}>
+              <FilterChip label="All" onPress={() => setSourceFilter("all")} selected={sourceFilter === "all"} />
+              <FilterChip label="Notes" onPress={() => setSourceFilter("notes")} selected={sourceFilter === "notes"} />
+              <FilterChip label="Q&A" onPress={() => setSourceFilter("qa")} selected={sourceFilter === "qa"} />
+            </View>
+            <ScrollView contentContainerStyle={{ gap: 8 }} style={localStyles.columnScroll}>
+              {materialSections.map((section) => {
+                const expanded = expandedSectionKeys.includes(section.key);
+                const addedCount = section.chunks.filter((chunk) => selectedIds.includes(chunk.id)).length;
+                return (
+                  <View key={section.key} style={localStyles.folderShell}>
+                    <Pressable accessibilityRole="button" onPress={() => toggleSection(section.key)} style={localStyles.folderRow}>
+                      <Ionicons name={expanded ? "chevron-down" : "chevron-forward"} color={theme.colors.muted} size={18} />
+                      <Ionicons name={expanded ? "folder-open-outline" : "folder-outline"} color={theme.colors.accent} size={23} />
+                      <View style={localStyles.folderText}>
+                        <Text style={localStyles.folderTitle}>{section.title}</Text>
+                        <MetaText>
+                          {section.sourceLabel} - {section.chunks.length} chunk{section.chunks.length === 1 ? "" : "s"} - {addedCount} added
+                        </MetaText>
+                      </View>
+                      <View style={localStyles.folderActions}>
+                      <Button label="View" onPress={() => previewWholeSection(section.key)} variant="ghost" />
                       <Button
-                        label={selectedIds.includes(chunk.id) ? "Added" : "Add"}
-                        onPress={() => addChunk(chunk.id)}
-                        disabled={selectedIds.includes(chunk.id)}
-                        variant="secondary"
-                      />
-                    </View>
+                          label={addedCount === section.chunks.length ? "Added" : "Add Section ->"}
+                          onPress={() => addSection(section.chunks)}
+                          disabled={addedCount === section.chunks.length}
+                          variant="secondary"
+                        />
+                      </View>
+                    </Pressable>
+                    {expanded ? (
+                      <View style={localStyles.folderChildren}>
+                        {section.chunks.map((chunk) => (
+                          <View key={chunk.id} style={[localStyles.fileRow, selectedIds.includes(chunk.id) && localStyles.selectedFileRow]}>
+                            <View style={localStyles.treeLine} />
+                            <Ionicons name="document-text-outline" color={theme.colors.muted} size={19} />
+                            <View style={localStyles.fileText}>
+                              <Text style={localStyles.fileTitle}>{chunk.chunkTitle}</Text>
+                              <MetaText>{chunk.chunkCode}{chunk.chunkSummary ? ` - ${chunk.chunkSummary}` : ""}</MetaText>
+                            </View>
+                            <View style={localStyles.fileActions}>
+                              <Button label={previewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => toggleChunkPreview(chunk.id)} variant="ghost" />
+                              <Button
+                                label={selectedIds.includes(chunk.id) ? "Added" : "Add ->"}
+                                onPress={() => addChunk(chunk.id)}
+                                disabled={selectedIds.includes(chunk.id)}
+                                variant="secondary"
+                              />
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </Card>
+        </View>
+
+        <View style={localStyles.packetColumn}>
+          <Card>
+            <SectionTitle>My Review Packet</SectionTitle>
+            <Text style={styles.muted}>Selected sections. Move items up/down to control packet order.</Text>
+            <FormInput onChangeText={setTitle} placeholder="Packet title" value={title} />
+            <ScrollView contentContainerStyle={{ gap: 8 }} style={localStyles.packetScroll}>
+              {selectedChunks.length === 0 ? <Text style={styles.muted}>Add official sections to begin the draft packet.</Text> : null}
+              {selectedChunks.map((chunk, index) => (
+                <View key={chunk.id} style={localStyles.packetItem}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <MetaText>{index + 1}. {chunk.chunkCode}</MetaText>
+                    <Text style={localStyles.packetTitle} numberOfLines={2}>{chunk.chunkTitle}</Text>
+                  </View>
+                  <View style={localStyles.itemActions}>
+                    <Button label="Up" onPress={() => moveChunk(chunk.id, -1)} disabled={index === 0 || activePacketStatus !== "draft"} variant="ghost" />
+                    <Button label="Down" onPress={() => moveChunk(chunk.id, 1)} disabled={index === selectedChunks.length - 1 || activePacketStatus !== "draft"} variant="ghost" />
+                    <Button label="Remove" onPress={() => removeChunk(chunk.id)} disabled={activePacketStatus !== "draft"} variant="ghost" />
                   </View>
                 </View>
-              );
-            })}
-          </ScrollView>
-        </Card>
-
-        <Card>
-          <SectionTitle>My Review Packet</SectionTitle>
-          <Text style={styles.muted}>Only the title is editable. The packet body uses the official text exactly as stored.</Text>
-          <FormInput onChangeText={setTitle} placeholder="Packet title" value={title} />
-          <ScrollView contentContainerStyle={{ gap: 10 }} style={localStyles.columnScroll}>
-            {selectedChunks.length === 0 ? <Text style={styles.muted}>Add official sections to begin the draft packet.</Text> : null}
-            {selectedChunks.map((chunk, index) => (
-              <View key={chunk.id} style={localStyles.packetItem}>
-                <View style={{ flex: 1 }}>
-                  <MetaText>{index + 1}. {chunk.chunkCode}</MetaText>
-                  <Text style={localStyles.chunkTitle}>{chunk.chunkTitle}</Text>
-                </View>
-                <View style={localStyles.itemActions}>
-                  <Button label="Up" onPress={() => moveChunk(chunk.id, -1)} disabled={index === 0 || activePacketStatus !== "draft"} variant="ghost" />
-                  <Button label="Down" onPress={() => moveChunk(chunk.id, 1)} disabled={index === selectedChunks.length - 1 || activePacketStatus !== "draft"} variant="ghost" />
-                  <Button label="Remove" onPress={() => removeChunk(chunk.id)} disabled={activePacketStatus !== "draft"} variant="ghost" />
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-          {uniqueSuggestedChunks.length > 0 && activePacketStatus === "draft" ? (
-            <View style={localStyles.suggestionBox}>
-              <MetaText>Suggested Q&A</MetaText>
-              {uniqueSuggestedChunks.map((chunk) => (
-                <Row key={chunk.id}>
-                  <Text style={[styles.body, { flex: 1 }]}>{chunk.chunkCode}: {chunk.chunkTitle}</Text>
-                  <Button label="Add" onPress={() => addChunk(chunk.id)} variant="secondary" />
-                </Row>
               ))}
+            </ScrollView>
+            {uniqueSuggestedChunks.length > 0 && activePacketStatus === "draft" ? (
+              <View style={localStyles.suggestionBox}>
+                <MetaText>Suggested Q&A</MetaText>
+                {uniqueSuggestedChunks.map((chunk) => (
+                  <Row key={chunk.id}>
+                    <Text style={[styles.body, { flex: 1 }]} numberOfLines={2}>{chunk.chunkCode}: {chunk.chunkTitle}</Text>
+                    <Button label="Add" onPress={() => addChunk(chunk.id)} variant="secondary" />
+                  </Row>
+                ))}
+              </View>
+            ) : null}
+            <View style={localStyles.publishActions}>
+              <Button label={saving ? "Saving..." : "Save Draft"} onPress={saveDraft} disabled={saving || activePacketStatus !== "draft"} />
+              <Button
+                label={saving ? "Publishing..." : "Publish to Files"}
+                onPress={publishPacket}
+                disabled={saving || activePacketStatus !== "draft" || selectedIds.length === 0}
+                variant={selectedIds.length > 0 ? "primary" : "secondary"}
+              />
             </View>
-          ) : null}
-          <Row>
-            <Button label={saving ? "Saving..." : "Save Draft"} onPress={saveDraft} disabled={saving || activePacketStatus !== "draft"} />
-            <Button
-              label={saving ? "Publishing..." : "Publish to Files"}
-              onPress={publishPacket}
-              disabled={saving || activePacketStatus !== "draft" || selectedIds.length === 0}
-              variant={selectedIds.length > 0 ? "primary" : "secondary"}
-            />
-          </Row>
-        </Card>
+          </Card>
+        </View>
 
-        <Card>
-          <SectionTitle>Existing Packets</SectionTitle>
-          <Text style={styles.muted}>Load a draft to keep working or open a published packet for review.</Text>
-          <ScrollView contentContainerStyle={{ gap: 10 }} style={localStyles.columnScroll}>
-            <PacketGroup title="Drafts" packets={draftPackets} onLoad={loadPacket} />
-            <PacketGroup title="Published" packets={publishedPackets} onLoad={loadPacket} />
-          </ScrollView>
-        </Card>
       </View>
 
       <Card>
@@ -431,33 +496,76 @@ export default function ShiurBuilderScreen() {
         ))}
       </Card>
 
-      <Modal animationType="fade" transparent visible={Boolean(previewChunk)} onRequestClose={() => setPreviewChunkId(null)}>
-        <Pressable style={localStyles.previewBackdrop} onPress={() => setPreviewChunkId(null)}>
+      <Modal
+        animationType="fade"
+        transparent
+        visible={Boolean(previewChunk || previewSection)}
+        onRequestClose={() => {
+          setPreviewChunkId(null);
+          setPreviewSectionKey(null);
+        }}
+      >
+        <Pressable
+          style={localStyles.previewBackdrop}
+          onPress={() => {
+            setPreviewChunkId(null);
+            setPreviewSectionKey(null);
+          }}
+        >
           <Pressable style={localStyles.previewModal}>
-            {previewChunk ? (
+            {previewChunk || previewSection ? (
               <>
                 <Row>
                   <View style={{ flex: 1, minWidth: 260 }}>
-                    <MetaText>{previewChunk.chunkCode} - {previewChunk.sectionTitle}</MetaText>
-                    <Text style={localStyles.modalTitle}>{previewChunk.chunkTitle}</Text>
+                    <MetaText>
+                      {previewSection ? previewSection.sourceLabel : `${previewChunk?.chunkCode} - ${previewChunk?.sectionTitle}`}
+                    </MetaText>
+                    <Text style={localStyles.modalTitle}>{previewSection ? previewSection.title : previewChunk?.chunkTitle}</Text>
                   </View>
-                  <Button label="Close" onPress={() => setPreviewChunkId(null)} variant="secondary" />
+                  <Button
+                    label="Close"
+                    onPress={() => {
+                      setPreviewChunkId(null);
+                      setPreviewSectionKey(null);
+                    }}
+                    variant="secondary"
+                  />
                 </Row>
                 <ScrollView contentContainerStyle={localStyles.previewPageContent} style={localStyles.previewPage}>
-                  {previewChunk.contentMarkdown.split(/\n\s*\n/).map((paragraph, index) => (
-                    <Text key={`${previewChunk.id}-${index}`} style={localStyles.previewParagraph}>
-                      {paragraph.trim()}
-                    </Text>
+                  {(previewSection ? previewSection.chunks : previewChunk ? [previewChunk] : []).map((chunk) => (
+                    <View key={chunk.id} style={localStyles.modalChunkBlock}>
+                      {previewSection ? (
+                        <>
+                          <MetaText>{chunk.chunkCode}</MetaText>
+                          <Text style={localStyles.modalChunkTitle}>{chunk.chunkTitle}</Text>
+                        </>
+                      ) : null}
+                      {chunk.contentMarkdown.split(/\n\s*\n/).map((paragraph, index) => (
+                        <Text key={`${chunk.id}-${index}`} style={localStyles.previewParagraph}>
+                          {paragraph.trim()}
+                        </Text>
+                      ))}
+                    </View>
                   ))}
                 </ScrollView>
                 <Row>
-                  <Button
-                    label={selectedIds.includes(previewChunk.id) ? "Already Added" : "Add to Packet"}
-                    onPress={() => addChunk(previewChunk.id)}
-                    disabled={selectedIds.includes(previewChunk.id)}
-                  />
-                  <Button label="Previous" onPress={() => moveChunkPreview(-1)} disabled={!previousPreviewChunk} variant="secondary" />
-                  <Button label="Next" onPress={() => moveChunkPreview(1)} disabled={!nextPreviewChunk} variant="secondary" />
+                  {previewSection ? (
+                    <Button
+                      label={previewSection.chunks.every((chunk) => selectedIds.includes(chunk.id)) ? "Section Added" : "Add Section to Packet ->"}
+                      onPress={() => addSection(previewSection.chunks)}
+                      disabled={previewSection.chunks.every((chunk) => selectedIds.includes(chunk.id))}
+                    />
+                  ) : previewChunk ? (
+                    <>
+                      <Button
+                        label={selectedIds.includes(previewChunk.id) ? "Already Added" : "Add to Packet"}
+                        onPress={() => addChunk(previewChunk.id)}
+                        disabled={selectedIds.includes(previewChunk.id)}
+                      />
+                      <Button label="Previous" onPress={() => moveChunkPreview(-1)} disabled={!previousPreviewChunk} variant="secondary" />
+                      <Button label="Next" onPress={() => moveChunkPreview(1)} disabled={!nextPreviewChunk} variant="secondary" />
+                    </>
+                  ) : null}
                 </Row>
               </>
             ) : null}
@@ -469,30 +577,34 @@ export default function ShiurBuilderScreen() {
 }
 
 function PacketGroup({
+  compact = false,
   title,
   packets,
   onLoad
 }: {
+  compact?: boolean;
   title: string;
   packets: PacketListItem[];
   onLoad: (packet: PacketListItem) => void;
 }) {
   return (
-    <View style={{ gap: 8 }}>
+    <View style={[{ gap: 8 }, compact && localStyles.existingPacketGroup]}>
       <Row>
         <Text style={localStyles.groupTitle}>{title}</Text>
         <Pill label={`${packets.length}`} />
       </Row>
       {packets.length === 0 ? <Text style={styles.muted}>No {title.toLowerCase()} for this week.</Text> : null}
-      {packets.map((packet) => (
-        <View key={packet.id} style={localStyles.packetListRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.body}>{packet.title}</Text>
-            <MetaText>{packet.itemCount} sections</MetaText>
+      <View style={compact ? localStyles.existingPacketList : { gap: 10 }}>
+        {packets.map((packet) => (
+          <View key={packet.id} style={[localStyles.packetListRow, compact && localStyles.compactPacketListRow]}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.body} numberOfLines={2}>{packet.title}</Text>
+              <MetaText>{packet.itemCount} sections</MetaText>
+            </View>
+            <Button label="Open" onPress={() => onLoad(packet)} variant="secondary" />
           </View>
-          <Button label="Open" onPress={() => onLoad(packet)} variant="secondary" />
-        </View>
-      ))}
+        ))}
+      </View>
     </View>
   );
 }
@@ -522,6 +634,40 @@ function BuilderToolCard({
       <Button label={active ? "Selected" : "Open"} onPress={onPress} variant={active ? "primary" : "secondary"} />
     </View>
   );
+}
+
+function groupChunksBySection(chunks: ContentChunk[]) {
+  const sectionMap = new Map<
+    string,
+    {
+      chunks: ContentChunk[];
+      key: string;
+      sourceLabel: string;
+      title: string;
+    }
+  >();
+
+  chunks.forEach((chunk) => {
+    const sectionCodeMatch = chunk.chunkCode.match(/^95-([A-Z])/);
+    const sectionCode = chunk.sourceType === "qa" ? "Q&A" : sectionCodeMatch?.[1] ?? chunk.sectionKey.toUpperCase();
+    const key = `${chunk.sourceType}-${sectionCode}`;
+    const existing = sectionMap.get(key);
+    if (existing) {
+      existing.chunks.push(chunk);
+      return;
+    }
+    sectionMap.set(key, {
+      chunks: [chunk],
+      key,
+      sourceLabel: chunk.sourceType === "qa" ? "Q&A folder" : "Notes folder",
+      title: chunk.sourceType === "qa" ? "Q&A - Siman 95" : `Section ${sectionCode} - ${chunk.sectionTitle}`
+    });
+  });
+
+  return Array.from(sectionMap.values()).map((section) => ({
+    ...section,
+    chunks: section.chunks.sort((a, b) => a.sortOrder - b.sortOrder)
+  }));
 }
 
 function mapContentChunk(row: any): ContentChunk {
@@ -608,22 +754,104 @@ const localStyles = StyleSheet.create({
   workspace: {
     alignItems: "stretch",
     flexDirection: "row",
-    gap: theme.spacing.md
+    gap: theme.spacing.sm,
+    width: "100%"
+  },
+  sourceColumn: {
+    flex: 1.15,
+    minWidth: 0
+  },
+  packetColumn: {
+    flex: 1,
+    minWidth: 0
   },
   columnScroll: {
     maxHeight: 560
+  },
+  packetScroll: {
+    maxHeight: 430
   },
   weekRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8
   },
-  chunkShell: {
+  folderShell: {
+    backgroundColor: "#FBFDFF",
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
-    gap: theme.spacing.sm,
-    padding: theme.spacing.sm
+    overflow: "hidden"
+  },
+  folderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 58,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm
+  },
+  folderText: {
+    flex: 1,
+    minWidth: 0
+  },
+  folderTitle: {
+    color: theme.colors.ink,
+    fontSize: 14,
+    fontWeight: "900",
+    lineHeight: 19
+  },
+  folderActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "flex-end",
+    minWidth: 154
+  },
+  folderChildren: {
+    backgroundColor: theme.colors.surface,
+    borderTopColor: theme.colors.border,
+    borderTopWidth: 1,
+    gap: 2,
+    paddingBottom: 6,
+    paddingLeft: theme.spacing.md,
+    paddingRight: theme.spacing.sm,
+    paddingTop: 6
+  },
+  fileRow: {
+    alignItems: "center",
+    borderRadius: theme.radius.sm,
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 54,
+    paddingHorizontal: 8,
+    paddingVertical: 7
+  },
+  fileText: {
+    flex: 1,
+    minWidth: 0
+  },
+  selectedFileRow: {
+    backgroundColor: theme.colors.primarySoft
+  },
+  treeLine: {
+    alignSelf: "stretch",
+    borderLeftColor: theme.colors.border,
+    borderLeftWidth: 2,
+    width: 10
+  },
+  fileTitle: {
+    color: theme.colors.ink,
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 18
+  },
+  fileActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "flex-end",
+    minWidth: 136
   },
   chunkRow: {
     alignItems: "center",
@@ -634,9 +862,6 @@ const localStyles = StyleSheet.create({
     gap: 8,
     minWidth: 96
   },
-  selectedChunk: {
-    backgroundColor: theme.colors.primarySoft
-  },
   chunkTitle: {
     color: theme.colors.ink,
     fontSize: 14,
@@ -644,13 +869,28 @@ const localStyles = StyleSheet.create({
     lineHeight: 19
   },
   packetItem: {
+    alignItems: "center",
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
-    gap: 8,
+    flexDirection: "row",
+    gap: theme.spacing.sm,
     padding: theme.spacing.sm
   },
+  packetTitle: {
+    color: theme.colors.ink,
+    fontSize: 13,
+    fontWeight: "900",
+    lineHeight: 18
+  },
   itemActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "flex-end",
+    minWidth: 126
+  },
+  publishActions: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8
@@ -662,6 +902,21 @@ const localStyles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
     padding: theme.spacing.sm
+  },
+  existingPacketBands: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.md
+  },
+  existingPacketGroup: {
+    flexBasis: 360,
+    flexGrow: 1
+  },
+  existingPacketList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
   },
   groupTitle: {
     color: theme.colors.ink,
@@ -676,6 +931,10 @@ const localStyles = StyleSheet.create({
     flexDirection: "row",
     gap: theme.spacing.sm,
     padding: theme.spacing.sm
+  },
+  compactPacketListRow: {
+    flexBasis: 260,
+    flexGrow: 1
   },
   previewChunk: {
     borderTopColor: theme.colors.border,
@@ -717,6 +976,15 @@ const localStyles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "900",
     lineHeight: 28
+  },
+  modalChunkBlock: {
+    gap: theme.spacing.sm
+  },
+  modalChunkTitle: {
+    color: theme.colors.ink,
+    fontSize: 18,
+    fontWeight: "900",
+    lineHeight: 24
   },
   previewPage: {
     backgroundColor: theme.colors.surface,
