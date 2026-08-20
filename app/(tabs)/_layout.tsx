@@ -199,6 +199,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: tabIcon("settings"), href: compactPhoneNav ? null : undefined }} />
       <Tabs.Screen name="shiur-builder" options={{ title: "Shiur Builder", href: null }} />
+      <Tabs.Screen name="shiur-import-preview" options={{ title: "Shiur Import Preview", href: null }} />
       <Tabs.Screen name="shiur-packet" options={{ title: "Review Packet", href: null }} />
     </Tabs>
   );

@@ -19,11 +19,17 @@ import { supabase } from "../../src/lib/supabase";
 import { formatSupabaseError } from "../../src/lib/errors";
 import { theme } from "../../src/shared/theme";
 import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
-import { ContentChunk, ContentChunkLink, ReviewPacket, ReviewPacketCoverage } from "../../src/shared/types";
+import { ContentChunk, ContentChunkLink, ContentSourceType, ReviewPacket, ReviewPacketCoverage } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 
-type PacketListItem = ReviewPacket & { itemCount: number };
+type BuilderCategory = Extract<ContentSourceType, "notes" | "qa">;
+type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
+
+const builderCategories: { key: BuilderCategory; label: string; packetLabel: string }[] = [
+  { key: "notes", label: "Review Notes", packetLabel: "My Review Notes Packet" },
+  { key: "qa", label: "Q&A", packetLabel: "My Q&A Packet" }
+];
 
 export default function ShiurBuilderScreen() {
   const router = useRouter();
@@ -43,7 +49,7 @@ export default function ShiurBuilderScreen() {
   const [previewingPacket, setPreviewingPacket] = useState(false);
   const [title, setTitle] = useState("");
   const [week, setWeek] = useState(fallbackCurrentReviewWeek);
-  const [sourceFilter, setSourceFilter] = useState<"all" | "notes" | "qa">("all");
+  const [activeCategory, setActiveCategory] = useState<BuilderCategory>("notes");
   const [coverageFilter, setCoverageFilter] = useState<"all" | "covered" | "not-covered">("all");
   const [expandedSectionKeys, setExpandedSectionKeys] = useState<string[]>([]);
   const [expandedPacketSectionKeys, setExpandedPacketSectionKeys] = useState<string[]>([]);
@@ -55,8 +61,10 @@ export default function ShiurBuilderScreen() {
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const managedChaburah = chaburos.find((chaburah) => chaburah.id === managedChaburahId);
   const reviewWeeks = buildReviewWeeks(currentReviewWeek, Math.max(currentReviewWeek, week));
+  const activeCategoryConfig = builderCategories.find((category) => category.key === activeCategory) ?? builderCategories[0];
   const chunkById = useMemo(() => new Map(chunks.map((chunk) => [chunk.id, chunk])), [chunks]);
   const selectedChunks = selectedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
+  const selectedCategoryChunks = selectedChunks.filter((chunk) => chunk.sourceType === activeCategory);
   const previewChunk = previewChunkId ? chunkById.get(previewChunkId) : undefined;
   const packetPreviewChunk = packetPreviewChunkId ? chunkById.get(packetPreviewChunkId) : undefined;
   const coverageByChunkId = useMemo(() => {
@@ -69,7 +77,7 @@ export default function ShiurBuilderScreen() {
     return coverageMap;
   }, [coverageRows]);
   const filteredChunks = chunks.filter((chunk) => {
-    const matchesSource = sourceFilter === "all" || chunk.sourceType === sourceFilter;
+    const matchesSource = chunk.sourceType === activeCategory;
     const hasCoverage = coverageByChunkId.has(chunk.id);
     const matchesCoverage =
       coverageFilter === "all" ||
@@ -78,7 +86,7 @@ export default function ShiurBuilderScreen() {
     return matchesSource && matchesCoverage;
   });
   const materialSections = groupChunksBySection(filteredChunks);
-  const packetSections = groupSelectedChunksBySection(selectedChunks);
+  const packetSections = groupSelectedChunksBySection(selectedCategoryChunks);
   const previewSection = previewSectionKey ? materialSections.find((section) => section.key === previewSectionKey) : undefined;
   const openAskRavCount = askRavQuestions.filter((question) => question.chaburahId === managedChaburahId && question.status === "submitted").length;
   const quickReviewDraftCount = reviewQuestions.filter(
@@ -92,12 +100,12 @@ export default function ShiurBuilderScreen() {
   const previousPreviewChunk = previewChunkIndex > 0 ? filteredChunks[previewChunkIndex - 1] : undefined;
   const nextPreviewChunk =
     previewChunkIndex >= 0 && previewChunkIndex < filteredChunks.length - 1 ? filteredChunks[previewChunkIndex + 1] : undefined;
-  const packetPreviewChunkIndex = packetPreviewChunkId ? selectedChunks.findIndex((chunk) => chunk.id === packetPreviewChunkId) : -1;
-  const previousPacketPreviewChunk = packetPreviewChunkIndex > 0 ? selectedChunks[packetPreviewChunkIndex - 1] : undefined;
+  const packetPreviewChunkIndex = packetPreviewChunkId ? selectedCategoryChunks.findIndex((chunk) => chunk.id === packetPreviewChunkId) : -1;
+  const previousPacketPreviewChunk = packetPreviewChunkIndex > 0 ? selectedCategoryChunks[packetPreviewChunkIndex - 1] : undefined;
   const nextPacketPreviewChunk =
-    packetPreviewChunkIndex >= 0 && packetPreviewChunkIndex < selectedChunks.length - 1 ? selectedChunks[packetPreviewChunkIndex + 1] : undefined;
+    packetPreviewChunkIndex >= 0 && packetPreviewChunkIndex < selectedCategoryChunks.length - 1 ? selectedCategoryChunks[packetPreviewChunkIndex + 1] : undefined;
   const modalPreviewChunks = previewingPacket
-    ? selectedChunks
+    ? selectedCategoryChunks
     : previewSection
       ? previewSection.chunks
       : packetPreviewChunk
@@ -108,9 +116,10 @@ export default function ShiurBuilderScreen() {
   const draftPackets = packets.filter((packet) => packet.status === "draft" && packet.week === week);
   const publishedPackets = packets.filter((packet) => packet.status === "published" && packet.week === week);
   const suggestedChunks = links
-    .filter((link) => selectedIds.includes(link.parentChunkId) && !selectedIds.includes(link.relatedChunkId))
+    .filter((link) => activeCategory === "notes" && selectedIds.includes(link.parentChunkId) && !selectedIds.includes(link.relatedChunkId))
     .map((link) => chunkById.get(link.relatedChunkId))
-    .filter((chunk): chunk is ContentChunk => Boolean(chunk));
+    .filter((chunk): chunk is ContentChunk => Boolean(chunk))
+    .filter((chunk) => chunk.sourceType === "qa");
   const uniqueSuggestedChunks = Array.from(new Map(suggestedChunks.map((chunk) => [chunk.id, chunk])).values());
 
   useEffect(() => {
@@ -122,10 +131,10 @@ export default function ShiurBuilderScreen() {
   }, [managedChaburahId]);
 
   useEffect(() => {
-    if (!title && managedChaburah?.name) {
-      setTitle(`${managedChaburah.name} Week ${week} Review Packet`);
+    if (managedChaburah?.name && (!title || isAutoPacketTitle(title, managedChaburah.name, week))) {
+      setTitle(defaultPacketTitle(managedChaburah.name, week, activeCategoryConfig.label));
     }
-  }, [managedChaburah?.name, title, week]);
+  }, [activeCategoryConfig.label, managedChaburah?.name, title, week]);
 
   async function loadBuilderData() {
     if (!managedChaburahId) return;
@@ -149,16 +158,29 @@ export default function ShiurBuilderScreen() {
     setLinks((linksResult.data ?? []).map(mapContentChunkLink));
     setCoverageRows((coverageResult.data ?? []).map(mapCoverage));
     const packetRows = (packetsResult.data ?? []).map(mapPacket);
-    const packetCounts = await countPacketItems(packetRows.map((packet) => packet.id));
-    setPackets(packetRows.map((packet) => ({ ...packet, itemCount: packetCounts.get(packet.id) ?? 0 })));
+    const packetSummaries = await summarizePacketItems(packetRows.map((packet) => packet.id));
+    setPackets(
+      packetRows.map((packet) => {
+        const summary = packetSummaries.get(packet.id);
+        return { ...packet, categories: summary?.categories ?? [], itemCount: summary?.itemCount ?? 0 };
+      })
+    );
   }
 
-  async function countPacketItems(packetIds: string[]) {
-    const counts = new Map<string, number>();
-    if (packetIds.length === 0) return counts;
-    const { data } = await supabase.from("review_packet_items").select("packet_id").in("packet_id", packetIds);
-    (data ?? []).forEach((row) => counts.set(row.packet_id, (counts.get(row.packet_id) ?? 0) + 1));
-    return counts;
+  async function summarizePacketItems(packetIds: string[]) {
+    const summaries = new Map<string, { categories: BuilderCategory[]; itemCount: number }>();
+    if (packetIds.length === 0) return summaries;
+    const { data } = await supabase.from("review_packet_items").select("packet_id, content_chunks(source_type)").in("packet_id", packetIds);
+    (data ?? []).forEach((row: any) => {
+      const current = summaries.get(row.packet_id) ?? { categories: [], itemCount: 0 };
+      const sourceType = row.content_chunks?.source_type as ContentSourceType | undefined;
+      current.itemCount += 1;
+      if ((sourceType === "notes" || sourceType === "qa") && !current.categories.includes(sourceType)) {
+        current.categories.push(sourceType);
+      }
+      summaries.set(row.packet_id, current);
+    });
+    return summaries;
   }
 
   function normalizePacketIds(ids: string[]) {
@@ -321,7 +343,7 @@ export default function ShiurBuilderScreen() {
     setSelectedIds([]);
     setExpandedPacketSectionKeys([]);
     clearPreview();
-    setTitle(`${managedChaburah?.name ?? "My Chaburah"} Week ${week} Review Packet`);
+    setTitle(defaultPacketTitle(managedChaburah?.name ?? "My Chaburah", week, activeCategoryConfig.label));
     setMessage("Started a new draft packet.");
   }
 
@@ -343,10 +365,15 @@ export default function ShiurBuilderScreen() {
     setTitle(packet.title);
     setWeek(packet.week);
     const loadedIds = (data ?? []).map((item) => item.chunk_id);
+    const loadedChunks = loadedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
     setSelectedIds(loadedIds);
-    const loadedSections = groupSelectedChunksBySection(
-      loadedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk))
-    );
+    if (!loadedChunks.some((chunk) => chunk.sourceType === activeCategory)) {
+      const firstCategoryChunk = loadedChunks.find((chunk) => chunk.sourceType === "notes" || chunk.sourceType === "qa");
+      if (firstCategoryChunk?.sourceType === "notes" || firstCategoryChunk?.sourceType === "qa") {
+        setActiveCategory(firstCategoryChunk.sourceType);
+      }
+    }
+    const loadedSections = groupSelectedChunksBySection(loadedChunks);
     setExpandedPacketSectionKeys(loadedSections.map((section) => section.key));
     clearPreview();
     setMessage(packet.status === "draft" ? "Draft loaded." : "Published packet loaded for preview.");
@@ -417,30 +444,76 @@ export default function ShiurBuilderScreen() {
   }
 
   async function publishPacket() {
+    if (selectedCategoryChunks.length === 0) {
+      setMessage(`Add at least one ${activeCategoryConfig.label} section before publishing.`);
+      return;
+    }
     const packetId = await saveDraft();
     if (!packetId) return;
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      const confirmed = window.confirm("Publish this review packet to Files? Participants in this chaburah will be able to open it.");
+      const confirmed = window.confirm(`Publish this ${activeCategoryConfig.label} packet to Files? Participants in this chaburah will be able to open it.`);
       if (!confirmed) return;
     } else {
-      Alert.alert("Publish Packet?", "Participants in this chaburah will be able to open this packet in Files.", [
+      Alert.alert(`Publish ${activeCategoryConfig.label}?`, "Participants in this chaburah will be able to open this packet in Files.", [
         { text: "Cancel", style: "cancel" },
         {
           text: "Publish",
           onPress: () => {
-            void publishConfirmedPacket(packetId);
+            void publishConfirmedCategoryPacket();
           }
         }
       ]);
       return;
     }
-    await publishConfirmedPacket(packetId);
+    await publishConfirmedCategoryPacket();
   }
 
-  async function publishConfirmedPacket(packetId: string) {
+  async function publishConfirmedCategoryPacket() {
+    if (!profile?.id || !managedChaburahId) {
+      setMessage("Choose or join a chaburah before publishing.");
+      return;
+    }
+    const categoryIds = selectedCategoryChunks.map((chunk) => chunk.id);
+    if (categoryIds.length === 0) {
+      setMessage(`Add at least one ${activeCategoryConfig.label} section before publishing.`);
+      return;
+    }
     setSaving(true);
     setMessage("");
-    const { data, error } = await supabase.rpc("publish_review_packet", { target_packet_id: packetId });
+    const categoryTitle = buildPublishedCategoryTitle(title.trim(), activeCategoryConfig.label);
+    const packetResult = await supabase
+      .from("review_packets")
+      .insert({
+        chaburah_id: managedChaburahId,
+        title: categoryTitle,
+        week,
+        siman: "Siman 95 Part 1",
+        status: "draft" as const,
+        created_by: profile.id
+      })
+      .select("id")
+      .single();
+    if (packetResult.error || !packetResult.data) {
+      setSaving(false);
+      setMessage(packetResult.error?.message ?? "Unable to create the publish packet.");
+      return;
+    }
+
+    const publishPacketId = packetResult.data.id;
+    const insertResult = await supabase.from("review_packet_items").insert(
+      categoryIds.map((chunkId, index) => ({
+        packet_id: publishPacketId,
+        chunk_id: chunkId,
+        sort_order: index + 1
+      }))
+    );
+    if (insertResult.error) {
+      setSaving(false);
+      setMessage(insertResult.error.message);
+      return;
+    }
+
+    const { data, error } = await supabase.rpc("publish_review_packet", { target_packet_id: publishPacketId });
     setSaving(false);
     if (error) {
       setMessage(error.message);
@@ -449,8 +522,8 @@ export default function ShiurBuilderScreen() {
     if (data?.id) {
       await supabase.rpc("notify_learning_file", { target_file_id: data.id });
     }
-    setActivePacketStatus("published");
-    setMessage("Packet published to Files.");
+    setActivePacketStatus("draft");
+    setMessage(`${activeCategoryConfig.label} packet published to Files.`);
     await Promise.all([loadBuilderData(), refresh()]);
   }
 
@@ -536,21 +609,39 @@ export default function ShiurBuilderScreen() {
           <Pill label={`${publishedPackets.length} published`} tone={publishedPackets.length ? "success" : "neutral"} />
         </Row>
         <View style={localStyles.existingPacketBands}>
-          <PacketGroup title="Drafts" packets={draftPackets} onLoad={loadPacket} compact />
-          <PacketGroup title="Published" packets={publishedPackets} onLoad={loadPacket} compact />
+          <PacketGroup chaburahName={managedChaburah?.name} title="Drafts" packets={draftPackets} onLoad={loadPacket} compact />
+          <PacketGroup chaburahName={managedChaburah?.name} title="Published" packets={publishedPackets} onLoad={loadPacket} compact />
+        </View>
+      </Card>
+
+      <Card>
+        <View style={localStyles.categorySwitch}>
+          {builderCategories.map((category) => (
+            <Pressable
+              accessibilityRole="button"
+              key={category.key}
+              onPress={() => {
+                setActiveCategory(category.key);
+                clearPreview();
+              }}
+              style={[localStyles.categoryButton, activeCategory === category.key && localStyles.categoryButtonActive]}
+            >
+              <Text style={[localStyles.categoryButtonText, activeCategory === category.key && localStyles.categoryButtonTextActive]}>
+                {category.label}
+              </Text>
+              <Text style={[localStyles.categoryButtonMeta, activeCategory === category.key && localStyles.categoryButtonMetaActive]}>
+                {selectedChunks.filter((chunk) => chunk.sourceType === category.key).length} selected
+              </Text>
+            </Pressable>
+          ))}
         </View>
       </Card>
 
       <View style={localStyles.workspace}>
         <View style={localStyles.sourceColumn}>
           <Card>
-            <SectionTitle>Official SCP Material</SectionTitle>
+            <SectionTitle>Official SCP {activeCategoryConfig.label}</SectionTitle>
             <Text style={styles.muted}>Open a folder to choose smaller chunks, or add/view the whole section at once.</Text>
-            <View style={localStyles.weekRow}>
-              <FilterChip label="All" onPress={() => setSourceFilter("all")} selected={sourceFilter === "all"} />
-              <FilterChip label="Notes" onPress={() => setSourceFilter("notes")} selected={sourceFilter === "notes"} />
-              <FilterChip label="Q&A" onPress={() => setSourceFilter("qa")} selected={sourceFilter === "qa"} />
-            </View>
             <View style={localStyles.weekRow}>
               <FilterChip label="All Coverage" onPress={() => setCoverageFilter("all")} selected={coverageFilter === "all"} />
               <FilterChip label="Covered" onPress={() => setCoverageFilter("covered")} selected={coverageFilter === "covered"} />
@@ -619,11 +710,11 @@ export default function ShiurBuilderScreen() {
 
         <View style={localStyles.packetColumn}>
           <Card>
-            <SectionTitle>My Review Packet</SectionTitle>
+            <SectionTitle>{activeCategoryConfig.packetLabel}</SectionTitle>
             <View style={localStyles.packetTopAction}>
               <Button label="New Draft" onPress={startNewDraft} variant="secondary" />
             </View>
-            <Text style={styles.muted}>Selected sections. Move items up/down to control packet order.</Text>
+            <Text style={styles.muted}>Selected {activeCategoryConfig.label.toLowerCase()} sections. Move items up/down to control packet order.</Text>
             <View style={localStyles.titleRow}>
               <Text style={localStyles.titleLabel}>Title:</Text>
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -632,7 +723,7 @@ export default function ShiurBuilderScreen() {
             </View>
             <Text style={styles.muted}>The official packet text below is controlled and cannot be edited here.</Text>
             <ScrollView contentContainerStyle={{ gap: 8 }} style={localStyles.packetScroll}>
-              {packetSections.length === 0 ? <Text style={styles.muted}>Add official sections to begin the draft packet.</Text> : null}
+              {packetSections.length === 0 ? <Text style={styles.muted}>Add official {activeCategoryConfig.label.toLowerCase()} sections to begin this part of the draft packet.</Text> : null}
               {packetSections.map((section, sectionIndex) => {
                 const expanded = expandedPacketSectionKeys.includes(section.key);
                 return (
@@ -718,15 +809,15 @@ export default function ShiurBuilderScreen() {
             ) : null}
             <View style={localStyles.publishActions}>
               <Button
-                label="Preview Packet"
+                label={`Preview ${activeCategoryConfig.label}`}
                 onPress={() => {
                   setPreviewChunkId(null);
                   setPreviewSectionKey(null);
                   setPacketPreviewChunkId(null);
                   setPreviewingPacket(true);
                 }}
-                disabled={selectedChunks.length === 0}
-                variant={selectedChunks.length > 0 ? "primary" : "secondary"}
+                disabled={selectedCategoryChunks.length === 0}
+                variant={selectedCategoryChunks.length > 0 ? "primary" : "secondary"}
               />
               <View style={localStyles.savePublishActions}>
                 <View style={localStyles.packetActionButton}>
@@ -739,10 +830,10 @@ export default function ShiurBuilderScreen() {
                 </View>
                 <View style={localStyles.packetActionButton}>
                   <Button
-                    label={saving ? "Publishing..." : "Publish to Files"}
+                    label={saving ? "Publishing..." : `Publish ${activeCategoryConfig.label}`}
                     onPress={publishPacket}
-                    disabled={saving || activePacketStatus !== "draft" || selectedIds.length === 0}
-                    variant={selectedIds.length > 0 ? "primary" : "secondary"}
+                    disabled={saving || activePacketStatus !== "draft" || selectedCategoryChunks.length === 0}
+                    variant={selectedCategoryChunks.length > 0 ? "primary" : "secondary"}
                   />
                 </View>
               </View>
@@ -755,20 +846,22 @@ export default function ShiurBuilderScreen() {
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Packet Preview</SectionTitle>
-            <Text style={styles.muted}>A document-style view of what the Rabbi is preparing.</Text>
+            <SectionTitle>{activeCategoryConfig.label} Preview</SectionTitle>
+            <Text style={styles.muted}>A document-style view of this part of the packet.</Text>
           </View>
-          {selectedChunks.length > 0 ? <Pill label={`${selectedChunks.length} section${selectedChunks.length === 1 ? "" : "s"}`} /> : null}
+          {selectedCategoryChunks.length > 0 ? (
+            <Pill label={`${selectedCategoryChunks.length} section${selectedCategoryChunks.length === 1 ? "" : "s"}`} />
+          ) : null}
         </Row>
-        {selectedChunks.length === 0 ? <Text style={styles.muted}>Select sections to preview the packet.</Text> : null}
-        {selectedChunks.length > 0 ? (
+        {selectedCategoryChunks.length === 0 ? <Text style={styles.muted}>Select {activeCategoryConfig.label.toLowerCase()} sections to preview this packet.</Text> : null}
+        {selectedCategoryChunks.length > 0 ? (
           <View style={localStyles.documentPreviewShell}>
             <View style={localStyles.documentPage}>
-              <Text style={localStyles.documentPacketTitle}>{title || "Untitled Packet"}</Text>
+              <Text style={localStyles.documentPacketTitle}>{buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}</Text>
               <Text style={localStyles.documentPacketMeta}>
                 {managedChaburah?.name ?? "My Chaburah"} - Week {week}
               </Text>
-              {selectedChunks.map((chunk, index) => (
+              {selectedCategoryChunks.map((chunk, index) => (
                 <DocumentChunk key={chunk.id} chunk={chunk} index={index} />
               ))}
             </View>
@@ -793,16 +886,16 @@ export default function ShiurBuilderScreen() {
                   <View style={{ flex: 1, minWidth: 260 }}>
                     <MetaText>
                       {previewingPacket
-                        ? `Week ${week} Review Packet`
+                        ? `Week ${week} ${activeCategoryConfig.label}`
                         : previewSection
                           ? previewSection.sourceLabel
                           : packetPreviewChunk
-                            ? "My Review Packet"
+                            ? activeCategoryConfig.packetLabel
                             : `${previewChunk?.chunkCode} - ${previewChunk?.sectionTitle}`}
                     </MetaText>
                     <Text style={localStyles.modalTitle}>
                       {previewingPacket
-                        ? title || "Untitled Packet"
+                        ? buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)
                         : previewSection
                           ? previewSection.title
                           : packetPreviewChunk
@@ -816,7 +909,7 @@ export default function ShiurBuilderScreen() {
                   <View style={localStyles.modalDocumentPage}>
                     {previewingPacket ? (
                       <>
-                        <Text style={localStyles.documentPacketTitle}>{title || "Untitled Packet"}</Text>
+                        <Text style={localStyles.documentPacketTitle}>{buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}</Text>
                         <Text style={localStyles.documentPacketMeta}>
                           {managedChaburah?.name ?? "My Chaburah"} - Week {week}
                         </Text>
@@ -1050,17 +1143,44 @@ function splitListLead(text: string) {
   };
 }
 
+function buildPublishedCategoryTitle(baseTitle: string, categoryLabel: string) {
+  const cleanTitle = baseTitle || "Review Packet";
+  return cleanTitle.toLowerCase().includes(categoryLabel.toLowerCase()) ? cleanTitle : `${cleanTitle} - ${categoryLabel}`;
+}
+
+function defaultPacketTitle(chaburahName: string, week: number, categoryLabel: string) {
+  return `${chaburahName} Week ${week} ${categoryLabel}`;
+}
+
+function isAutoPacketTitle(title: string, chaburahName: string, week: number) {
+  return builderCategories.some((category) => title === defaultPacketTitle(chaburahName, week, category.label)) || title === `${chaburahName} Week ${week} Review Packet`;
+}
+
+function categoryLabel(category: BuilderCategory) {
+  return builderCategories.find((item) => item.key === category)?.label ?? category;
+}
+
+function formatPacketDate(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 function PacketGroup({
+  chaburahName,
   compact = false,
   title,
   packets,
   onLoad
 }: {
+  chaburahName?: string;
   compact?: boolean;
   title: string;
   packets: PacketListItem[];
   onLoad: (packet: PacketListItem) => void;
 }) {
+  const isDraftGroup = title === "Drafts";
   return (
     <View style={[{ gap: 8 }, compact && localStyles.existingPacketGroup]}>
       <Row>
@@ -1069,15 +1189,28 @@ function PacketGroup({
       </Row>
       {packets.length === 0 ? <Text style={styles.muted}>No {title.toLowerCase()} for this week.</Text> : null}
       <View style={compact ? localStyles.existingPacketList : { gap: 10 }}>
-        {packets.map((packet) => (
-          <View key={packet.id} style={[localStyles.packetListRow, compact && localStyles.compactPacketListRow]}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.body} numberOfLines={2}>{packet.title}</Text>
-              <MetaText>{packet.itemCount} sections</MetaText>
+        {packets.map((packet) => {
+          const displayTitle = isDraftGroup ? `${chaburahName ?? "Chaburah"} / Week ${packet.week}` : packet.title;
+          return (
+            <View key={packet.id} style={[localStyles.packetListRow, compact && localStyles.compactPacketListRow]}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.body} numberOfLines={2}>{displayTitle}</Text>
+                <MetaText>
+                  {packet.itemCount} section{packet.itemCount === 1 ? "" : "s"}
+                  {formatPacketDate(packet.updatedAt) ? ` - ${formatPacketDate(packet.updatedAt)}` : ""}
+                </MetaText>
+                {packet.categories.length > 0 ? (
+                  <View style={localStyles.packetCategoryPills}>
+                    {packet.categories.map((category) => (
+                      <Pill key={category} label={categoryLabel(category)} tone={category === "notes" ? "primary" : "success"} />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+              <Button label="Open" onPress={() => onLoad(packet)} variant="secondary" />
             </View>
-            <Button label="Open" onPress={() => onLoad(packet)} variant="secondary" />
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
@@ -1523,6 +1656,49 @@ const localStyles = StyleSheet.create({
     flexWrap: "wrap",
     gap: theme.spacing.md
   },
+  categorySwitch: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    padding: 6
+  },
+  categoryButton: {
+    alignItems: "center",
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flex: 1,
+    gap: 3,
+    minHeight: 58,
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm
+  },
+  categoryButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary
+  },
+  categoryButtonText: {
+    color: theme.colors.ink,
+    fontSize: 16,
+    fontWeight: "900",
+    lineHeight: 21
+  },
+  categoryButtonTextActive: {
+    color: "#FFFFFF"
+  },
+  categoryButtonMeta: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: "800",
+    lineHeight: 16
+  },
+  categoryButtonMetaActive: {
+    color: "#E8EEF9"
+  },
   existingPacketGroup: {
     flexBasis: 360,
     flexGrow: 1
@@ -1549,6 +1725,12 @@ const localStyles = StyleSheet.create({
   compactPacketListRow: {
     flexBasis: 260,
     flexGrow: 1
+  },
+  packetCategoryPills: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingTop: 5
   },
   documentPreviewShell: {
     alignItems: "center",
