@@ -65,6 +65,11 @@ export default function ShiurBuilderScreen() {
   const chunkById = useMemo(() => new Map(chunks.map((chunk) => [chunk.id, chunk])), [chunks]);
   const selectedChunks = selectedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
   const selectedCategoryChunks = selectedChunks.filter((chunk) => chunk.sourceType === activeCategory);
+  const categoryCounts = builderCategories.map((category) => ({
+    ...category,
+    available: chunks.filter((chunk) => chunk.sourceType === category.key).length,
+    selected: selectedChunks.filter((chunk) => chunk.sourceType === category.key).length
+  }));
   const previewChunk = previewChunkId ? chunkById.get(previewChunkId) : undefined;
   const packetPreviewChunk = packetPreviewChunkId ? chunkById.get(packetPreviewChunkId) : undefined;
   const coverageByChunkId = useMemo(() => {
@@ -115,6 +120,7 @@ export default function ShiurBuilderScreen() {
           : [];
   const draftPackets = packets.filter((packet) => packet.status === "draft" && packet.week === week);
   const publishedPackets = packets.filter((packet) => packet.status === "published" && packet.week === week);
+  const activeCategoryPublishedPacket = publishedPackets.find((packet) => packet.categories.includes(activeCategory));
   const suggestedChunks = links
     .filter((link) => activeCategory === "notes" && selectedIds.includes(link.parentChunkId) && !selectedIds.includes(link.relatedChunkId))
     .map((link) => chunkById.get(link.relatedChunkId))
@@ -350,11 +356,7 @@ export default function ShiurBuilderScreen() {
   async function loadPacket(packet: PacketListItem) {
     setLoading(true);
     setMessage("");
-    const { data, error } = await supabase
-      .from("review_packet_items")
-      .select("chunk_id")
-      .eq("packet_id", packet.id)
-      .order("sort_order");
+    const { loadedChunks, loadedIds, error } = await loadPacketChunks(packet.id);
     setLoading(false);
     if (error) {
       setMessage(error.message);
@@ -364,8 +366,6 @@ export default function ShiurBuilderScreen() {
     setActivePacketStatus(packet.status);
     setTitle(packet.title);
     setWeek(packet.week);
-    const loadedIds = (data ?? []).map((item) => item.chunk_id);
-    const loadedChunks = loadedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
     setSelectedIds(loadedIds);
     if (!loadedChunks.some((chunk) => chunk.sourceType === activeCategory)) {
       const firstCategoryChunk = loadedChunks.find((chunk) => chunk.sourceType === "notes" || chunk.sourceType === "qa");
@@ -377,6 +377,82 @@ export default function ShiurBuilderScreen() {
     setExpandedPacketSectionKeys(loadedSections.map((section) => section.key));
     clearPreview();
     setMessage(packet.status === "draft" ? "Draft loaded." : "Published packet loaded for preview.");
+  }
+
+  async function loadPacketChunks(packetId: string) {
+    const { data, error } = await supabase
+      .from("review_packet_items")
+      .select("chunk_id")
+      .eq("packet_id", packetId)
+      .order("sort_order");
+    const loadedIds = (data ?? []).map((item) => item.chunk_id);
+    const loadedChunks = loadedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
+    return { loadedChunks, loadedIds, error };
+  }
+
+  async function editPublishedPacket(packet: PacketListItem) {
+    setLoading(true);
+    setMessage("");
+    const { loadedChunks, loadedIds, error } = await loadPacketChunks(packet.id);
+    setLoading(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setActivePacketId(null);
+    setActivePacketStatus("draft");
+    setTitle(packet.title);
+    setWeek(packet.week);
+    setSelectedIds(loadedIds);
+    const loadedSections = groupSelectedChunksBySection(loadedChunks);
+    setExpandedPacketSectionKeys(loadedSections.map((section) => section.key));
+    const firstCategoryChunk = loadedChunks.find((chunk) => chunk.sourceType === "notes" || chunk.sourceType === "qa");
+    if (firstCategoryChunk?.sourceType === "notes" || firstCategoryChunk?.sourceType === "qa") {
+      setActiveCategory(firstCategoryChunk.sourceType);
+    }
+    clearPreview();
+    setMessage("Published packet copied into a new editable draft. Save it when you are ready.");
+  }
+
+  async function deleteDraftPacket(packet: PacketListItem) {
+    if (packet.status !== "draft") return;
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      const confirmed = window.confirm("Delete this draft packet? This cannot be undone.");
+      if (!confirmed) return;
+    } else {
+      Alert.alert("Delete Draft?", "This cannot be undone.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void deleteConfirmedDraftPacket(packet);
+          }
+        }
+      ]);
+      return;
+    }
+    await deleteConfirmedDraftPacket(packet);
+  }
+
+  async function deleteConfirmedDraftPacket(packet: PacketListItem) {
+    setSaving(true);
+    setMessage("");
+    const { error } = await supabase.from("review_packets").delete().eq("id", packet.id).eq("status", "draft");
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    if (activePacketId === packet.id) {
+      setActivePacketId(null);
+      setActivePacketStatus("draft");
+      setSelectedIds([]);
+      setExpandedPacketSectionKeys([]);
+      clearPreview();
+    }
+    setMessage("Draft packet deleted.");
+    await loadBuilderData();
   }
 
   async function saveDraft() {
@@ -609,14 +685,28 @@ export default function ShiurBuilderScreen() {
           <Pill label={`${publishedPackets.length} published`} tone={publishedPackets.length ? "success" : "neutral"} />
         </Row>
         <View style={localStyles.existingPacketBands}>
-          <PacketGroup chaburahName={managedChaburah?.name} title="Drafts" packets={draftPackets} onLoad={loadPacket} compact />
-          <PacketGroup chaburahName={managedChaburah?.name} title="Published" packets={publishedPackets} onLoad={loadPacket} compact />
+          <PacketGroup
+            chaburahName={managedChaburah?.name}
+            onDeleteDraft={deleteDraftPacket}
+            title="Drafts"
+            packets={draftPackets}
+            onLoad={loadPacket}
+            compact
+          />
+          <PacketGroup
+            chaburahName={managedChaburah?.name}
+            onEditPublished={editPublishedPacket}
+            title="Published"
+            packets={publishedPackets}
+            onLoad={loadPacket}
+            compact
+          />
         </View>
       </Card>
 
       <Card>
         <View style={localStyles.categorySwitch}>
-          {builderCategories.map((category) => (
+          {categoryCounts.map((category) => (
             <Pressable
               accessibilityRole="button"
               key={category.key}
@@ -630,7 +720,7 @@ export default function ShiurBuilderScreen() {
                 {category.label}
               </Text>
               <Text style={[localStyles.categoryButtonMeta, activeCategory === category.key && localStyles.categoryButtonMetaActive]}>
-                {selectedChunks.filter((chunk) => chunk.sourceType === category.key).length} selected
+                {category.selected} selected / {category.available} available
               </Text>
             </Pressable>
           ))}
@@ -808,6 +898,15 @@ export default function ShiurBuilderScreen() {
               </View>
             ) : null}
             <View style={localStyles.publishActions}>
+              {activeCategoryPublishedPacket ? (
+                <View style={localStyles.publishedNotice}>
+                  <Pill
+                    label={`${activeCategoryConfig.label} already published${formatPacketDate(activeCategoryPublishedPacket.publishedAt ?? activeCategoryPublishedPacket.updatedAt) ? ` ${formatPacketDate(activeCategoryPublishedPacket.publishedAt ?? activeCategoryPublishedPacket.updatedAt)}` : ""}`}
+                    tone="success"
+                  />
+                  <MetaText>Publishing again will create a new Files entry for this category.</MetaText>
+                </View>
+              ) : null}
               <Button
                 label={`Preview ${activeCategoryConfig.label}`}
                 onPress={() => {
@@ -1170,12 +1269,16 @@ function formatPacketDate(value?: string) {
 function PacketGroup({
   chaburahName,
   compact = false,
+  onDeleteDraft,
+  onEditPublished,
   title,
   packets,
   onLoad
 }: {
   chaburahName?: string;
   compact?: boolean;
+  onDeleteDraft?: (packet: PacketListItem) => void;
+  onEditPublished?: (packet: PacketListItem) => void;
   title: string;
   packets: PacketListItem[];
   onLoad: (packet: PacketListItem) => void;
@@ -1207,7 +1310,15 @@ function PacketGroup({
                   </View>
                 ) : null}
               </View>
-              <Button label="Open" onPress={() => onLoad(packet)} variant="secondary" />
+              <View style={localStyles.packetListActions}>
+                <Button label={isDraftGroup ? "Open" : "View"} onPress={() => onLoad(packet)} variant="secondary" />
+                {isDraftGroup && onDeleteDraft ? (
+                  <Button label="Delete" onPress={() => onDeleteDraft(packet)} variant="ghost" />
+                ) : null}
+                {!isDraftGroup && onEditPublished ? (
+                  <Button label="Edit" onPress={() => onEditPublished(packet)} variant="ghost" />
+                ) : null}
+              </View>
             </View>
           );
         })}
@@ -1633,6 +1744,15 @@ const localStyles = StyleSheet.create({
     alignItems: "stretch",
     gap: 8
   },
+  publishedNotice: {
+    alignItems: "flex-start",
+    backgroundColor: "#ECFDF3",
+    borderColor: "#B7E4C7",
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    gap: 5,
+    padding: theme.spacing.sm
+  },
   savePublishActions: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1725,6 +1845,13 @@ const localStyles = StyleSheet.create({
   compactPacketListRow: {
     flexBasis: 260,
     flexGrow: 1
+  },
+  packetListActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "flex-end",
+    maxWidth: 150
   },
   packetCategoryPills: {
     flexDirection: "row",
