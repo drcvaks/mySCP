@@ -1357,7 +1357,16 @@ function defaultPacketTitle(chaburahName: string, week: number, categoryLabel: s
 }
 
 function isAutoPacketTitle(title: string, chaburahName: string, week: number) {
-  return builderCategories.some((category) => title === defaultPacketTitle(chaburahName, week, category.label)) || title === `${chaburahName} Week ${week} Review Packet`;
+  const prefix = `${chaburahName} Week ${week} `;
+  if (!title.startsWith(prefix)) return false;
+  const suffix = title.slice(prefix.length).trim();
+  if (suffix === "Review Packet") return true;
+  return builderCategories.some(
+    (category) =>
+      suffix === category.label ||
+      suffix === `${category.label} Packet` ||
+      suffix === `Review Packet - ${category.label}`
+  );
 }
 
 function categoryLabel(category: BuilderCategory) {
