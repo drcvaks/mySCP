@@ -896,6 +896,7 @@ export default function ShiurBuilderScreen() {
                       {chunk.chunkCode}: {chunk.chunkTitle}
                     </Text>
                     <Pill label={categoryLabel(chunk.sourceType as BuilderCategory)} tone={chunk.sourceType === "source" ? "primary" : "success"} />
+                    <Button label={previewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => toggleChunkPreview(chunk.id)} variant="ghost" />
                     <Button label="Add" onPress={() => addChunk(chunk.id)} variant="secondary" />
                   </Row>
                 ))}
