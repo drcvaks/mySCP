@@ -92,7 +92,7 @@ export interface LearningFile {
   description?: string;
 }
 
-export type ContentSourceType = "notes" | "qa" | "intro" | "pace";
+export type ContentSourceType = "notes" | "qa" | "source" | "intro" | "pace";
 export type ContentDifficulty = "core" | "advanced" | "practical";
 export type ReviewPacketStatus = "draft" | "published" | "archived";
 
@@ -122,7 +122,7 @@ export interface ContentChunkLink {
   id: string;
   parentChunkId: string;
   relatedChunkId: string;
-  relationType: "related_qa" | "related_note";
+  relationType: "related_qa" | "related_note" | "related_source";
 }
 
 export interface ReviewPacket {

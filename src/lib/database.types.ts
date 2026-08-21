@@ -128,7 +128,7 @@ type ContentChunkLinkRow = {
   id: string;
   parent_chunk_id: string;
   related_chunk_id: string;
-  relation_type: "related_qa" | "related_note";
+  relation_type: "related_qa" | "related_note" | "related_source";
   created_at: string;
 };
 
@@ -481,7 +481,7 @@ export interface Database {
       content_visibility: "everyone" | "chaburah";
       file_coverage: "week" | "bechina_review" | "entire_zman";
       learning_file_type: "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link" | "custom_review_packet";
-      content_source_type: "notes" | "qa" | "intro" | "pace";
+      content_source_type: "notes" | "qa" | "source" | "intro" | "pace";
       content_difficulty: "core" | "advanced" | "practical";
       review_packet_status: "draft" | "published" | "archived";
       review_publication_status: "draft" | "published" | "archived";

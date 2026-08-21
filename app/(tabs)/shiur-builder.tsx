@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -23,12 +23,13 @@ import { ContentChunk, ContentChunkLink, ContentSourceType, ReviewPacket, Review
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 
-type BuilderCategory = Extract<ContentSourceType, "notes" | "qa">;
+type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
 
 const builderCategories: { key: BuilderCategory; label: string; packetLabel: string }[] = [
   { key: "notes", label: "Review Notes", packetLabel: "My Review Notes Packet" },
-  { key: "qa", label: "Q&A", packetLabel: "My Q&A Packet" }
+  { key: "qa", label: "Q&A", packetLabel: "My Q&A Packet" },
+  { key: "source", label: "Source Sheets", packetLabel: "My Source Sheets Packet" }
 ];
 
 export default function ShiurBuilderScreen() {
@@ -122,10 +123,10 @@ export default function ShiurBuilderScreen() {
   const publishedPackets = packets.filter((packet) => packet.status === "published" && packet.week === week);
   const activeCategoryPublishedPacket = publishedPackets.find((packet) => packet.categories.includes(activeCategory));
   const suggestedChunks = links
-    .filter((link) => activeCategory === "notes" && selectedIds.includes(link.parentChunkId) && !selectedIds.includes(link.relatedChunkId))
+    .filter((link) => selectedIds.includes(link.parentChunkId) && !selectedIds.includes(link.relatedChunkId))
     .map((link) => chunkById.get(link.relatedChunkId))
     .filter((chunk): chunk is ContentChunk => Boolean(chunk))
-    .filter((chunk) => chunk.sourceType === "qa");
+    .filter((chunk) => chunk.sourceType === activeCategory);
   const uniqueSuggestedChunks = Array.from(new Map(suggestedChunks.map((chunk) => [chunk.id, chunk])).values());
 
   useEffect(() => {
@@ -181,7 +182,7 @@ export default function ShiurBuilderScreen() {
       const current = summaries.get(row.packet_id) ?? { categories: [], itemCount: 0 };
       const sourceType = row.content_chunks?.source_type as ContentSourceType | undefined;
       current.itemCount += 1;
-      if ((sourceType === "notes" || sourceType === "qa") && !current.categories.includes(sourceType)) {
+      if (isBuilderCategory(sourceType) && !current.categories.includes(sourceType)) {
         current.categories.push(sourceType);
       }
       summaries.set(row.packet_id, current);
@@ -368,8 +369,8 @@ export default function ShiurBuilderScreen() {
     setWeek(packet.week);
     setSelectedIds(loadedIds);
     if (!loadedChunks.some((chunk) => chunk.sourceType === activeCategory)) {
-      const firstCategoryChunk = loadedChunks.find((chunk) => chunk.sourceType === "notes" || chunk.sourceType === "qa");
-      if (firstCategoryChunk?.sourceType === "notes" || firstCategoryChunk?.sourceType === "qa") {
+      const firstCategoryChunk = loadedChunks.find((chunk) => isBuilderCategory(chunk.sourceType));
+      if (isBuilderCategory(firstCategoryChunk?.sourceType)) {
         setActiveCategory(firstCategoryChunk.sourceType);
       }
     }
@@ -406,8 +407,8 @@ export default function ShiurBuilderScreen() {
     setSelectedIds(loadedIds);
     const loadedSections = groupSelectedChunksBySection(loadedChunks);
     setExpandedPacketSectionKeys(loadedSections.map((section) => section.key));
-    const firstCategoryChunk = loadedChunks.find((chunk) => chunk.sourceType === "notes" || chunk.sourceType === "qa");
-    if (firstCategoryChunk?.sourceType === "notes" || firstCategoryChunk?.sourceType === "qa") {
+    const firstCategoryChunk = loadedChunks.find((chunk) => isBuilderCategory(chunk.sourceType));
+    if (isBuilderCategory(firstCategoryChunk?.sourceType)) {
       setActiveCategory(firstCategoryChunk.sourceType);
     }
     clearPreview();
@@ -888,10 +889,13 @@ export default function ShiurBuilderScreen() {
             </ScrollView>
             {uniqueSuggestedChunks.length > 0 && activePacketStatus === "draft" ? (
               <View style={localStyles.suggestionBox}>
-                <MetaText>Suggested Q&A</MetaText>
+                <MetaText>Suggested {activeCategoryConfig.label}</MetaText>
                 {uniqueSuggestedChunks.map((chunk) => (
                   <Row key={chunk.id}>
-                    <Text style={[styles.body, { flex: 1 }]} numberOfLines={2}>{chunk.chunkCode}: {chunk.chunkTitle}</Text>
+                    <Text style={[styles.body, { flex: 1 }]} numberOfLines={2}>
+                      {chunk.chunkCode}: {chunk.chunkTitle}
+                    </Text>
+                    <Pill label={categoryLabel(chunk.sourceType as BuilderCategory)} tone={chunk.sourceType === "source" ? "primary" : "success"} />
                     <Button label="Add" onPress={() => addChunk(chunk.id)} variant="secondary" />
                   </Row>
                 ))}
@@ -1097,6 +1101,9 @@ function DocumentChunk({ chunk, index, showNumber = true }: { chunk: ContentChun
         if (block.kind === "footnotes") {
           return <DocumentFootnotes key={`${chunk.id}-${blockIndex}`} notes={block.notes} />;
         }
+        if (block.kind === "image") {
+          return <DocumentImage key={`${chunk.id}-${blockIndex}`} alt={block.alt} uri={block.uri} />;
+        }
         return (
           <Text key={`${chunk.id}-${blockIndex}`} style={localStyles.documentParagraph}>
             {block.text}
@@ -1111,6 +1118,7 @@ type DocumentBlock =
   | { kind: "answer" | "question"; label: string; text: string }
   | { kind: "bullet" | "numbered"; lead?: string; level: number; marker: string; text: string }
   | { kind: "footnotes"; notes: { label: string; text: string }[] }
+  | { alt: string; kind: "image"; uri: string }
   | { kind: "paragraph"; text: string }
   | { kind: "table"; rows: string[][] };
 
@@ -1127,11 +1135,13 @@ function buildDocumentBlocks(chunk: ContentChunk): DocumentBlock[] {
     const answerMatch = trimmedParagraph.match(/^(A:\s*)(.*)$/i);
     const numberedMatch = paragraph.match(/^(\s*)(\d+)[.)]\s+([\s\S]+)$/);
     const bulletMatch = paragraph.match(/^(\s*)([-*]|o)\s+([\s\S]+)$/);
+    const imageMatch = trimmedParagraph.match(/^!\[(.*?)\]\((data:image\/[^)]+)\)$/);
     const tableRows = parseMarkdownTable(trimmedParagraph);
     const footnotes = parseFootnotes(trimmedParagraph);
 
     if (questionMatch) return { kind: "question", label: questionMatch[1].trim(), text: questionMatch[2].trim() };
     if (answerMatch) return { kind: "answer", label: answerMatch[1].trim(), text: answerMatch[2].trim() };
+    if (imageMatch) return { kind: "image", alt: imageMatch[1].trim(), uri: imageMatch[2].trim() };
     if (tableRows) return { kind: "table", rows: tableRows };
     if (footnotes) return { kind: "footnotes", notes: footnotes };
     if (numberedMatch) {
@@ -1190,6 +1200,14 @@ function DocumentFootnotes({ notes }: { notes: { label: string; text: string }[]
   );
 }
 
+function DocumentImage({ alt, uri }: { alt: string; uri: string }) {
+  return (
+    <ScrollView horizontal style={localStyles.documentImageScroll}>
+      <Image accessibilityLabel={alt} resizeMode="contain" source={{ uri }} style={localStyles.documentImage} />
+    </ScrollView>
+  );
+}
+
 function parseMarkdownTable(text: string) {
   const lines = text
     .split("\n")
@@ -1245,6 +1263,10 @@ function splitListLead(text: string) {
 function buildPublishedCategoryTitle(baseTitle: string, categoryLabel: string) {
   const cleanTitle = baseTitle || "Review Packet";
   return cleanTitle.toLowerCase().includes(categoryLabel.toLowerCase()) ? cleanTitle : `${cleanTitle} - ${categoryLabel}`;
+}
+
+function isBuilderCategory(sourceType?: ContentSourceType): sourceType is BuilderCategory {
+  return sourceType === "notes" || sourceType === "qa" || sourceType === "source";
 }
 
 function defaultPacketTitle(chaburahName: string, week: number, categoryLabel: string) {
@@ -1377,8 +1399,7 @@ function groupChunksBySection(chunks: ContentChunk[]) {
   >();
 
   chunks.forEach((chunk) => {
-    const sectionCodeMatch = chunk.chunkCode.match(/^95-([A-Z])/);
-    const sectionCode = chunk.sourceType === "qa" ? "Q&A" : sectionCodeMatch?.[1] ?? chunk.sectionKey.toUpperCase();
+    const sectionCode = sectionCodeForChunk(chunk);
     const key = `${chunk.sourceType}-${sectionCode}`;
     const existing = sectionMap.get(key);
     if (existing) {
@@ -1388,8 +1409,8 @@ function groupChunksBySection(chunks: ContentChunk[]) {
     sectionMap.set(key, {
       chunks: [chunk],
       key,
-      sourceLabel: chunk.sourceType === "qa" ? "Q&A folder" : "Notes folder",
-      title: chunk.sourceType === "qa" ? "Q&A - Siman 95" : `Section ${sectionCode} - ${chunk.sectionTitle}`
+      sourceLabel: sourceLabelForChunk(chunk),
+      title: sectionTitleForChunk(chunk)
     });
   });
 
@@ -1420,7 +1441,7 @@ function groupSelectedChunksBySection(chunks: ContentChunk[]) {
     sectionMap.set(key, {
       chunks: [chunk],
       key,
-      sourceLabel: chunk.sourceType === "qa" ? "Q&A folder" : "Notes folder",
+      sourceLabel: sourceLabelForChunk(chunk),
       title: sectionTitleForChunk(chunk)
     });
   });
@@ -1429,15 +1450,27 @@ function groupSelectedChunksBySection(chunks: ContentChunk[]) {
 }
 
 function sectionKeyForChunk(chunk: ContentChunk) {
-  const sectionCodeMatch = chunk.chunkCode.match(/^95-([A-Z])/);
-  const sectionCode = chunk.sourceType === "qa" ? "Q&A" : sectionCodeMatch?.[1] ?? chunk.sectionKey.toUpperCase();
-  return `${chunk.sourceType}-${sectionCode}`;
+  return `${chunk.sourceType}-${sectionCodeForChunk(chunk)}`;
 }
 
 function sectionTitleForChunk(chunk: ContentChunk) {
+  const sectionCode = sectionCodeForChunk(chunk);
+  if (chunk.sourceType === "qa") return "Q&A - Siman 95";
+  if (chunk.sourceType === "source") return chunk.sectionTitle || "Source Sheets";
+  return `Section ${sectionCode} - ${chunk.sectionTitle}`;
+}
+
+function sectionCodeForChunk(chunk: ContentChunk) {
   const sectionCodeMatch = chunk.chunkCode.match(/^95-([A-Z])/);
-  const sectionCode = chunk.sourceType === "qa" ? "Q&A" : sectionCodeMatch?.[1] ?? chunk.sectionKey.toUpperCase();
-  return chunk.sourceType === "qa" ? "Q&A - Siman 95" : `Section ${sectionCode} - ${chunk.sectionTitle}`;
+  if (chunk.sourceType === "qa") return "Q&A";
+  if (chunk.sourceType === "source") return chunk.sectionKey.toUpperCase() || "Sources";
+  return sectionCodeMatch?.[1] ?? chunk.sectionKey.toUpperCase();
+}
+
+function sourceLabelForChunk(chunk: ContentChunk) {
+  if (chunk.sourceType === "qa") return "Q&A folder";
+  if (chunk.sourceType === "source") return "Source Sheets folder";
+  return "Notes folder";
 }
 
 function mapContentChunk(row: any): ContentChunk {
@@ -2098,6 +2131,17 @@ const localStyles = StyleSheet.create({
     minWidth: 0,
     textAlign: "left",
     writingDirection: "ltr"
+  },
+  documentImageScroll: {
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    marginTop: 4
+  },
+  documentImage: {
+    backgroundColor: "#FFFFFF",
+    height: 360,
+    minWidth: 820
   },
   previewChunk: {
     borderTopColor: theme.colors.border,
