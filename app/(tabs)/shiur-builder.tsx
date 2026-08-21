@@ -25,6 +25,7 @@ import { useAuthState } from "../../src/state/AuthState";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
+type PreviewSizeMode = "compact" | "wide" | "full";
 
 const builderCategories: { key: BuilderCategory; label: string; packetLabel: string }[] = [
   { key: "notes", label: "Review Notes", packetLabel: "My Review Notes Packet" },
@@ -34,7 +35,7 @@ const builderCategories: { key: BuilderCategory; label: string; packetLabel: str
 
 export default function ShiurBuilderScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const { askRavQuestions, chaburos, currentReviewWeek, refresh, reviewQuestions, selectedChaburahId } = useAppState();
   const { profile } = useAuthState();
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
@@ -45,6 +46,7 @@ export default function ShiurBuilderScreen() {
   const [activePacketId, setActivePacketId] = useState<string | null>(null);
   const [activePacketStatus, setActivePacketStatus] = useState<ReviewPacket["status"]>("draft");
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null);
+  const [previewChunkListIds, setPreviewChunkListIds] = useState<string[] | null>(null);
   const [previewSectionKey, setPreviewSectionKey] = useState<string | null>(null);
   const [packetPreviewChunkId, setPacketPreviewChunkId] = useState<string | null>(null);
   const [previewingPacket, setPreviewingPacket] = useState(false);
@@ -54,6 +56,7 @@ export default function ShiurBuilderScreen() {
   const [coverageFilter, setCoverageFilter] = useState<"all" | "covered" | "not-covered">("all");
   const [expandedSectionKeys, setExpandedSectionKeys] = useState<string[]>([]);
   const [expandedPacketSectionKeys, setExpandedPacketSectionKeys] = useState<string[]>([]);
+  const [previewSizeMode, setPreviewSizeMode] = useState<PreviewSizeMode>("wide");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -102,10 +105,13 @@ export default function ShiurBuilderScreen() {
       question.publicationStatus === "draft" &&
       !question.isLibraryQuestion
   ).length;
-  const previewChunkIndex = previewChunkId ? filteredChunks.findIndex((chunk) => chunk.id === previewChunkId) : -1;
-  const previousPreviewChunk = previewChunkIndex > 0 ? filteredChunks[previewChunkIndex - 1] : undefined;
+  const previewNavigationChunks = previewChunkListIds
+    ? previewChunkListIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk))
+    : filteredChunks;
+  const previewChunkIndex = previewChunkId ? previewNavigationChunks.findIndex((chunk) => chunk.id === previewChunkId) : -1;
+  const previousPreviewChunk = previewChunkIndex > 0 ? previewNavigationChunks[previewChunkIndex - 1] : undefined;
   const nextPreviewChunk =
-    previewChunkIndex >= 0 && previewChunkIndex < filteredChunks.length - 1 ? filteredChunks[previewChunkIndex + 1] : undefined;
+    previewChunkIndex >= 0 && previewChunkIndex < previewNavigationChunks.length - 1 ? previewNavigationChunks[previewChunkIndex + 1] : undefined;
   const packetPreviewChunkIndex = packetPreviewChunkId ? selectedCategoryChunks.findIndex((chunk) => chunk.id === packetPreviewChunkId) : -1;
   const previousPacketPreviewChunk = packetPreviewChunkIndex > 0 ? selectedCategoryChunks[packetPreviewChunkIndex - 1] : undefined;
   const nextPacketPreviewChunk =
@@ -119,6 +125,17 @@ export default function ShiurBuilderScreen() {
         : previewChunk
           ? [previewChunk]
           : [];
+  const previewDimensions = getPreviewDimensions(previewSizeMode, width, height);
+  const previewModalStyle =
+    isWebPilot
+      ? {
+          height: previewDimensions.height,
+          maxHeight: previewDimensions.height,
+          maxWidth: previewDimensions.width,
+          width: previewDimensions.width
+        }
+      : null;
+  const previewPageStyle = isWebPilot ? { flex: 1, maxHeight: undefined } : null;
   const draftPackets = packets.filter((packet) => packet.status === "draft" && packet.week === week);
   const publishedPackets = packets.filter((packet) => packet.status === "published" && packet.week === week);
   const activeCategoryPublishedPacket = publishedPackets.find((packet) => packet.categories.includes(activeCategory));
@@ -232,30 +249,50 @@ export default function ShiurBuilderScreen() {
 
   function toggleChunkPreview(chunkId: string) {
     setPacketPreviewChunkId(null);
+    setPreviewChunkListIds(null);
     setPreviewSectionKey(null);
     setPreviewingPacket(false);
     setPreviewChunkId(chunkId);
+    setPreviewSizeMode(chunkById.get(chunkId)?.sourceType === "source" ? "full" : "wide");
+  }
+
+  function previewSuggestedChunk(chunkId: string) {
+    setPacketPreviewChunkId(null);
+    setPreviewChunkListIds(uniqueSuggestedChunks.map((chunk) => chunk.id));
+    setPreviewSectionKey(null);
+    setPreviewingPacket(false);
+    setPreviewChunkId(chunkId);
+    setPreviewSizeMode(chunkById.get(chunkId)?.sourceType === "source" ? "full" : "wide");
   }
 
   function previewWholeSection(sectionKey: string) {
     setPacketPreviewChunkId(null);
     setPreviewChunkId(null);
+    setPreviewChunkListIds(null);
     setPreviewingPacket(false);
     setPreviewSectionKey(sectionKey);
+    setPreviewSizeMode(activeCategory === "source" ? "full" : "wide");
   }
 
   function previewPacketChunk(chunkId: string) {
     setPreviewChunkId(null);
+    setPreviewChunkListIds(null);
     setPreviewSectionKey(null);
     setPreviewingPacket(false);
     setPacketPreviewChunkId(chunkId);
+    setPreviewSizeMode(chunkById.get(chunkId)?.sourceType === "source" ? "full" : "wide");
   }
 
   function clearPreview() {
     setPreviewChunkId(null);
+    setPreviewChunkListIds(null);
     setPreviewSectionKey(null);
     setPacketPreviewChunkId(null);
     setPreviewingPacket(false);
+  }
+
+  function resetPreviewWindow() {
+    setPreviewSizeMode(activeCategory === "source" || modalPreviewChunks.some((chunk) => chunk.sourceType === "source") ? "full" : "wide");
   }
 
   function moveChunkPreview(direction: -1 | 1) {
@@ -754,13 +791,13 @@ export default function ShiurBuilderScreen() {
                       <Ionicons name={expanded ? "folder-open-outline" : "folder-outline"} color={theme.colors.accent} size={23} />
                       <View style={localStyles.folderText}>
                         <Text style={localStyles.folderTitle}>{section.title}</Text>
-                      <MetaText>
+                        <MetaText>
                           {section.sourceLabel} - {section.chunks.length} chunk{section.chunks.length === 1 ? "" : "s"} - {addedCount} added - {coveredCount} covered
                         </MetaText>
                       </View>
                       <View style={localStyles.folderActions}>
-                      <Button label="View" onPress={() => previewWholeSection(section.key)} variant="ghost" />
-                      <Button
+                        <Button label="View" onPress={() => previewWholeSection(section.key)} variant="ghost" />
+                        <Button
                           label={addedCount === section.chunks.length ? "Added" : "Add Section ->"}
                           onPress={() => addSection(section.chunks)}
                           disabled={addedCount === section.chunks.length}
@@ -896,7 +933,7 @@ export default function ShiurBuilderScreen() {
                       {chunk.chunkCode}: {chunk.chunkTitle}
                     </Text>
                     <Pill label={categoryLabel(chunk.sourceType as BuilderCategory)} tone={chunk.sourceType === "source" ? "primary" : "success"} />
-                    <Button label={previewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => toggleChunkPreview(chunk.id)} variant="ghost" />
+                    <Button label={previewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => previewSuggestedChunk(chunk.id)} variant="ghost" />
                     <Button label="Add" onPress={() => addChunk(chunk.id)} variant="secondary" />
                   </Row>
                 ))}
@@ -916,8 +953,10 @@ export default function ShiurBuilderScreen() {
                 label={`Preview ${activeCategoryConfig.label}`}
                 onPress={() => {
                   setPreviewChunkId(null);
+                  setPreviewChunkListIds(null);
                   setPreviewSectionKey(null);
                   setPacketPreviewChunkId(null);
+                  setPreviewSizeMode(activeCategory === "source" ? "full" : "wide");
                   setPreviewingPacket(true);
                 }}
                 disabled={selectedCategoryChunks.length === 0}
@@ -983,10 +1022,10 @@ export default function ShiurBuilderScreen() {
           style={localStyles.previewBackdrop}
           onPress={clearPreview}
         >
-          <Pressable style={localStyles.previewModal}>
+          <Pressable style={[localStyles.previewModal, previewModalStyle]}>
             {previewChunk || previewSection || packetPreviewChunk || previewingPacket ? (
               <>
-                <Row>
+                <View style={localStyles.previewTitleBar}>
                   <View style={{ flex: 1, minWidth: 260 }}>
                     <MetaText>
                       {previewingPacket
@@ -1007,9 +1046,22 @@ export default function ShiurBuilderScreen() {
                             : previewChunk?.chunkTitle}
                     </Text>
                   </View>
-                  <Button label="Close" onPress={clearPreview} variant="secondary" />
-                </Row>
-                <ScrollView contentContainerStyle={localStyles.previewPageContent} style={localStyles.previewPage}>
+                  <View style={localStyles.previewTitleActions}>
+                    <Button label="Close" onPress={clearPreview} variant="secondary" />
+                  </View>
+                </View>
+                {isWebPilot ? (
+                  <View style={localStyles.previewSizeControls}>
+                    <MetaText>Preview size</MetaText>
+                    <View style={localStyles.previewTitleActions}>
+                      <Button label="Compact" onPress={() => setPreviewSizeMode("compact")} variant={previewSizeMode === "compact" ? "primary" : "ghost"} />
+                      <Button label="Wide" onPress={() => setPreviewSizeMode("wide")} variant={previewSizeMode === "wide" ? "primary" : "ghost"} />
+                      <Button label="Full" onPress={() => setPreviewSizeMode("full")} variant={previewSizeMode === "full" ? "primary" : "ghost"} />
+                      <Button label="Reset" onPress={resetPreviewWindow} variant="secondary" />
+                    </View>
+                  </View>
+                ) : null}
+                <ScrollView contentContainerStyle={localStyles.previewPageContent} style={[localStyles.previewPage, previewPageStyle]}>
                   <View style={localStyles.modalDocumentPage}>
                     {previewingPacket ? (
                       <>
@@ -1039,14 +1091,29 @@ export default function ShiurBuilderScreen() {
                           onPress={() => addChunk(previewChunk.id)}
                           disabled={selectedIds.includes(previewChunk.id)}
                         />
-                        <Button label="Previous" onPress={() => moveChunkPreview(-1)} disabled={!previousPreviewChunk} variant="secondary" />
-                        <Button label="Next" onPress={() => moveChunkPreview(1)} disabled={!nextPreviewChunk} variant="secondary" />
+                        <Button
+                          label="Previous"
+                          onPress={() => moveChunkPreview(-1)}
+                          disabled={!previousPreviewChunk}
+                          variant={previousPreviewChunk ? "primary" : "secondary"}
+                        />
+                        <Button label="Next" onPress={() => moveChunkPreview(1)} disabled={!nextPreviewChunk} variant={nextPreviewChunk ? "primary" : "secondary"} />
                       </>
                     ) : packetPreviewChunk ? (
                       <>
                         <Button label="Remove from Packet" onPress={removePreviewedPacketChunk} disabled={activePacketStatus !== "draft"} variant="secondary" />
-                        <Button label="Previous" onPress={() => movePacketPreview(-1)} disabled={!previousPacketPreviewChunk} variant="secondary" />
-                        <Button label="Next" onPress={() => movePacketPreview(1)} disabled={!nextPacketPreviewChunk} variant="secondary" />
+                        <Button
+                          label="Previous"
+                          onPress={() => movePacketPreview(-1)}
+                          disabled={!previousPacketPreviewChunk}
+                          variant={previousPacketPreviewChunk ? "primary" : "secondary"}
+                        />
+                        <Button
+                          label="Next"
+                          onPress={() => movePacketPreview(1)}
+                          disabled={!nextPacketPreviewChunk}
+                          variant={nextPacketPreviewChunk ? "primary" : "secondary"}
+                        />
                       </>
                     ) : null}
                   </Row>
@@ -1264,6 +1331,21 @@ function splitListLead(text: string) {
 function buildPublishedCategoryTitle(baseTitle: string, categoryLabel: string) {
   const cleanTitle = baseTitle || "Review Packet";
   return cleanTitle.toLowerCase().includes(categoryLabel.toLowerCase()) ? cleanTitle : `${cleanTitle} - ${categoryLabel}`;
+}
+
+function getPreviewDimensions(mode: PreviewSizeMode, screenWidth: number, screenHeight: number) {
+  const maxWidth = Math.max(720, screenWidth - 48);
+  const maxHeight = Math.max(520, screenHeight - 48);
+  const target =
+    mode === "compact"
+      ? { height: 620, width: 820 }
+      : mode === "full"
+        ? { height: maxHeight, width: maxWidth }
+        : { height: 760, width: 1120 };
+  return {
+    height: Math.min(maxHeight, Math.max(520, target.height)),
+    width: Math.min(maxWidth, Math.max(720, target.width))
+  };
 }
 
 function isBuilderCategory(sourceType?: ContentSourceType): sourceType is BuilderCategory {
@@ -2175,9 +2257,34 @@ const localStyles = StyleSheet.create({
     borderWidth: 1,
     gap: theme.spacing.md,
     maxHeight: "92%",
-    maxWidth: 900,
     padding: theme.spacing.lg,
+    position: "relative",
     width: "100%"
+  },
+  previewTitleBar: {
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    justifyContent: "space-between",
+    padding: theme.spacing.sm
+  },
+  previewTitleActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "flex-end"
+  },
+  previewSizeControls: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    justifyContent: "space-between"
   },
   modalTitle: {
     color: theme.colors.ink,
@@ -2211,7 +2318,7 @@ const localStyles = StyleSheet.create({
     borderColor: "#D8DEE8",
     borderRadius: 3,
     borderWidth: 1,
-    maxWidth: 760,
+    maxWidth: 1060,
     paddingHorizontal: 48,
     paddingVertical: 42,
     width: "100%"
