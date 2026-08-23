@@ -106,6 +106,19 @@ export default function RabbiHubScreen() {
       question.isModelQuestion &&
       question.week === buildWeek
   );
+  const currentChaburahWeekQuestions = manageableReviewQuestions.filter(
+    (question) => !question.isLibraryQuestion && question.week === buildWeek && question.chaburahId === managedChaburahId
+  );
+  const draftLibrarySourceIds = new Set(
+    currentChaburahWeekQuestions
+      .filter((question) => question.publicationStatus === "draft" && question.sourceQuestionId)
+      .map((question) => question.sourceQuestionId as string)
+  );
+  const publishedLibrarySourceIds = new Set(
+    currentChaburahWeekQuestions
+      .filter((question) => question.publicationStatus === "published" && question.sourceQuestionId)
+      .map((question) => question.sourceQuestionId as string)
+  );
   const visibleLibraryQuestions = publicLibraryQuestions.filter(
     (question) => libraryKind === "all" || question.isModelQuestion
   );
@@ -890,31 +903,43 @@ export default function RabbiHubScreen() {
             {visibleLibraryQuestions.length > 0 ? (
               <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
                 <View style={localStyles.webLibraryGrid}>
-                  {visibleLibraryQuestions.map((question) => (
-                    <View key={question.id} style={localStyles.webLibraryItem}>
-                      <Row>
-                        <View style={{ flex: 1, minWidth: 220 }}>
-                          <Text style={styles.body}>{question.prompt}</Text>
-                          <MetaText>
-                            Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
-                          </MetaText>
-                        </View>
-                        <View style={localStyles.webChipRow}>
-                          {question.isModelQuestion ? <Pill label="Model" tone="accent" /> : null}
-                          <Pill label="Library" tone="primary" />
-                        </View>
-                      </Row>
-                      <Row>
-                        <MetaText>Copies into Week {buildWeek}</MetaText>
-                        <View style={localStyles.webChipRow}>
-                          <Button disabled={saving || !managedChaburahId} label="Use Question" onPress={() => cloneLibraryQuestion(question.id)} variant="secondary" />
-                          {profile?.role === "global_admin" ? (
-                            <Button disabled={saving} label="Edit Library" onPress={() => startEditReviewQuestion(question)} variant="ghost" />
-                          ) : null}
-                        </View>
-                      </Row>
-                    </View>
-                  ))}
+                  {visibleLibraryQuestions.map((question) => {
+                    const inDraft = draftLibrarySourceIds.has(question.id);
+                    const isPublished = publishedLibrarySourceIds.has(question.id);
+                    const alreadyUsed = inDraft || isPublished;
+                    return (
+                      <View key={question.id} style={localStyles.webLibraryItem}>
+                        <Row>
+                          <View style={{ flex: 1, minWidth: 220 }}>
+                            <Text style={styles.body}>{question.prompt}</Text>
+                            <MetaText>
+                              Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
+                            </MetaText>
+                          </View>
+                          <View style={localStyles.webChipRow}>
+                            {question.isModelQuestion ? <Pill label="Model" tone="accent" /> : null}
+                            {inDraft ? <Pill label="In Draft" tone="accent" /> : null}
+                            {isPublished ? <Pill label="Published" tone="success" /> : null}
+                            <Pill label="Library" tone="primary" />
+                          </View>
+                        </Row>
+                        <Row>
+                          <MetaText>{alreadyUsed ? `Already added to Week ${buildWeek}` : `Copies into Week ${buildWeek}`}</MetaText>
+                          <View style={localStyles.webChipRow}>
+                            <Button
+                              disabled={saving || !managedChaburahId || alreadyUsed}
+                              label={isPublished ? "Published" : inDraft ? "In Draft" : "Use Question"}
+                              onPress={() => cloneLibraryQuestion(question.id)}
+                              variant={alreadyUsed ? "ghost" : "secondary"}
+                            />
+                            {profile?.role === "global_admin" ? (
+                              <Button disabled={saving} label="Edit Library" onPress={() => startEditReviewQuestion(question)} variant="ghost" />
+                            ) : null}
+                          </View>
+                        </Row>
+                      </View>
+                    );
+                  })}
                 </View>
               </ScrollView>
             ) : null}
@@ -1180,31 +1205,43 @@ export default function RabbiHubScreen() {
         {visibleLibraryQuestions.length > 0 ? (
           <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
             <View style={{ gap: 12 }}>
-              {visibleLibraryQuestions.map((question) => (
-                <View key={question.id} style={{ gap: 8 }}>
-                  <Row>
-                    <View style={{ flex: 1, minWidth: 220 }}>
-                      <Text style={styles.body}>{question.prompt}</Text>
-                      <MetaText>
-                        Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
-                      </MetaText>
-                    </View>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                      {question.isModelQuestion ? <Pill label="Model" tone="accent" /> : null}
-                      <Pill label="Library" tone="primary" />
-                    </View>
-                  </Row>
-                  <Row>
-                    <MetaText>Copies into Week {buildWeek}</MetaText>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                      <Button disabled={saving || !managedChaburahId} label="Use Question" onPress={() => cloneLibraryQuestion(question.id)} variant="secondary" />
-                      {profile?.role === "global_admin" ? (
-                        <Button disabled={saving} label="Edit Library" onPress={() => startEditReviewQuestion(question)} variant="ghost" />
-                      ) : null}
-                    </View>
-                  </Row>
-                </View>
-              ))}
+              {visibleLibraryQuestions.map((question) => {
+                const inDraft = draftLibrarySourceIds.has(question.id);
+                const isPublished = publishedLibrarySourceIds.has(question.id);
+                const alreadyUsed = inDraft || isPublished;
+                return (
+                  <View key={question.id} style={{ gap: 8 }}>
+                    <Row>
+                      <View style={{ flex: 1, minWidth: 220 }}>
+                        <Text style={styles.body}>{question.prompt}</Text>
+                        <MetaText>
+                          Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
+                        </MetaText>
+                      </View>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                        {question.isModelQuestion ? <Pill label="Model" tone="accent" /> : null}
+                        {inDraft ? <Pill label="In Draft" tone="accent" /> : null}
+                        {isPublished ? <Pill label="Published" tone="success" /> : null}
+                        <Pill label="Library" tone="primary" />
+                      </View>
+                    </Row>
+                    <Row>
+                      <MetaText>{alreadyUsed ? `Already added to Week ${buildWeek}` : `Copies into Week ${buildWeek}`}</MetaText>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                        <Button
+                          disabled={saving || !managedChaburahId || alreadyUsed}
+                          label={isPublished ? "Published" : inDraft ? "In Draft" : "Use Question"}
+                          onPress={() => cloneLibraryQuestion(question.id)}
+                          variant={alreadyUsed ? "ghost" : "secondary"}
+                        />
+                        {profile?.role === "global_admin" ? (
+                          <Button disabled={saving} label="Edit Library" onPress={() => startEditReviewQuestion(question)} variant="ghost" />
+                        ) : null}
+                      </View>
+                    </Row>
+                  </View>
+                );
+              })}
             </View>
           </ScrollView>
         ) : null}
