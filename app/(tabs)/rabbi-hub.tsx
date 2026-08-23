@@ -166,6 +166,20 @@ export default function RabbiHubScreen() {
     setExplanation("");
   }
 
+  function scrollToQuestionForm() {
+    if (webQuestionWorkspace) return;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(questionFormOffset - 12, 0), animated: true });
+    });
+  }
+
+  function scrollToDraftQuestions() {
+    if (webQuestionWorkspace) return;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(stagedQuestionsOffset - 12, 0), animated: true });
+    });
+  }
+
   async function startEditReviewQuestion(question: ReviewQuestion) {
     setSaving(true);
     setMessage("");
@@ -196,9 +210,7 @@ export default function RabbiHubScreen() {
     setVisibility(question.visibility);
     setIsModelQuestion(question.isModelQuestion);
     setMessage("Editing review question.");
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ y: Math.max(questionFormOffset - 12, 0), animated: true });
-    });
+    scrollToQuestionForm();
   }
 
   async function submitAnswer(questionId: string) {
@@ -318,9 +330,7 @@ export default function RabbiHubScreen() {
     );
     await refresh();
     if (shouldScrollToStaged) {
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({ y: Math.max(stagedQuestionsOffset - 12, 0), animated: true });
-      });
+      scrollToDraftQuestions();
     }
   }
 
@@ -343,9 +353,7 @@ export default function RabbiHubScreen() {
     }
     setMessage(`Question copied to Week ${buildWeek} drafts.`);
     await refresh();
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ y: Math.max(stagedQuestionsOffset - 12, 0), animated: true });
-    });
+    scrollToDraftQuestions();
   }
 
   async function cloneAllModelQuestions() {
@@ -382,9 +390,7 @@ export default function RabbiHubScreen() {
     setSaving(false);
     setMessage(`${copiedCount} model question${copiedCount === 1 ? "" : "s"} added to Week ${buildWeek} drafts.`);
     await refresh();
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ y: Math.max(stagedQuestionsOffset - 12, 0), animated: true });
-    });
+    scrollToDraftQuestions();
   }
 
   async function publishStagedWeek() {
