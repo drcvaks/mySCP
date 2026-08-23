@@ -24,6 +24,15 @@ export function fileTypeLabel(type: FileType) {
   return labels[type];
 }
 
+export function learningFileTypeLabel(file: { fileType: FileType; title?: string }) {
+  if (file.fileType !== "custom_review_packet") return fileTypeLabel(file.fileType);
+  const title = file.title?.toLowerCase() ?? "";
+  if (title.includes("source sheet")) return "Source Sheets";
+  if (title.includes("q&a") || title.includes("q & a")) return "Q&A";
+  if (title.includes("review note")) return "Review Notes";
+  return "Review Packet";
+}
+
 export function visibilityLabel(visibility: Visibility) {
   return visibility === "everyone" ? "Everyone" : "My Chaburah";
 }

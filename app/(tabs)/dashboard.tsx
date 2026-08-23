@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
-import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
+import { fileCoverageDetailLabel, learningFileTypeLabel } from "../../src/shared/format";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
@@ -206,7 +206,7 @@ export default function DashboardScreen() {
           <View key={file.id}>
             <Text style={styles.body}>{file.title}</Text>
             <Text style={styles.muted}>
-              {fileCoverageDetailLabel(file.coverage, file.week)} - {fileTypeLabel(file.fileType)}
+              {fileCoverageDetailLabel(file.coverage, file.week)} - {learningFileTypeLabel(file)}
             </Text>
           </View>
         ))}

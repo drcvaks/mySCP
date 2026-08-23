@@ -851,7 +851,7 @@ export default function AdminScreen() {
         </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {fileTypes.map((type) => (
-            <FilterChip key={type} label={fileTypeLabel(type)} onPress={() => setFileType(type)} selected={fileType === type} />
+            <FilterChip key={type} label={adminFileTypeLabel(type)} onPress={() => setFileType(type)} selected={fileType === type} />
           ))}
         </View>
         <FormInput onChangeText={setFileTitle} placeholder="Title" value={fileTitle} />
@@ -1001,4 +1001,8 @@ function isAdminSection(value: unknown): value is AdminSection {
 
 function adminSectionDomId(section: AdminSection) {
   return `admin-section-${section}`;
+}
+
+function adminFileTypeLabel(type: FileType) {
+  return type === "review_sheet" ? "Review Notes" : fileTypeLabel(type);
 }

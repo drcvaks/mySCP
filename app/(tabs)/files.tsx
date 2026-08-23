@@ -13,22 +13,24 @@ import {
   SectionTitle,
   styles
 } from "../../src/shared/components";
-import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLabel } from "../../src/shared/format";
+import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, learningFileTypeLabel, visibilityLabel } from "../../src/shared/format";
 import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
-import { FileCoverage, FileType, Visibility } from "../../src/shared/types";
+import { FileCoverage, FileType, LearningFile, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 
-const fileTypes: Array<FileType | "all"> = ["all", "source_sheet", "review_sheet", "custom_review_packet", "recording", "video", "pdf", "other"];
+type FileTypeFilter = FileType | "all" | "qa_packet";
+
+const fileTypes: Array<FileTypeFilter> = ["all", "source_sheet", "review_sheet", "qa_packet", "recording", "video", "pdf", "other"];
 const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
 const coverages: Array<FileCoverage | "all"> = ["all", "week", "bechina_review", "entire_zman"];
 
 export default function FilesScreen() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [selectedType, setSelectedType] = useState<FileType | "all">("all");
+  const [selectedType, setSelectedType] = useState<FileTypeFilter>("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
   const [selectedCoverage, setSelectedCoverage] = useState<FileCoverage | "all">("all");
   const [selectedWeek, setSelectedWeek] = useState(fallbackCurrentReviewWeek);
@@ -69,8 +71,8 @@ export default function FilesScreen() {
         query.length === 0 ||
         file.title.toLowerCase().includes(query) ||
         file.topic.toLowerCase().includes(query) ||
-        fileTypeLabel(file.fileType).toLowerCase().includes(query);
-      const matchesType = selectedType === "all" || file.fileType === selectedType;
+        learningFileTypeLabel(file).toLowerCase().includes(query);
+      const matchesType = matchesFileTypeFilter(file, selectedType);
       const matchesScope = selectedScope === "all" || file.visibility === selectedScope;
       const matchesCoverage =
         selectedCoverage === "all" ||
@@ -125,7 +127,7 @@ export default function FilesScreen() {
             {fileTypes.map((type) => (
               <FilterChip
                 key={type}
-                label={type === "all" ? "All Types" : fileTypeLabel(type)}
+                label={fileTypeFilterLabel(type)}
                 onPress={() => setSelectedType(type)}
                 selected={selectedType === type}
               />
@@ -195,7 +197,7 @@ export default function FilesScreen() {
                 <Text style={styles.muted}>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</Text>
               </View>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                <Pill label={fileTypeLabel(file.fileType)} tone="accent" />
+                <Pill label={learningFileTypeLabel(file)} tone="accent" />
                 <View style={{ minWidth: 112 }}>
                   <Button
                     label={file.fileType === "custom_review_packet" || file.url || file.storagePath ? "Open" : "Details"}
@@ -229,6 +231,22 @@ function scopeLabel(scope: Visibility | "all", isGlobalAdmin: boolean) {
   if (scope === "all") return "All";
   if (scope === "chaburah" && isGlobalAdmin) return "Chaburah Files";
   return visibilityLabel(scope);
+}
+
+function fileTypeFilterLabel(type: FileTypeFilter) {
+  if (type === "all") return "All Types";
+  if (type === "qa_packet") return "Q&A";
+  if (type === "review_sheet") return "Review Notes";
+  return fileTypeLabel(type);
+}
+
+function matchesFileTypeFilter(file: LearningFile, selectedType: FileTypeFilter) {
+  if (selectedType === "all") return true;
+  const materialLabel = learningFileTypeLabel(file);
+  if (selectedType === "source_sheet") return file.fileType === "source_sheet" || materialLabel === "Source Sheets";
+  if (selectedType === "review_sheet") return file.fileType === "review_sheet" || materialLabel === "Review Notes";
+  if (selectedType === "qa_packet") return materialLabel === "Q&A";
+  return file.fileType === selectedType;
 }
 
 function chaburahFileLabel(chaburahId: string | undefined, chaburos: { id: string; name: string }[]) {

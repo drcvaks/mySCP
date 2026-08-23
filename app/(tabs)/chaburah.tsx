@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, TextArea, styles } from "../../src/shared/components";
-import { fileCoverageDetailLabel, fileTypeLabel } from "../../src/shared/format";
+import { fileCoverageDetailLabel, learningFileTypeLabel } from "../../src/shared/format";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 import { theme } from "../../src/shared/theme";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
@@ -404,7 +404,7 @@ export default function MyChaburahScreen() {
                 <View key={file.id} style={localStyles.fileRow}>
                   <View style={localStyles.fileInfo}>
                     <Text style={styles.body}>{file.title}</Text>
-                    <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {fileTypeLabel(file.fileType)}</MetaText>
+                    <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {learningFileTypeLabel(file)}</MetaText>
                   </View>
                   <View style={localStyles.fileActions}>
                     <Button
