@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
 import { supabase } from "../../src/lib/supabase";
 import { formatSupabaseError } from "../../src/lib/errors";
 import { theme } from "../../src/shared/theme";
 import { ContentChunk, ReviewPacket } from "../../src/shared/types";
 
 export default function ShiurPacketScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams();
   const packetId = Array.isArray(params.id) ? params.id[0] : params.id;
   const [packet, setPacket] = useState<ReviewPacket | null>(null);
@@ -56,6 +57,9 @@ export default function ShiurPacketScreen() {
   return (
     <Screen title="Review Packet" eyebrow="Shiur Builder" onRefresh={loadPacket} refreshing={loading}>
       <StatusBanner message={message} tone={message ? "error" : "info"} />
+      <View style={localStyles.navigationRow}>
+        <Button label="< Back to Files" onPress={() => router.push("/(tabs)/files")} variant="ghost" />
+      </View>
       {packet ? (
         <Card>
           <Row>
@@ -80,10 +84,41 @@ export default function ShiurPacketScreen() {
         <Card key={chunk.id}>
           <MetaText>{index + 1}. {chunk.chunkCode}</MetaText>
           <Text style={localStyles.chunkTitle}>{chunk.chunkTitle}</Text>
-          <Text style={localStyles.chunkBody}>{chunk.contentMarkdown}</Text>
+          <PacketChunkContent chunk={chunk} />
         </Card>
       ))}
     </Screen>
+  );
+}
+
+function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
+  const blocks = chunk.contentMarkdown
+    .split(/\n\s*\n/)
+    .map((block) => block.replace(/\r/g, "").trim())
+    .filter(Boolean);
+
+  return (
+    <View style={{ gap: 12 }}>
+      {blocks.map((block, index) => {
+        const imageMatch = block.match(/^!\[(.*?)\]\((data:image\/[^)]+)\)$/);
+        if (imageMatch) {
+          return <PacketImage key={`${chunk.id}-${index}`} alt={imageMatch[1]} uri={imageMatch[2]} />;
+        }
+        return (
+          <Text key={`${chunk.id}-${index}`} style={localStyles.chunkBody}>
+            {block}
+          </Text>
+        );
+      })}
+    </View>
+  );
+}
+
+function PacketImage({ alt, uri }: { alt: string; uri: string }) {
+  return (
+    <ScrollView horizontal style={localStyles.imageScroll}>
+      <Image accessibilityLabel={alt} resizeMode="contain" source={{ uri }} style={localStyles.packetImage} />
+    </ScrollView>
   );
 }
 
@@ -127,6 +162,9 @@ function mapContentChunk(row: any): ContentChunk {
 }
 
 const localStyles = StyleSheet.create({
+  navigationRow: {
+    alignItems: "flex-start"
+  },
   chunkTitle: {
     color: theme.colors.ink,
     fontSize: 20,
@@ -137,5 +175,15 @@ const localStyles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: 15,
     lineHeight: 24
+  },
+  imageScroll: {
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1
+  },
+  packetImage: {
+    backgroundColor: theme.colors.surface,
+    height: 420,
+    width: 720
   }
 });
