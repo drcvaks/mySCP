@@ -45,6 +45,8 @@ export default function ShiurBuilderScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activePacketId, setActivePacketId] = useState<string | null>(null);
   const [activePacketStatus, setActivePacketStatus] = useState<ReviewPacket["status"]>("draft");
+  const [editingPublishedPacket, setEditingPublishedPacket] = useState(false);
+  const [publishedEditSnapshot, setPublishedEditSnapshot] = useState<{ chunkIds: string[]; title: string; week: number } | null>(null);
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null);
   const [previewChunkListIds, setPreviewChunkListIds] = useState<string[] | null>(null);
   const [previewSectionKey, setPreviewSectionKey] = useState<string | null>(null);
@@ -96,6 +98,7 @@ export default function ShiurBuilderScreen() {
   });
   const materialSections = groupChunksBySection(filteredChunks);
   const packetSections = groupSelectedChunksBySection(selectedCategoryChunks);
+  const selectedCategoryIds = selectedCategoryChunks.map((chunk) => chunk.id);
   const previewSection = previewSectionKey ? materialSections.find((section) => section.key === previewSectionKey) : undefined;
   const openAskRavCount = askRavQuestions.filter((question) => question.chaburahId === managedChaburahId && question.status === "submitted").length;
   const quickReviewDraftCount = reviewQuestions.filter(
@@ -139,6 +142,14 @@ export default function ShiurBuilderScreen() {
   const draftPackets = packets.filter((packet) => packet.status === "draft" && packet.week === week);
   const publishedPackets = packets.filter((packet) => packet.status === "published" && packet.week === week);
   const activeCategoryPublishedPacket = publishedPackets.find((packet) => packet.categories.includes(activeCategory));
+  const canEditPacket = activePacketStatus === "draft" || editingPublishedPacket;
+  const hasPublishedPacketChanges = Boolean(
+    editingPublishedPacket &&
+      publishedEditSnapshot &&
+      (title.trim() !== publishedEditSnapshot.title ||
+        week !== publishedEditSnapshot.week ||
+        !sameStringArray(selectedCategoryIds, publishedEditSnapshot.chunkIds))
+  );
   const suggestedChunks = links
     .filter((link) => selectedIds.includes(link.parentChunkId) && !selectedIds.includes(link.relatedChunkId))
     .map((link) => chunkById.get(link.relatedChunkId))
@@ -384,6 +395,8 @@ export default function ShiurBuilderScreen() {
   function resetDraftState() {
     setActivePacketId(null);
     setActivePacketStatus("draft");
+    setEditingPublishedPacket(false);
+    setPublishedEditSnapshot(null);
     setSelectedIds([]);
     setExpandedPacketSectionKeys([]);
     clearPreview();
@@ -402,6 +415,8 @@ export default function ShiurBuilderScreen() {
     }
     setActivePacketId(packet.id);
     setActivePacketStatus(packet.status);
+    setEditingPublishedPacket(false);
+    setPublishedEditSnapshot(null);
     setTitle(packet.title);
     setWeek(packet.week);
     setSelectedIds(loadedIds);
@@ -437,19 +452,26 @@ export default function ShiurBuilderScreen() {
       setMessage(error.message);
       return;
     }
-    setActivePacketId(null);
-    setActivePacketStatus("draft");
+    setActivePacketId(packet.id);
+    setActivePacketStatus("published");
+    setEditingPublishedPacket(true);
     setTitle(packet.title);
     setWeek(packet.week);
     setSelectedIds(loadedIds);
     const loadedSections = groupSelectedChunksBySection(loadedChunks);
     setExpandedPacketSectionKeys(loadedSections.map((section) => section.key));
     const firstCategoryChunk = loadedChunks.find((chunk) => isBuilderCategory(chunk.sourceType));
+    const editCategory = isBuilderCategory(firstCategoryChunk?.sourceType) ? firstCategoryChunk.sourceType : activeCategory;
     if (isBuilderCategory(firstCategoryChunk?.sourceType)) {
       setActiveCategory(firstCategoryChunk.sourceType);
     }
+    setPublishedEditSnapshot({
+      chunkIds: loadedChunks.filter((chunk) => chunk.sourceType === editCategory).map((chunk) => chunk.id),
+      title: packet.title,
+      week: packet.week
+    });
     clearPreview();
-    setMessage("Published packet copied into a new editable draft. Save it when you are ready.");
+    setMessage("Editing published packet. Updating will change the existing Files entry.");
   }
 
   async function deleteDraftPacket(packet: PacketListItem) {
@@ -473,6 +495,49 @@ export default function ShiurBuilderScreen() {
     await deleteConfirmedDraftPacket(packet);
   }
 
+  async function deletePublishedPacket(packet: PacketListItem) {
+    if (packet.status !== "published") return;
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      const confirmed = window.confirm("Delete this published packet? This removes it from Files too. This cannot be undone.");
+      if (!confirmed) return;
+    } else {
+      Alert.alert("Delete Published Packet?", "This removes it from Files too. This cannot be undone.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void deleteConfirmedPublishedPacket(packet);
+          }
+        }
+      ]);
+      return;
+    }
+    await deleteConfirmedPublishedPacket(packet);
+  }
+
+  async function deleteConfirmedPublishedPacket(packet: PacketListItem) {
+    setSaving(true);
+    setMessage("");
+    const { error } = await supabase.rpc("delete_review_packet", { target_packet_id: packet.id });
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    if (activePacketId === packet.id) {
+      setActivePacketId(null);
+      setActivePacketStatus("draft");
+      setEditingPublishedPacket(false);
+      setPublishedEditSnapshot(null);
+      setSelectedIds([]);
+      setExpandedPacketSectionKeys([]);
+      clearPreview();
+    }
+    setMessage("Published packet deleted from Files.");
+    await Promise.all([loadBuilderData(), refresh()]);
+  }
+
   async function deleteConfirmedDraftPacket(packet: PacketListItem) {
     setSaving(true);
     setMessage("");
@@ -485,6 +550,8 @@ export default function ShiurBuilderScreen() {
     if (activePacketId === packet.id) {
       setActivePacketId(null);
       setActivePacketStatus("draft");
+      setEditingPublishedPacket(false);
+      setPublishedEditSnapshot(null);
       setSelectedIds([]);
       setExpandedPacketSectionKeys([]);
       clearPreview();
@@ -497,6 +564,9 @@ export default function ShiurBuilderScreen() {
     if (!profile?.id || !managedChaburahId) {
       setMessage("Choose or join a chaburah before saving a packet.");
       return null;
+    }
+    if (editingPublishedPacket) {
+      return updatePublishedPacket();
     }
     if (activePacketStatus !== "draft") {
       setMessage("Published packets are locked. Start a new draft to make changes.");
@@ -557,9 +627,64 @@ export default function ShiurBuilderScreen() {
     return packetId;
   }
 
+  async function updatePublishedPacket() {
+    if (!activePacketId) {
+      setMessage("Choose a published packet to update.");
+      return null;
+    }
+    if (!title.trim()) {
+      setMessage("Add a packet title.");
+      return null;
+    }
+    const categoryIds = selectedCategoryChunks.map((chunk) => chunk.id);
+    if (categoryIds.length === 0) {
+      setMessage(`Add at least one ${activeCategoryConfig.label} section before updating.`);
+      return null;
+    }
+    if (!hasPublishedPacketChanges) {
+      setMessage("No published changes to update.");
+      return activePacketId;
+    }
+    setSaving(true);
+    setMessage("");
+    const publishedTitle = buildPublishedCategoryTitle(title.trim(), activeCategoryConfig.label);
+    const { data, error } = await supabase.rpc("update_published_review_packet", {
+      target_packet_id: activePacketId,
+      new_title: publishedTitle,
+      new_week: week,
+      chunk_ids: categoryIds
+    });
+    setSaving(false);
+    if (error) {
+      setMessage(error.message);
+      return null;
+    }
+    if (data?.id) {
+      await supabase.rpc("notify_learning_file", { target_file_id: data.id });
+    }
+    setTitle(publishedTitle);
+    setPublishedEditSnapshot({ chunkIds: categoryIds, title: publishedTitle, week });
+    setMessage(`${activeCategoryConfig.label} packet updated in Files.`);
+    await Promise.all([loadBuilderData(), refresh()]);
+    return activePacketId;
+  }
+
   async function publishPacket() {
     if (selectedCategoryChunks.length === 0) {
       setMessage(`Add at least one ${activeCategoryConfig.label} section before publishing.`);
+      return;
+    }
+    if (editingPublishedPacket) {
+      if (!hasPublishedPacketChanges) {
+        setMessage("No published changes to update.");
+        return;
+      }
+      const confirmed =
+        Platform.OS === "web" && typeof window !== "undefined"
+          ? window.confirm(`Update this published ${activeCategoryConfig.label} packet? The existing Files entry will change.`)
+          : true;
+      if (!confirmed) return;
+      await updatePublishedPacket();
       return;
     }
     const packetId = await saveDraft();
@@ -733,6 +858,7 @@ export default function ShiurBuilderScreen() {
           />
           <PacketGroup
             chaburahName={managedChaburah?.name}
+            onDeletePublished={deletePublishedPacket}
             onEditPublished={editPublishedPacket}
             title="Published"
             packets={publishedPackets}
@@ -871,19 +997,19 @@ export default function ShiurBuilderScreen() {
                         <Button
                           label="Up"
                           onPress={() => movePacketSection(section.key, -1)}
-                          disabled={sectionIndex === 0 || activePacketStatus !== "draft"}
+                          disabled={sectionIndex === 0 || !canEditPacket}
                           variant="ghost"
                         />
                         <Button
                           label="Down"
                           onPress={() => movePacketSection(section.key, 1)}
-                          disabled={sectionIndex === packetSections.length - 1 || activePacketStatus !== "draft"}
+                          disabled={sectionIndex === packetSections.length - 1 || !canEditPacket}
                           variant="ghost"
                         />
                         <Button
                           label="Remove Section"
                           onPress={() => removePacketSection(section.key)}
-                          disabled={activePacketStatus !== "draft"}
+                          disabled={!canEditPacket}
                           variant="ghost"
                         />
                       </View>
@@ -905,16 +1031,16 @@ export default function ShiurBuilderScreen() {
                               <Button
                                 label="Up"
                                 onPress={() => movePacketChunk(chunk.id, -1)}
-                                disabled={chunkIndex === 0 || activePacketStatus !== "draft"}
+                                disabled={chunkIndex === 0 || !canEditPacket}
                                 variant="ghost"
                               />
                               <Button
                                 label="Down"
                                 onPress={() => movePacketChunk(chunk.id, 1)}
-                                disabled={chunkIndex === section.chunks.length - 1 || activePacketStatus !== "draft"}
+                                disabled={chunkIndex === section.chunks.length - 1 || !canEditPacket}
                                 variant="ghost"
                               />
-                              <Button label="Remove" onPress={() => removeChunk(chunk.id)} disabled={activePacketStatus !== "draft"} variant="ghost" />
+                              <Button label="Remove" onPress={() => removeChunk(chunk.id)} disabled={!canEditPacket} variant="ghost" />
                             </View>
                           </View>
                         ))}
@@ -924,7 +1050,7 @@ export default function ShiurBuilderScreen() {
                 );
               })}
             </ScrollView>
-            {uniqueSuggestedChunks.length > 0 && activePacketStatus === "draft" ? (
+            {uniqueSuggestedChunks.length > 0 && canEditPacket ? (
               <View style={localStyles.suggestionBox}>
                 <MetaText>Suggested {activeCategoryConfig.label}</MetaText>
                 {uniqueSuggestedChunks.map((chunk) => (
@@ -946,7 +1072,7 @@ export default function ShiurBuilderScreen() {
                     label={`${activeCategoryConfig.label} already published${formatPacketDate(activeCategoryPublishedPacket.publishedAt ?? activeCategoryPublishedPacket.updatedAt) ? ` ${formatPacketDate(activeCategoryPublishedPacket.publishedAt ?? activeCategoryPublishedPacket.updatedAt)}` : ""}`}
                     tone="success"
                   />
-                  <MetaText>Publishing again will create a new Files entry for this category.</MetaText>
+                  <MetaText>{editingPublishedPacket ? "Updating will change this existing Files entry." : "Publishing again will create a new Files entry for this category."}</MetaText>
                 </View>
               ) : null}
               <Button
@@ -963,20 +1089,22 @@ export default function ShiurBuilderScreen() {
                 variant={selectedCategoryChunks.length > 0 ? "primary" : "secondary"}
               />
               <View style={localStyles.savePublishActions}>
+                {!editingPublishedPacket ? (
+                  <View style={localStyles.packetActionButton}>
+                    <Button
+                      label={saving ? "Saving..." : "Save Draft"}
+                      onPress={saveDraft}
+                      disabled={saving || !canEditPacket || selectedIds.length === 0}
+                      variant={selectedIds.length > 0 ? "primary" : "secondary"}
+                    />
+                  </View>
+                ) : null}
                 <View style={localStyles.packetActionButton}>
                   <Button
-                    label={saving ? "Saving..." : "Save Draft"}
-                    onPress={saveDraft}
-                    disabled={saving || activePacketStatus !== "draft" || selectedIds.length === 0}
-                    variant={selectedIds.length > 0 ? "primary" : "secondary"}
-                  />
-                </View>
-                <View style={localStyles.packetActionButton}>
-                  <Button
-                    label={saving ? "Publishing..." : `Publish ${activeCategoryConfig.label}`}
+                    label={saving ? "Publishing..." : editingPublishedPacket ? `Update Published ${activeCategoryConfig.label}` : `Publish ${activeCategoryConfig.label}`}
                     onPress={publishPacket}
-                    disabled={saving || activePacketStatus !== "draft" || selectedCategoryChunks.length === 0}
-                    variant={selectedCategoryChunks.length > 0 ? "primary" : "secondary"}
+                    disabled={saving || !canEditPacket || selectedCategoryChunks.length === 0 || (editingPublishedPacket && !hasPublishedPacketChanges)}
+                    variant={selectedCategoryChunks.length > 0 && (!editingPublishedPacket || hasPublishedPacketChanges) ? "primary" : "secondary"}
                   />
                 </View>
               </View>
@@ -1101,7 +1229,7 @@ export default function ShiurBuilderScreen() {
                       </>
                     ) : packetPreviewChunk ? (
                       <>
-                        <Button label="Remove from Packet" onPress={removePreviewedPacketChunk} disabled={activePacketStatus !== "draft"} variant="secondary" />
+                        <Button label="Remove from Packet" onPress={removePreviewedPacketChunk} disabled={!canEditPacket} variant="secondary" />
                         <Button
                           label="Previous"
                           onPress={() => movePacketPreview(-1)}
@@ -1380,10 +1508,15 @@ function formatPacketDate(value?: string) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function sameStringArray(first: string[], second: string[]) {
+  return first.length === second.length && first.every((value, index) => value === second[index]);
+}
+
 function PacketGroup({
   chaburahName,
   compact = false,
   onDeleteDraft,
+  onDeletePublished,
   onEditPublished,
   title,
   packets,
@@ -1392,6 +1525,7 @@ function PacketGroup({
   chaburahName?: string;
   compact?: boolean;
   onDeleteDraft?: (packet: PacketListItem) => void;
+  onDeletePublished?: (packet: PacketListItem) => void;
   onEditPublished?: (packet: PacketListItem) => void;
   title: string;
   packets: PacketListItem[];
@@ -1425,12 +1559,22 @@ function PacketGroup({
                 ) : null}
               </View>
               <View style={localStyles.packetListActions}>
-                <Button label={isDraftGroup ? "Open" : "View"} onPress={() => onLoad(packet)} variant="secondary" />
+                <Button
+                  label={isDraftGroup ? "Open" : "View/Edit"}
+                  onPress={() => {
+                    if (!isDraftGroup && onEditPublished) {
+                      onEditPublished(packet);
+                      return;
+                    }
+                    onLoad(packet);
+                  }}
+                  variant="secondary"
+                />
                 {isDraftGroup && onDeleteDraft ? (
                   <Button label="Delete" onPress={() => onDeleteDraft(packet)} variant="ghost" />
                 ) : null}
-                {!isDraftGroup && onEditPublished ? (
-                  <Button label="Edit" onPress={() => onEditPublished(packet)} variant="ghost" />
+                {!isDraftGroup && onDeletePublished ? (
+                  <Button label="Delete" onPress={() => onDeletePublished(packet)} variant="ghost" />
                 ) : null}
               </View>
             </View>

@@ -472,6 +472,14 @@ export interface Database {
         Args: { target_packet_id: string };
         Returns: LearningFileRow;
       };
+      update_published_review_packet: {
+        Args: { target_packet_id: string; new_title: string; new_week: number; chunk_ids: string[] };
+        Returns: LearningFileRow;
+      };
+      delete_review_packet: {
+        Args: { target_packet_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       app_role: "participant" | "local_rabbi" | "local_admin" | "global_admin";
