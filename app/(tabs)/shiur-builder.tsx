@@ -1133,7 +1133,7 @@ export default function ShiurBuilderScreen() {
                 {managedChaburah?.name ?? "My Chaburah"} - Week {week}
               </Text>
               {selectedCategoryChunks.map((chunk, index) => (
-                <DocumentChunk key={chunk.id} chunk={chunk} index={index} />
+                <DocumentChunk key={chunk.id} chunk={chunk} coverage={coverageByChunkId.get(chunk.id) ?? []} index={index} showCoverageState />
               ))}
             </View>
           </View>
@@ -1200,7 +1200,14 @@ export default function ShiurBuilderScreen() {
                       </>
                     ) : null}
                     {modalPreviewChunks.map((chunk, index) => (
-                      <DocumentChunk key={chunk.id} chunk={chunk} index={index} showNumber={previewingPacket} />
+                      <DocumentChunk
+                        key={chunk.id}
+                        chunk={chunk}
+                        coverage={coverageByChunkId.get(chunk.id) ?? []}
+                        index={index}
+                        showCoverageState
+                        showNumber={previewingPacket}
+                      />
                     ))}
                   </View>
                 </ScrollView>
@@ -1255,7 +1262,19 @@ export default function ShiurBuilderScreen() {
   );
 }
 
-function DocumentChunk({ chunk, index, showNumber = true }: { chunk: ContentChunk; index: number; showNumber?: boolean }) {
+function DocumentChunk({
+  chunk,
+  coverage = [],
+  index,
+  showCoverageState = false,
+  showNumber = true
+}: {
+  chunk: ContentChunk;
+  coverage?: ReviewPacketCoverage[];
+  index: number;
+  showCoverageState?: boolean;
+  showNumber?: boolean;
+}) {
   const blocks = buildDocumentBlocks(chunk);
   const isQa = chunk.sourceType === "qa" || /^95-Q\d+/i.test(chunk.chunkCode);
 
@@ -1263,6 +1282,7 @@ function DocumentChunk({ chunk, index, showNumber = true }: { chunk: ContentChun
     <View style={[localStyles.documentChunk, index === 0 && localStyles.documentChunkFirst]}>
       <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunk.chunkCode}</MetaText>
       <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text>
+      {showCoverageState ? <CoverageLine coverage={coverage} showEmpty /> : null}
       {blocks.map((block, blockIndex) => {
         if (block.kind === "question") {
           return (
@@ -1612,8 +1632,14 @@ function BuilderToolCard({
   );
 }
 
-function CoverageLine({ coverage }: { coverage: ReviewPacketCoverage[] }) {
-  if (coverage.length === 0) return null;
+function CoverageLine({ coverage, showEmpty = false }: { coverage: ReviewPacketCoverage[]; showEmpty?: boolean }) {
+  if (coverage.length === 0) {
+    return showEmpty ? (
+      <View style={localStyles.coveragePills}>
+        <Pill label="Not Covered Yet" tone="neutral" />
+      </View>
+    ) : null;
+  }
   return (
     <View style={localStyles.coveragePills}>
       {coverage.map((item) => (
