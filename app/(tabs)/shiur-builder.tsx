@@ -1501,13 +1501,16 @@ function isBuilderCategory(sourceType?: ContentSourceType): sourceType is Builde
 }
 
 function defaultPacketTitle(chaburahName: string, week: number, categoryLabel: string) {
-  return `${chaburahName} Week ${week} ${categoryLabel}`;
+  return `${chaburahName} - Week ${week} - ${categoryLabel}`;
 }
 
 function isAutoPacketTitle(title: string, chaburahName: string, week: number) {
-  const prefix = `${chaburahName} Week ${week} `;
-  if (!title.startsWith(prefix)) return false;
-  const suffix = title.slice(prefix.length).trim();
+  const currentWeekPrefix = `${chaburahName} Week ${week} `;
+  const generatedTitleMatch =
+    title.match(new RegExp(`^${escapeRegExp(chaburahName)}\\s+-\\s+Week \\d+\\s+-\\s+(.+)$`)) ??
+    title.match(new RegExp(`^${escapeRegExp(chaburahName)} Week \\d+ (.+)$`));
+  if (!title.startsWith(currentWeekPrefix) && !generatedTitleMatch) return false;
+  const suffix = (generatedTitleMatch?.[1] ?? title.slice(currentWeekPrefix.length)).trim();
   if (suffix === "Review Packet") return true;
   return builderCategories.some(
     (category) =>
@@ -1515,6 +1518,10 @@ function isAutoPacketTitle(title: string, chaburahName: string, week: number) {
       suffix === `${category.label} Packet` ||
       suffix === `Review Packet - ${category.label}`
   );
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function categoryLabel(category: BuilderCategory) {
