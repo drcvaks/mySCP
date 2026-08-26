@@ -95,7 +95,7 @@ export default function TabLayout() {
   const showProfile = true;
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
-  const showAskRav = askRavEnabled || showAdmin;
+  const showAskRav = askRavEnabled;
   const leftRailNav = Platform.OS === "web" || width >= 768;
   const compactLeftRail = leftRailNav && height < 760;
   const denseLeftRail = leftRailNav && height < 640;

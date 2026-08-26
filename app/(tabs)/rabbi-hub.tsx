@@ -61,6 +61,7 @@ export default function RabbiHubScreen() {
 
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const managedChaburah = chaburos.find((chaburah) => chaburah.id === managedChaburahId);
+  const askRavEnabled = managedChaburah?.askRavEnabled ?? true;
   const canAnswerAskRav = memberships.some(
     (membership) =>
       membership.userId === profile?.id &&
@@ -151,10 +152,20 @@ export default function RabbiHubScreen() {
 
   useEffect(() => {
     const requestedTool = Array.isArray(params.tool) ? params.tool[0] : params.tool;
-    if (requestedTool === "ask-rav" || requestedTool === "quick-review") {
+    if (requestedTool === "ask-rav" && askRavEnabled) {
+      setActiveTool("ask-rav");
+      return;
+    }
+    if (requestedTool === "quick-review") {
       setActiveTool(requestedTool);
     }
-  }, [params.tool]);
+  }, [askRavEnabled, params.tool]);
+
+  useEffect(() => {
+    if (!askRavEnabled && activeTool === "ask-rav") {
+      setActiveTool("quick-review");
+    }
+  }, [activeTool, askRavEnabled]);
 
   function updateOptionCount(count: number) {
     setOptionCount(count);
@@ -488,13 +499,15 @@ export default function RabbiHubScreen() {
         <SectionTitle>Rabbi Tools</SectionTitle>
         <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
         <View style={localStyles.toolCards}>
-          <RabbiToolCard
-            active={activeTool === "ask-rav"}
-            count={submittedQuestions.length}
-            label="Ask Rav Inbox"
-            meta="Participant questions waiting for a Rav response."
-            onPress={() => setActiveTool("ask-rav")}
-          />
+          {askRavEnabled ? (
+            <RabbiToolCard
+              active={activeTool === "ask-rav"}
+              count={submittedQuestions.length}
+              label="Ask Rav Inbox"
+              meta="Participant questions waiting for a Rav response."
+              onPress={() => setActiveTool("ask-rav")}
+            />
+          ) : null}
           <RabbiToolCard
             active={activeTool === "shiur-builder"}
             label="Shiur Builder"
@@ -546,7 +559,7 @@ export default function RabbiHubScreen() {
         </Card>
       ) : null}
 
-      {activeTool === "ask-rav" ? (
+      {activeTool === "ask-rav" && askRavEnabled ? (
         <>
           <Card>
             <Row>

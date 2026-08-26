@@ -66,6 +66,7 @@ export default function ShiurBuilderScreen() {
   const canUseBuilder = profile?.role === "local_rabbi" || profile?.role === "global_admin";
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const managedChaburah = chaburos.find((chaburah) => chaburah.id === managedChaburahId);
+  const askRavEnabled = managedChaburah?.askRavEnabled ?? true;
   const reviewWeeks = buildReviewWeeks(currentReviewWeek, Math.max(currentReviewWeek, week));
   const activeCategoryConfig = builderCategories.find((category) => category.key === activeCategory) ?? builderCategories[0];
   const chunkById = useMemo(() => new Map(chunks.map((chunk) => [chunk.id, chunk])), [chunks]);
@@ -798,12 +799,14 @@ export default function ShiurBuilderScreen() {
         <SectionTitle>Rabbi Tools</SectionTitle>
         <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
         <View style={localStyles.toolCards}>
-          <BuilderToolCard
-            count={openAskRavCount}
-            label="Ask Rav Inbox"
-            meta="Participant questions waiting for a Rav response."
-            onPress={() => router.push({ pathname: "/(tabs)/rabbi-hub", params: { tool: "ask-rav" } })}
-          />
+          {askRavEnabled ? (
+            <BuilderToolCard
+              count={openAskRavCount}
+              label="Ask Rav Inbox"
+              meta="Participant questions waiting for a Rav response."
+              onPress={() => router.push({ pathname: "/(tabs)/rabbi-hub", params: { tool: "ask-rav" } })}
+            />
+          ) : null}
           <BuilderToolCard
             active
             label="Shiur Builder"

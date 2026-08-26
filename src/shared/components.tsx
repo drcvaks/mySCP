@@ -27,13 +27,12 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const [menuOpen, setMenuOpen] = useState(false);
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
-  const canManageAskRavSetting = profile?.role === "local_admin" || profile?.role === "local_rabbi" || profile?.role === "global_admin";
   const drawerItems = [
     { label: "Beta Feedback", href: "/(tabs)/beta-feedback", icon: "chatbubbles-outline" as const, show: true, beta: true },
     { label: "Help / How to Use", href: "/(tabs)/help", icon: "help-circle-outline" as const, show: true, beta: true },
     { label: "Tester Checklist", href: "/(tabs)/testing-checklist", icon: "checkbox-outline" as const, show: true, beta: true },
     { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" as const, show: true },
-    { label: "Ask Rav", href: "/(tabs)/ask-rav", icon: "chatbubble-ellipses-outline" as const, show: askRavEnabled || canManageAskRavSetting },
+    { label: "Ask Rav", href: "/(tabs)/ask-rav", icon: "chatbubble-ellipses-outline" as const, show: askRavEnabled },
     {
       label: "Rabbi Hub",
       href: "/(tabs)/rabbi-hub",
