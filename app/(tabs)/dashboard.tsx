@@ -38,7 +38,7 @@ export default function DashboardScreen() {
       question.publicationStatus === "published" &&
       !question.isLibraryQuestion &&
       question.week <= currentReviewWeek + 3 &&
-      (question.visibility === "everyone" || question.chaburahId === selectedChaburahId)
+      question.chaburahId === selectedChaburahId
   );
   const cumulativeReview = summarizeCumulativeReview(reviewSessions);
   const cumulativeReviewScore =

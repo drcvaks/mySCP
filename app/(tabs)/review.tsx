@@ -32,24 +32,32 @@ export default function ReviewScreen() {
   const [message, setMessage] = useState("");
   const {
     checkReviewAnswer,
+    chaburos,
     currentReviewWeek,
     loading,
     refresh,
     reviewQuestions,
     reviewSessions,
-    saveReviewSession
+    saveReviewSession,
+    selectedChaburahId
   } = useAppState();
-
-  const currentQuestions = useMemo(
+  const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
+  const visibleReviewQuestions = useMemo(
     () =>
       reviewQuestions.filter(
         (question) =>
           question.enabled &&
           question.publicationStatus === "published" &&
           !question.isLibraryQuestion &&
-          (selectedWeek === "all" || question.week === selectedWeek)
+          question.chaburahId === selectedChaburahId
       ),
-    [reviewQuestions, selectedWeek]
+    [reviewQuestions, selectedChaburahId]
+  );
+
+  const currentQuestions = useMemo(
+    () =>
+      visibleReviewQuestions.filter((question) => selectedWeek === "all" || question.week === selectedWeek),
+    [selectedWeek, visibleReviewQuestions]
   );
   const currentQuestion = currentQuestions[currentIndex];
   const selectedChoice = currentQuestion ? answers[currentQuestion.id] : undefined;
@@ -64,9 +72,9 @@ export default function ReviewScreen() {
     ? Math.max(...matchingSessions.map((session) => Math.round((session.correctAnswers / session.totalQuestions) * 100)))
     : 0;
   const weeks = useMemo(() => {
-    const maxQuestionWeek = reviewQuestions.reduce((max, question) => Math.max(max, question.week), 0);
+    const maxQuestionWeek = visibleReviewQuestions.reduce((max, question) => Math.max(max, question.week), 0);
     return buildReviewWeeks(currentReviewWeek, maxQuestionWeek);
-  }, [currentReviewWeek, reviewQuestions]);
+  }, [currentReviewWeek, visibleReviewQuestions]);
 
   useEffect(() => {
     setSelectedWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
@@ -171,24 +179,22 @@ export default function ReviewScreen() {
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>Choose a Week</SectionTitle>
-            <Text style={styles.muted}>Current week is Week {currentReviewWeek}. Review by week or practice the full question bank.</Text>
+            <Text style={styles.muted}>
+              {selectedChaburah
+                ? `Showing questions published for ${selectedChaburah.name}. Current week is Week ${currentReviewWeek}.`
+                : `Current week is Week ${currentReviewWeek}. Join or select a chaburah to see review questions.`}
+            </Text>
           </View>
           <Pill label={`${currentQuestions.length} questions`} tone="accent" />
         </Row>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <FilterChip
-            label={`All (${reviewQuestions.filter((question) => question.enabled && question.publicationStatus === "published" && !question.isLibraryQuestion).length})`}
+            label={`All (${visibleReviewQuestions.length})`}
             onPress={() => reset("all")}
             selected={selectedWeek === "all"}
           />
           {weeks.map((week) => {
-            const count = reviewQuestions.filter(
-              (question) =>
-                question.enabled &&
-                question.publicationStatus === "published" &&
-                !question.isLibraryQuestion &&
-                question.week === week
-            ).length;
+            const count = visibleReviewQuestions.filter((question) => question.week === week).length;
             return (
               <FilterChip
                 key={week}

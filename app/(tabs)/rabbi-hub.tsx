@@ -81,9 +81,9 @@ export default function RabbiHubScreen() {
   const manageableReviewQuestions = useMemo(
     () =>
       reviewQuestions.filter(
-        (question) => profile?.role === "global_admin" || question.chaburahId === profile?.chaburahId
+        (question) => !question.isLibraryQuestion && question.chaburahId === managedChaburahId
     ),
-    [profile?.chaburahId, profile?.role, reviewQuestions]
+    [managedChaburahId, reviewQuestions]
   );
   const selectedWeekReviewQuestions = manageableReviewQuestions.filter((question) => question.week === buildWeek);
   const stagedQuestions = selectedWeekReviewQuestions.filter(
