@@ -6,6 +6,7 @@ import { supabase } from "../../src/lib/supabase";
 import { formatSupabaseError } from "../../src/lib/errors";
 import { theme } from "../../src/shared/theme";
 import { ContentChunk, ReviewPacket } from "../../src/shared/types";
+import { printPacket } from "../../src/shared/packetPrint";
 
 export default function ShiurPacketScreen() {
   const router = useRouter();
@@ -54,6 +55,16 @@ export default function ShiurPacketScreen() {
     );
   }
 
+  function printCurrentPacket() {
+    if (!packet || chunks.length === 0) return;
+    const printError = printPacket({
+      chunks,
+      meta: `${packet.siman} - Week ${packet.week}`,
+      title: packet.title
+    });
+    if (printError) setMessage(printError);
+  }
+
   return (
     <Screen title="Review Packet" eyebrow="Shiur Builder" onRefresh={loadPacket} refreshing={loading}>
       <StatusBanner message={message} tone={message ? "error" : "info"} />
@@ -69,6 +80,7 @@ export default function ShiurPacketScreen() {
             </View>
             <Pill label={`Week ${packet.week}`} tone="primary" />
             <Pill label={packet.status === "published" ? "Published" : "Draft"} tone={packet.status === "published" ? "success" : "accent"} />
+            <Button label="Print" onPress={printCurrentPacket} disabled={chunks.length === 0} />
           </Row>
         </Card>
       ) : null}

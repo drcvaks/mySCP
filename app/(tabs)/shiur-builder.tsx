@@ -22,6 +22,7 @@ import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/re
 import { ContentChunk, ContentChunkLink, ContentSourceType, ReviewPacket, ReviewPacketCoverage } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
+import { printPacket } from "../../src/shared/packetPrint";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -305,6 +306,15 @@ export default function ShiurBuilderScreen() {
 
   function resetPreviewWindow() {
     setPreviewSizeMode(activeCategory === "source" || modalPreviewChunks.some((chunk) => chunk.sourceType === "source") ? "full" : "wide");
+  }
+
+  function printPreviewPacket() {
+    const printError = printPacket({
+      chunks: selectedCategoryChunks,
+      meta: `${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`,
+      title: buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)
+    });
+    if (printError) setMessage(printError);
   }
 
   function moveChunkPreview(direction: -1 | 1) {
@@ -1178,6 +1188,7 @@ export default function ShiurBuilderScreen() {
                     </Text>
                   </View>
                   <View style={localStyles.previewTitleActions}>
+                    {previewingPacket ? <Button label="Print" onPress={printPreviewPacket} variant="primary" /> : null}
                     <Button label="Close" onPress={clearPreview} variant="secondary" />
                   </View>
                 </View>
