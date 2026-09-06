@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
 import {
   Button,
@@ -20,6 +19,7 @@ import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { openLearningFile } from "../../src/shared/openLearningFile";
+import { PacketPreviewModal } from "../../src/shared/PacketPreviewModal";
 
 type FileTypeFilter = FileType | "all" | "qa_packet";
 
@@ -28,12 +28,12 @@ const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
 const coverages: Array<FileCoverage | "all"> = ["all", "week", "bechina_review", "entire_zman"];
 
 export default function FilesScreen() {
-  const router = useRouter();
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<FileTypeFilter>("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
   const [selectedCoverage, setSelectedCoverage] = useState<FileCoverage | "all">("all");
   const [selectedWeek, setSelectedWeek] = useState(fallbackCurrentReviewWeek);
+  const [previewPacketId, setPreviewPacketId] = useState<string | null>(null);
   const { chaburos, currentReviewWeek, learningFiles, loading, refresh, selectedChaburahId } = useAppState();
   const { profile } = useAuthState();
   const isGlobalAdmin = profile?.role === "global_admin";
@@ -94,7 +94,7 @@ export default function FilesScreen() {
     const file = learningFiles.find((item) => item.id === fileId);
     if (!file) return;
     if (file.fileType === "custom_review_packet" && file.reviewPacketId) {
-      router.push({ pathname: "/(tabs)/shiur-packet", params: { id: file.reviewPacketId } });
+      setPreviewPacketId(file.reviewPacketId);
       return;
     }
     await openLearningFile(file);
@@ -223,6 +223,11 @@ export default function FilesScreen() {
           </Card>
         ))
       )}
+      <PacketPreviewModal
+        packetId={previewPacketId}
+        visible={Boolean(previewPacketId)}
+        onClose={() => setPreviewPacketId(null)}
+      />
     </Screen>
   );
 }

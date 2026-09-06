@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, TextArea, styles } from "../../src/shared/components";
 import { fileCoverageDetailLabel, learningFileTypeLabel } from "../../src/shared/format";
 import { openLearningFile } from "../../src/shared/openLearningFile";
+import { PacketPreviewModal } from "../../src/shared/PacketPreviewModal";
 import { theme } from "../../src/shared/theme";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
@@ -40,6 +41,7 @@ export default function MyChaburahScreen() {
   const [postingDiscussion, setPostingDiscussion] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageBody, setEditingMessageBody] = useState("");
+  const [previewPacketId, setPreviewPacketId] = useState<string | null>(null);
   const [sectionOffsets, setSectionOffsets] = useState<Partial<Record<MyChaburahSection, number>>>({});
   const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
   const targetSection = isMyChaburahSection(requestedSection) ? requestedSection : undefined;
@@ -92,7 +94,7 @@ export default function MyChaburahScreen() {
 
   async function openChaburahFile(file: (typeof learningFiles)[number]) {
     if (file.fileType === "custom_review_packet" && file.reviewPacketId) {
-      router.push({ pathname: "/(tabs)/shiur-packet", params: { id: file.reviewPacketId } });
+      setPreviewPacketId(file.reviewPacketId);
       return;
     }
     await openLearningFile(file);
@@ -431,6 +433,11 @@ export default function MyChaburahScreen() {
           </Card>
         </View>
       ) : null}
+      <PacketPreviewModal
+        packetId={previewPacketId}
+        visible={Boolean(previewPacketId)}
+        onClose={() => setPreviewPacketId(null)}
+      />
     </Screen>
   );
 }
