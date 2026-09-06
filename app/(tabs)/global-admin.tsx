@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import {
   Button,
   Card,
@@ -23,6 +23,23 @@ import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
 const assignableRoles: UserRole[] = ["global_admin", "participant"];
+const participantRoleFilters = ["all", "participant", "local_rabbi", "local_admin", "global_admin"] as const;
+type ParticipantRoleFilter = (typeof participantRoleFilters)[number];
+
+interface ParticipantDirectoryRow {
+  id: string;
+  fullName: string;
+  email: string;
+  city: string;
+  role: UserRole;
+  currentChaburahId?: string;
+  currentChaburahName: string;
+  activeMemberships: {
+    chaburahId: string;
+    chaburahName: string;
+    memberRole: string;
+  }[];
+}
 
 function slugify(value: string) {
   return value
@@ -51,7 +68,12 @@ export default function GlobalAdminScreen() {
   const [targetRole, setTargetRole] = useState<UserRole>("participant");
   const [reviewWeekInput, setReviewWeekInput] = useState(String(currentReviewWeek));
   const [chaburahSearch, setChaburahSearch] = useState("");
+  const [participantSearch, setParticipantSearch] = useState("");
+  const [participantRoleFilter, setParticipantRoleFilter] = useState<ParticipantRoleFilter>("all");
+  const [participantChaburahFilter, setParticipantChaburahFilter] = useState("all");
+  const [participants, setParticipants] = useState<ParticipantDirectoryRow[]>([]);
   const [saving, setSaving] = useState(false);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [message, setMessage] = useState("");
   const filteredChaburos = chaburos.filter((chaburah) => {
     const query = chaburahSearch.trim().toLowerCase();
@@ -61,10 +83,93 @@ export default function GlobalAdminScreen() {
       .toLowerCase()
       .includes(query);
   });
+  const filteredParticipants = participants.filter((participant) => {
+    const query = participantSearch.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      [
+        participant.fullName,
+        participant.email,
+        participant.city,
+        participant.currentChaburahName,
+        ...participant.activeMemberships.map((membership) => membership.chaburahName)
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    const matchesRole = participantRoleFilter === "all" || participant.role === participantRoleFilter;
+    const matchesChaburah =
+      participantChaburahFilter === "all" ||
+      (participantChaburahFilter === "none"
+        ? participant.activeMemberships.length === 0
+        : participant.activeMemberships.some((membership) => membership.chaburahId === participantChaburahFilter));
+    return matchesSearch && matchesRole && matchesChaburah;
+  });
 
   useEffect(() => {
     setReviewWeekInput(String(currentReviewWeek));
   }, [currentReviewWeek]);
+
+  useEffect(() => {
+    void loadParticipantDirectory();
+  }, [chaburos]);
+
+  async function refreshGlobalAdmin() {
+    await Promise.all([refresh(), loadParticipantDirectory()]);
+  }
+
+  async function loadParticipantDirectory() {
+    setLoadingParticipants(true);
+    const [profilesResult, membershipsResult] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id,email,full_name,city,role,current_chaburah_id")
+        .order("full_name", { ascending: true }),
+      supabase
+        .from("chaburah_members")
+        .select("user_id,chaburah_id,member_role,status")
+        .eq("status", "active")
+    ]);
+    setLoadingParticipants(false);
+
+    const firstError = profilesResult.error ?? membershipsResult.error;
+    if (firstError) {
+      setMessage(firstError.message);
+      return;
+    }
+
+    const chaburahById = new Map(chaburos.map((chaburah) => [chaburah.id, chaburah.name]));
+    const activeMembershipsByUserId = new Map<string, ParticipantDirectoryRow["activeMemberships"]>();
+    (membershipsResult.data ?? []).forEach((membership) => {
+      const current = activeMembershipsByUserId.get(membership.user_id) ?? [];
+      current.push({
+        chaburahId: membership.chaburah_id,
+        chaburahName: chaburahById.get(membership.chaburah_id) ?? "Unknown chaburah",
+        memberRole: membership.member_role
+      });
+      activeMembershipsByUserId.set(membership.user_id, current);
+    });
+
+    setParticipants(
+      (profilesResult.data ?? []).map((profileRow) => {
+        const activeMemberships = activeMembershipsByUserId.get(profileRow.id) ?? [];
+        const currentChaburahName =
+          profileRow.current_chaburah_id
+            ? chaburahById.get(profileRow.current_chaburah_id) ?? "Unknown chaburah"
+            : activeMemberships[0]?.chaburahName ?? "Not assigned";
+        return {
+          id: profileRow.id,
+          fullName: profileRow.full_name || "Name not set",
+          email: profileRow.email,
+          city: profileRow.city || "City not set",
+          role: profileRow.role,
+          currentChaburahId: profileRow.current_chaburah_id ?? undefined,
+          currentChaburahName,
+          activeMemberships
+        };
+      })
+    );
+  }
 
   async function createChaburah() {
     if (!profile?.id || !name.trim() || !city.trim()) {
@@ -151,6 +256,7 @@ export default function GlobalAdminScreen() {
     }
     setMessage(`${email} is now ${roleLabel(targetRole)}.`);
     if (targetProfile.id === profile?.id) await refreshProfile();
+    await loadParticipantDirectory();
   }
 
   async function saveCurrentReviewWeek() {
@@ -171,7 +277,7 @@ export default function GlobalAdminScreen() {
   }
 
   return (
-    <Screen title="Global Admin" eyebrow="SCP headquarters" onRefresh={refresh} refreshing={loading}>
+    <Screen title="Global Admin" eyebrow="SCP headquarters" onRefresh={refreshGlobalAdmin} refreshing={loading || loadingParticipants}>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
@@ -283,6 +389,87 @@ export default function GlobalAdminScreen() {
           ))}
         </View>
         <Button disabled={saving} label={saving ? "Saving..." : targetRole === "participant" ? "Reset User" : "Promote to Global Admin"} onPress={assignRole} />
+      </Card>
+
+      <Card>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle>Participant Directory</SectionTitle>
+            <Text style={styles.muted}>Find users by name, email, city, role, or chaburah.</Text>
+          </View>
+          <Pill label={`${filteredParticipants.length} of ${participants.length}`} tone="accent" />
+        </Row>
+        <SearchField
+          onChangeText={setParticipantSearch}
+          placeholder="Search users, email, city, or chaburah..."
+          value={participantSearch}
+        />
+        <View style={{ gap: 8 }}>
+          <MetaText>Role</MetaText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {participantRoleFilters.map((role) => (
+              <FilterChip
+                key={role}
+                label={role === "all" ? "All Roles" : roleLabel(role)}
+                onPress={() => setParticipantRoleFilter(role)}
+                selected={participantRoleFilter === role}
+              />
+            ))}
+          </View>
+        </View>
+        <View style={{ gap: 8 }}>
+          <MetaText>Chaburah</MetaText>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <FilterChip label="All Chaburos" onPress={() => setParticipantChaburahFilter("all")} selected={participantChaburahFilter === "all"} />
+            <FilterChip label="No Active Chaburah" onPress={() => setParticipantChaburahFilter("none")} selected={participantChaburahFilter === "none"} />
+            {chaburos.map((chaburah) => (
+              <FilterChip
+                key={chaburah.id}
+                label={chaburah.name}
+                onPress={() => setParticipantChaburahFilter(chaburah.id)}
+                selected={participantChaburahFilter === chaburah.id}
+              />
+            ))}
+          </View>
+        </View>
+        {filteredParticipants.length === 0 ? (
+          <Text style={styles.muted}>No users match those filters.</Text>
+        ) : (
+          <ScrollView style={{ maxHeight: 520 }} nestedScrollEnabled>
+            <View style={{ gap: 12 }}>
+              {filteredParticipants.map((participant) => (
+                <View key={participant.id} style={{ gap: 8 }}>
+                  <Row>
+                    <View style={{ flex: 1, minWidth: 220 }}>
+                      <Text style={styles.body}>{participant.fullName}</Text>
+                      <MetaText>{participant.email}</MetaText>
+                    </View>
+                    <Pill label={roleLabel(participant.role)} tone={participant.role === "global_admin" ? "primary" : "neutral"} />
+                  </Row>
+                  <Row>
+                    <View style={{ flex: 1, minWidth: 220 }}>
+                      <MetaText>City: {participant.city}</MetaText>
+                      <MetaText>Current chaburah: {participant.currentChaburahName}</MetaText>
+                    </View>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
+                      {participant.activeMemberships.length === 0 ? (
+                        <Pill label="No active membership" tone="neutral" />
+                      ) : (
+                        participant.activeMemberships.map((membership) => (
+                          <Pill
+                            key={`${participant.id}-${membership.chaburahId}-${membership.memberRole}`}
+                            label={`${membership.chaburahName} - ${membership.memberRole}`}
+                            tone="accent"
+                          />
+                        ))
+                      )}
+                    </View>
+                  </Row>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        )}
       </Card>
 
       <Card>
