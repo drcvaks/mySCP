@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, TextArea, styles } from "../../src/shared/components";
+import { Button, Card, FormInput, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, TextArea, styles } from "../../src/shared/components";
 import { fileCoverageDetailLabel, learningFileTypeLabel } from "../../src/shared/format";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 import { PacketPreviewModal } from "../../src/shared/PacketPreviewModal";
+import { supabase } from "../../src/lib/supabase";
 import { theme } from "../../src/shared/theme";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
+import { Announcement, DiscussionMessage } from "../../src/shared/types";
 
 type MyChaburahSection = "announcements" | "discussion" | "members" | "files" | "askRav";
+type MessagePostMode = "announcement" | "discussion";
+type ChaburahMessageEntry =
+  | { announcement: Announcement; createdAt: string; id: string; kind: "announcement" }
+  | { createdAt: string; id: string; kind: "discussion"; message: DiscussionMessage };
 
 export default function MyChaburahScreen() {
   const router = useRouter();
@@ -36,9 +42,15 @@ export default function MyChaburahScreen() {
     submitDiscussionMessage
   } = useAppState();
   useRefreshOnFocus(refresh);
+  const [messagePostMode, setMessagePostMode] = useState<MessagePostMode>("discussion");
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementBody, setAnnouncementBody] = useState("");
   const [discussionBody, setDiscussionBody] = useState("");
   const [discussionMessage, setDiscussionMessage] = useState("");
   const [postingDiscussion, setPostingDiscussion] = useState(false);
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
+  const [editingAnnouncementTitle, setEditingAnnouncementTitle] = useState("");
+  const [editingAnnouncementBody, setEditingAnnouncementBody] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageBody, setEditingMessageBody] = useState("");
   const [previewPacketId, setPreviewPacketId] = useState<string | null>(null);
@@ -52,10 +64,14 @@ export default function MyChaburahScreen() {
     profile?.role === "global_admin" || currentMembership?.memberRole === "rabbi" || currentMembership?.memberRole === "admin";
   const localAnnouncements = announcements.filter((item) => item.chaburahId === selectedChaburahId);
   const localDiscussionMessages = discussionMessages.filter((item) => item.chaburahId === selectedChaburahId);
+  const chaburahMessages = buildChaburahMessages(localAnnouncements, localDiscussionMessages);
+  const canPostDiscussion = chaburah?.discussionEnabled ?? false;
+  const canPostAnnouncement = canModerateDiscussion;
+  const effectivePostMode = canPostAnnouncement && (!canPostDiscussion || messagePostMode === "announcement") ? "announcement" : "discussion";
   const localFiles = learningFiles.filter((item) => item.visibility === "chaburah" && item.chaburahId === selectedChaburahId);
   const indexItems: { key: MyChaburahSection; label: string; show: boolean; count?: number }[] = [
     { key: "members", label: "Members", show: true, count: activeMembers.length },
-    { key: "discussion", label: "Discussion", show: true, count: discussionUnreadCount > 0 ? discussionUnreadCount : undefined },
+    { key: "discussion", label: "Messages", show: true, count: discussionUnreadCount > 0 ? discussionUnreadCount : undefined },
     { key: "files", label: "Files", show: true, count: localFiles.length },
     { key: "askRav", label: "Ask Rav", show: chaburah?.askRavEnabled ?? false }
   ];
@@ -130,6 +146,113 @@ export default function MyChaburahScreen() {
     }
     setDiscussionBody("");
     setDiscussionMessage("Message posted.");
+  }
+
+  async function postAnnouncement() {
+    if (!profile?.id || !selectedChaburahId) {
+      setDiscussionMessage("Join a chaburah before posting an announcement.");
+      return;
+    }
+    if (!announcementBody.trim()) {
+      setDiscussionMessage("Add an announcement message.");
+      return;
+    }
+    setPostingDiscussion(true);
+    setDiscussionMessage("");
+    const { error } = await supabase.from("announcements").insert({
+      chaburah_id: selectedChaburahId,
+      title: announcementTitle.trim() || "Announcement",
+      body: announcementBody.trim(),
+      visibility: "chaburah",
+      posted_by: profile.id
+    });
+    setPostingDiscussion(false);
+    if (error) {
+      setDiscussionMessage(error.message);
+      return;
+    }
+    setAnnouncementTitle("");
+    setAnnouncementBody("");
+    setDiscussionMessage("Announcement posted.");
+    await refresh();
+  }
+
+  function startEditingAnnouncement(announcement: Announcement) {
+    setEditingAnnouncementId(announcement.id);
+    setEditingAnnouncementTitle(announcement.title === "Announcement" ? "" : announcement.title);
+    setEditingAnnouncementBody(announcement.body);
+    setEditingMessageId(null);
+    setEditingMessageBody("");
+    setDiscussionMessage("");
+  }
+
+  async function saveEditedAnnouncement() {
+    if (!editingAnnouncementId) return;
+    if (!editingAnnouncementBody.trim()) {
+      setDiscussionMessage("Add an announcement message.");
+      return;
+    }
+    setPostingDiscussion(true);
+    setDiscussionMessage("");
+    const { error } = await supabase
+      .from("announcements")
+      .update({
+        title: editingAnnouncementTitle.trim() || "Announcement",
+        body: editingAnnouncementBody.trim()
+      })
+      .eq("id", editingAnnouncementId);
+    setPostingDiscussion(false);
+    if (error) {
+      setDiscussionMessage(error.message);
+      return;
+    }
+    setEditingAnnouncementId(null);
+    setEditingAnnouncementTitle("");
+    setEditingAnnouncementBody("");
+    setDiscussionMessage("Announcement updated.");
+    await refresh();
+  }
+
+  function cancelAnnouncementEdit() {
+    setEditingAnnouncementId(null);
+    setEditingAnnouncementTitle("");
+    setEditingAnnouncementBody("");
+  }
+
+  function confirmDeleteAnnouncement(announcementId: string) {
+    if (Platform.OS === "web") {
+      if (window.confirm("Delete this announcement? Participants will no longer see it.")) {
+        deleteAnnouncement(announcementId);
+      }
+      return;
+    }
+
+    Alert.alert("Delete announcement?", "Participants will no longer see it.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => deleteAnnouncement(announcementId) }
+    ]);
+  }
+
+  async function deleteAnnouncement(announcementId: string) {
+    setPostingDiscussion(true);
+    setDiscussionMessage("");
+    const { error } = await supabase.from("announcements").delete().eq("id", announcementId);
+    setPostingDiscussion(false);
+    if (error) {
+      setDiscussionMessage(error.message);
+      return;
+    }
+    if (editingAnnouncementId === announcementId) cancelAnnouncementEdit();
+    setDiscussionMessage("Announcement deleted.");
+    await refresh();
+  }
+
+  async function postChaburahMessage() {
+    if (effectivePostMode === "announcement") {
+      await postAnnouncement();
+      return;
+    }
+    await postDiscussionMessage();
   }
 
   function startEditingMessage(messageId: string, body: string) {
@@ -231,19 +354,6 @@ export default function MyChaburahScreen() {
         </View>
       </Card>
 
-      <View nativeID={sectionDomId("announcements")} onLayout={(event) => trackSection("announcements", event.nativeEvent.layout.y)}>
-        <Card>
-          <SectionTitle>Announcements</SectionTitle>
-          {localAnnouncements.length === 0 ? <Text style={styles.muted}>No local announcements yet.</Text> : null}
-          {localAnnouncements.map((announcement) => (
-            <View key={announcement.id}>
-              <Text style={styles.body}>{announcement.title}</Text>
-              <Text style={styles.muted}>{announcement.body}</Text>
-            </View>
-          ))}
-        </Card>
-      </View>
-
       <View nativeID={sectionDomId("members")} onLayout={(event) => trackSection("members", event.nativeEvent.layout.y)}>
         <Card>
         <Row>
@@ -278,15 +388,18 @@ export default function MyChaburahScreen() {
         <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Discussion</SectionTitle>
-            <Text style={styles.muted}>A local forum for this chaburah's SCP learning.</Text>
+            <SectionTitle>Chaburah Messages</SectionTitle>
+            <Text style={styles.muted}>
+              Official announcements and chaburah discussion in one place.
+            </Text>
           </View>
-          <Pill label={chaburah.discussionEnabled ? "Enabled" : "Disabled"} tone={chaburah.discussionEnabled ? "success" : "neutral"} />
+          <Pill label={chaburah.discussionEnabled ? "Discussion On" : "Announcements Only"} tone={chaburah.discussionEnabled ? "success" : "neutral"} />
         </Row>
         {discussionMessage ? (
           <StatusBanner
             message={discussionMessage}
             tone={
+              discussionMessage.includes("Announcement") ||
               discussionMessage.includes("posted") ||
               discussionMessage.includes("updated") ||
               discussionMessage.includes("deleted") ||
@@ -296,23 +409,84 @@ export default function MyChaburahScreen() {
             }
           />
         ) : null}
-        {!chaburah.discussionEnabled ? (
-          <Text style={styles.muted}>Discussion is not enabled for this chaburah yet.</Text>
-        ) : (
-          <>
-            {localDiscussionMessages.length === 0 ? (
-              <Text style={styles.muted}>No discussion messages yet.</Text>
+        <>
+            {chaburahMessages.length === 0 ? (
+              <Text style={styles.muted}>No chaburah messages yet.</Text>
             ) : (
-              <ScrollView contentContainerStyle={{ gap: 14, paddingRight: 2 }} nestedScrollEnabled style={{ maxHeight: 420 }}>
-                {localDiscussionMessages.map((message) => {
+              <ScrollView contentContainerStyle={{ gap: 10, paddingRight: 2 }} nestedScrollEnabled style={{ maxHeight: 420 }}>
+                {chaburahMessages.map((entry) => {
+                  if (entry.kind === "announcement") {
+                    const isEditingAnnouncement = editingAnnouncementId === entry.announcement.id;
+                    const visibleAnnouncementTitle =
+                      entry.announcement.title === "Announcement" ? "" : entry.announcement.title.trim();
+                    return (
+                      <View key={entry.id} style={localStyles.announcementMessage}>
+                        <View style={localStyles.discussionMessageHeader}>
+                          <View style={localStyles.discussionMessageMeta}>
+                            <Row>
+                              <Pill label="Announcement" tone="accent" />
+                              {entry.announcement.isPinned ? <Pill label="Pinned" tone="primary" /> : null}
+                            </Row>
+                            {isEditingAnnouncement || !visibleAnnouncementTitle ? null : (
+                              <Text style={localStyles.announcementTitle}>{visibleAnnouncementTitle}</Text>
+                            )}
+                          </View>
+                          {canPostAnnouncement && !isEditingAnnouncement ? (
+                            <View style={localStyles.discussionActions}>
+                              <DiscussionAction
+                                disabled={postingDiscussion}
+                                label="Edit"
+                                onPress={() => startEditingAnnouncement(entry.announcement)}
+                              />
+                              <DiscussionAction
+                                disabled={postingDiscussion}
+                                label="Delete"
+                                onPress={() => confirmDeleteAnnouncement(entry.announcement.id)}
+                                tone="danger"
+                              />
+                            </View>
+                          ) : null}
+                        </View>
+                        {isEditingAnnouncement ? (
+                          <View style={{ gap: 8 }}>
+                            <FormInput
+                              onChangeText={setEditingAnnouncementTitle}
+                              placeholder="Announcement title (optional)"
+                              value={editingAnnouncementTitle}
+                            />
+                            <TextArea
+                              onChangeText={setEditingAnnouncementBody}
+                              placeholder="Announcement details..."
+                              value={editingAnnouncementBody}
+                            />
+                            <Row>
+                              <Button
+                                disabled={postingDiscussion || !editingAnnouncementBody.trim()}
+                                label={postingDiscussion ? "Saving..." : "Save Announcement"}
+                                onPress={saveEditedAnnouncement}
+                              />
+                              <Button disabled={postingDiscussion} label="Cancel" onPress={cancelAnnouncementEdit} variant="ghost" />
+                            </Row>
+                          </View>
+                        ) : (
+                          <Text style={styles.body}>{entry.announcement.body}</Text>
+                        )}
+                        <MetaText>{formatDiscussionDate(entry.announcement.postedAt)}</MetaText>
+                      </View>
+                    );
+                  }
+                  const message = entry.message;
                   const isAuthor = message.authorId === profile?.id;
                   const isEditing = editingMessageId === message.id;
+                  const authorName = message.authorName ?? "Chaburah member";
+                  const authorAccent = getAuthorAccent(authorName);
                   return (
-                    <View key={message.id} style={{ gap: 6 }}>
+                    <View key={message.id} style={localStyles.discussionMessage}>
                       <View style={localStyles.discussionMessageHeader}>
                         <View style={localStyles.discussionMessageMeta}>
-                          <Text style={styles.body}>{message.authorName ?? "Chaburah member"}</Text>
-                          <MetaText>{formatDiscussionDate(message.createdAt)}</MetaText>
+                          <View style={[localStyles.authorChip, { backgroundColor: authorAccent.background }]}>
+                            <Text style={[localStyles.authorChipText, { color: authorAccent.text }]}>{authorName}</Text>
+                          </View>
                         </View>
                         <View style={localStyles.discussionActions}>
                           {message.status !== "active" ? (
@@ -367,23 +541,58 @@ export default function MyChaburahScreen() {
                               : "This message was hidden by a moderator."}
                         </Text>
                       )}
+                      <View style={localStyles.messageFooter}>
+                        <MetaText>{formatDiscussionDate(message.createdAt)}</MetaText>
+                      </View>
                     </View>
                   );
                 })}
               </ScrollView>
             )}
-            <TextArea
-              onChangeText={setDiscussionBody}
-              placeholder="Share a question, note, or chaburah discussion point..."
-              value={discussionBody}
-            />
-            <Button
-              disabled={postingDiscussion || !discussionBody.trim()}
-              label={postingDiscussion ? "Posting..." : "Post Message"}
-              onPress={postDiscussionMessage}
-            />
+            {canPostAnnouncement || canPostDiscussion ? (
+              <View style={{ gap: 10 }}>
+                {canPostAnnouncement && canPostDiscussion ? (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <MessageModeChip label="Announcement" selected={effectivePostMode === "announcement"} onPress={() => setMessagePostMode("announcement")} />
+                    <MessageModeChip label="Discussion" selected={effectivePostMode === "discussion"} onPress={() => setMessagePostMode("discussion")} />
+                  </View>
+                ) : null}
+                {effectivePostMode === "announcement" ? (
+                  <>
+                    <Text style={styles.muted}>Post an official announcement. Participants will see it highlighted above the discussion.</Text>
+                    <FormInput onChangeText={setAnnouncementTitle} placeholder="Announcement title (optional), e.g. Shiur canceled tonight" value={announcementTitle} />
+                    <TextArea onChangeText={setAnnouncementBody} placeholder="Announcement details..." value={announcementBody} />
+                  </>
+                ) : (
+                  <>
+                    <TextArea
+                      onChangeText={setDiscussionBody}
+                      placeholder="Share a question, note, or chaburah discussion point..."
+                      value={discussionBody}
+                    />
+                  </>
+                )}
+                <Button
+                  disabled={
+                    postingDiscussion ||
+                    (effectivePostMode === "announcement"
+                      ? !announcementBody.trim()
+                      : !discussionBody.trim())
+                  }
+                  label={
+                    postingDiscussion
+                      ? "Posting..."
+                      : effectivePostMode === "announcement"
+                        ? "Post Announcement"
+                        : "Post Message"
+                  }
+                  onPress={postChaburahMessage}
+                />
+              </View>
+            ) : (
+              <Text style={styles.muted}>Discussion is not enabled for this chaburah yet. Announcements from the Rabbi or Admin will appear here.</Text>
+            )}
           </>
-        )}
         </Card>
       </View>
 
@@ -473,6 +682,59 @@ function isMyChaburahSection(value: string | undefined): value is MyChaburahSect
   return value === "announcements" || value === "discussion" || value === "members" || value === "files" || value === "askRav";
 }
 
+function buildChaburahMessages(announcements: Announcement[], messages: DiscussionMessage[]): ChaburahMessageEntry[] {
+  return [
+    ...announcements.map((announcement) => ({
+      announcement,
+      createdAt: announcement.postedAt,
+      id: `announcement-${announcement.id}`,
+      kind: "announcement" as const
+    })),
+    ...messages.map((message) => ({
+      createdAt: message.createdAt,
+      id: `discussion-${message.id}`,
+      kind: "discussion" as const,
+      message
+    }))
+  ].sort((first, second) => new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime());
+}
+
+function getAuthorAccent(name: string) {
+  const palette = [
+    { background: "#E0F2FE", text: "#075985" },
+    { background: "#DCFCE7", text: "#166534" },
+    { background: "#FEF3C7", text: "#92400E" },
+    { background: "#FCE7F3", text: "#9D174D" },
+    { background: "#EDE9FE", text: "#5B21B6" }
+  ];
+  const score = name.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return palette[score % palette.length];
+}
+
+function MessageModeChip({
+  label,
+  selected,
+  onPress
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        localStyles.messageModeChip,
+        selected && localStyles.messageModeChipSelected,
+        pressed && localStyles.discussionActionPressed
+      ]}
+    >
+      <Text style={[localStyles.messageModeChipText, selected && localStyles.messageModeChipTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function DiscussionAction({
   disabled = false,
   label,
@@ -502,6 +764,31 @@ function DiscussionAction({
 }
 
 const localStyles = StyleSheet.create({
+  announcementMessage: {
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.accent,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12
+  },
+  announcementTitle: {
+    color: theme.colors.ink,
+    fontSize: 16,
+    fontWeight: "900",
+    lineHeight: 21
+  },
+  authorChip: {
+    alignSelf: "flex-start",
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  authorChipText: {
+    fontSize: 13,
+    fontWeight: "900",
+    lineHeight: 17
+  },
   discussionAction: {
     alignItems: "center",
     backgroundColor: theme.colors.primarySoft,
@@ -536,7 +823,7 @@ const localStyles = StyleSheet.create({
     justifyContent: "flex-end"
   },
   discussionMessageHeader: {
-    alignItems: "flex-start",
+    alignItems: "center",
     flexDirection: "row",
     gap: 8,
     justifyContent: "space-between"
@@ -544,6 +831,39 @@ const localStyles = StyleSheet.create({
   discussionMessageMeta: {
     flex: 1,
     minWidth: 0
+  },
+  discussionMessage: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12
+  },
+  messageFooter: {
+    marginTop: 2
+  },
+  messageModeChip: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 42,
+    paddingHorizontal: theme.spacing.md
+  },
+  messageModeChipSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary
+  },
+  messageModeChipText: {
+    color: theme.colors.ink,
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  messageModeChipTextSelected: {
+    color: "#FFFFFF"
   },
   fileActions: {
     alignItems: "center",
