@@ -93,6 +93,7 @@ export default function TabLayout() {
   const showAdmin = isAdmin(profile) || isRabbi(profile) || isGlobalAdmin(profile);
   const showGlobalAdmin = isGlobalAdmin(profile);
   const showProfile = true;
+  const showReviewInBottomTabs = !(compactPhoneNav && showRabbiHub);
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
   const showAskRav = askRavEnabled;
@@ -139,7 +140,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="dashboard" options={{ title: "Dashboard", tabBarIcon: tabIcon("dashboard") }} />
       <Tabs.Screen name="chaburah" options={{ title: "My Chaburah", tabBarIcon: tabIcon("chaburah") }} />
-      <Tabs.Screen name="review" options={{ title: "Review", tabBarIcon: tabIcon("review") }} />
+      <Tabs.Screen name="review" options={{ title: "Review", tabBarIcon: tabIcon("review"), href: showReviewInBottomTabs ? undefined : null }} />
       <Tabs.Screen name="files" options={{ title: "Files", tabBarIcon: tabIcon("files") }} />
       <Tabs.Screen
         name="rabbi-hub"
