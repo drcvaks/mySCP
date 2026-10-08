@@ -103,6 +103,7 @@ type LearningFileRow = {
 };
 
 type ContentChunkRow = {
+  content_document: Json | null;
   program_id: string;
   id: string;
   chunk_code: string;

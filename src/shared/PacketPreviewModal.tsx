@@ -8,6 +8,8 @@ import { Button, MetaText, Pill, Row, SectionTitle, StatusBanner, styles } from 
 import { theme } from "./theme";
 import { useAppState } from "../state/AppState";
 import { programName, SUMMER_PROGRAM } from "./learningPrograms";
+import { readRichContent } from "./documentContent";
+import { ImportDocument } from "./ImportDocument";
 
 export function PacketPreviewModal({
   packetId,
@@ -66,9 +68,9 @@ export function PacketPreviewModal({
     onClose();
   }
 
-  function printCurrentPacket() {
+  async function printCurrentPacket() {
     if (!packet || chunks.length === 0) return;
-    const printError = printPacket({
+    const printError = await printPacket({
       chunks,
       meta: `${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`,
       title: packet.title
@@ -114,6 +116,7 @@ export function PacketPreviewModal({
 }
 
 function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
+  if (chunk.contentDocument) return <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} />;
   const blocks = chunk.contentMarkdown
     .split(/\n\s*\n/)
     .map((block) => block.replace(/\r/g, "").trim())
@@ -162,6 +165,7 @@ function mapPacket(row: any): ReviewPacket {
 
 function mapContentChunk(row: any): ContentChunk {
   return {
+    contentDocument: readRichContent(row.content_document),
     id: row.id,
     chunkCode: row.chunk_code,
     sourceType: row.source_type,

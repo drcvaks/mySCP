@@ -9,6 +9,8 @@ import { ContentChunk, ReviewPacket } from "../../src/shared/types";
 import { printPacket } from "../../src/shared/packetPrint";
 import { useAppState } from "../../src/state/AppState";
 import { programName, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
+import { readRichContent } from "../../src/shared/documentContent";
+import { ImportDocument } from "../../src/shared/ImportDocument";
 
 export default function ShiurPacketScreen() {
   const router = useRouter();
@@ -58,9 +60,9 @@ export default function ShiurPacketScreen() {
     );
   }
 
-  function printCurrentPacket() {
+  async function printCurrentPacket() {
     if (!packet || chunks.length === 0) return;
-    const printError = printPacket({
+    const printError = await printPacket({
       chunks,
       meta: `${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`,
       title: packet.title
@@ -108,6 +110,7 @@ export default function ShiurPacketScreen() {
 }
 
 function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
+  if (chunk.contentDocument) return <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} />;
   const blocks = chunk.contentMarkdown
     .split(/\n\s*\n/)
     .map((block) => block.replace(/\r/g, "").trim())
@@ -156,6 +159,7 @@ function mapPacket(row: any): ReviewPacket {
 
 function mapContentChunk(row: any): ContentChunk {
   return {
+    contentDocument: readRichContent(row.content_document),
     id: row.id,
     chunkCode: row.chunk_code,
     sourceType: row.source_type,

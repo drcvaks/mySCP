@@ -1,3 +1,5 @@
+import type { RichContentDocument } from "./documentContent";
+
 export type UserRole = "participant" | "local_rabbi" | "local_admin" | "global_admin";
 export type FileType = "source_sheet" | "review_sheet" | "recording" | "video" | "pdf" | "other" | "link" | "custom_review_packet";
 export type Visibility = "everyone" | "chaburah";
@@ -99,6 +101,7 @@ export type ContentDifficulty = "core" | "advanced" | "practical";
 export type ReviewPacketStatus = "draft" | "published" | "archived";
 
 export interface ContentChunk {
+  contentDocument?: RichContentDocument;
   programId?: string;
   id: string;
   chunkCode: string;

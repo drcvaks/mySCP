@@ -25,6 +25,8 @@ import { useAuthState } from "../../src/state/AuthState";
 import { printPacket } from "../../src/shared/packetPrint";
 import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { belongsToProgram, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
+import { readRichContent } from "../../src/shared/documentContent";
+import { ImportDocument } from "../../src/shared/ImportDocument";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -329,8 +331,8 @@ export default function ShiurBuilderScreen() {
     setPreviewSizeMode(activeCategory === "source" || modalPreviewChunks.some((chunk) => chunk.sourceType === "source") ? "full" : "wide");
   }
 
-  function printPreviewPacket() {
-    const printError = printPacket({
+  async function printPreviewPacket() {
+    const printError = await printPacket({
       chunks: selectedCategoryChunks,
       meta: `${selectedProgram.name} - ${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`,
       title: buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)
@@ -1321,7 +1323,7 @@ function DocumentChunk({
       <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunk.chunkCode}</MetaText>
       <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text>
       {showCoverageState ? <CoverageLine coverage={coverage} showEmpty /> : null}
-      {blocks.map((block, blockIndex) => {
+      {chunk.contentDocument ? <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} /> : blocks.map((block, blockIndex) => {
         if (block.kind === "question") {
           return (
             <View key={`${chunk.id}-${blockIndex}`} style={localStyles.documentQuestionBlock}>
@@ -1762,14 +1764,16 @@ function sectionKeyForChunk(chunk: ContentChunk) {
 
 function sectionTitleForChunk(chunk: ContentChunk) {
   const sectionCode = sectionCodeForChunk(chunk);
-  if (chunk.sourceType === "qa") return `Q&A - ${chunk.workbookTitle}`;
+  if (chunk.sourceType === "qa") return chunk.programId !== SUMMER_PROGRAM && /^[A-G]$/i.test(chunk.sectionKey)
+    ? `Q&A - Section ${sectionCode} - ${chunk.sectionTitle}` : `Q&A - ${chunk.workbookTitle}`;
   if (chunk.sourceType === "source") return chunk.sectionTitle || "Source Sheets";
   return `Section ${sectionCode} - ${chunk.sectionTitle}`;
 }
 
 function sectionCodeForChunk(chunk: ContentChunk) {
   const sectionCodeMatch = chunk.chunkCode.match(/^95-([A-Z])/);
-  if (chunk.sourceType === "qa") return "Q&A";
+  if (chunk.sourceType === "qa") return chunk.programId !== SUMMER_PROGRAM && /^[A-G]$/i.test(chunk.sectionKey)
+    ? chunk.sectionKey.toUpperCase() : "Q&A";
   if (chunk.sourceType === "source") return chunk.sectionKey.toUpperCase() || "Sources";
   return sectionCodeMatch?.[1] ?? chunk.sectionKey.toUpperCase();
 }
@@ -1782,6 +1786,7 @@ function sourceLabelForChunk(chunk: ContentChunk) {
 
 function mapContentChunk(row: any): ContentChunk {
   return {
+    contentDocument: readRichContent(row.content_document),
     programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
     chunkCode: row.chunk_code,

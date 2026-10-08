@@ -1,4 +1,6 @@
 import { ContentChunk } from "./types";
+import { renderRichDocument } from "./richDocumentHtml";
+import { resolveDocumentAssets } from "./documentAssets";
 
 export interface PrintablePacket {
   chunks: ContentChunk[];
@@ -6,9 +8,19 @@ export interface PrintablePacket {
   title: string;
 }
 
-export function printPacket(packet: PrintablePacket) {
+export async function printPacket(packet: PrintablePacket): Promise<string | null> {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return "Printing is currently available from the web version. Mobile Print / Save PDF can be added with Expo print support.";
+  }
+
+  let resolvedPacket: PrintablePacket;
+  try {
+    const docs = await resolveDocumentAssets(packet.chunks.flatMap((chunk) => chunk.contentDocument ? [chunk.contentDocument] : []));
+    let index = 0;
+    resolvedPacket = { ...packet, chunks: packet.chunks.map((chunk) => chunk.contentDocument
+      ? { ...chunk, contentDocument: docs[index++] } : chunk) };
+  } catch {
+    return "Unable to load official images for printing. Please refresh and try again.";
   }
 
   const frame = document.createElement("iframe");
@@ -28,7 +40,7 @@ export function printPacket(packet: PrintablePacket) {
   }
 
   printDocument.open();
-  printDocument.write(buildPrintablePacketHtml(packet));
+  printDocument.write(buildPrintablePacketHtml(resolvedPacket));
   printDocument.close();
 
   const cleanup = () => {
@@ -36,15 +48,25 @@ export function printPacket(packet: PrintablePacket) {
   };
 
   frame.contentWindow.onafterprint = cleanup;
-  window.setTimeout(() => {
+  try {
+    await Promise.all(Array.from(printDocument.images).map((image) => new Promise<void>((resolve, reject) => {
+      if (image.complete) { image.naturalWidth ? resolve() : reject(new Error("Image failed")); return; }
+      const timer = window.setTimeout(() => reject(new Error("Image timed out")), 20000);
+      image.onload = () => { window.clearTimeout(timer); resolve(); };
+      image.onerror = () => { window.clearTimeout(timer); reject(new Error("Image failed")); };
+    })));
+    await printDocument.fonts?.ready;
     frame.contentWindow?.focus();
     frame.contentWindow?.print();
-    cleanup();
-  }, 500);
+    window.setTimeout(cleanup, 5 * 60 * 1000);
+  } catch {
+    frame.remove();
+    return "A packet image could not be loaded. Printing was cancelled to avoid missing content.";
+  }
   return null;
 }
 
-function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacket) {
+export function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacket) {
   return `<!doctype html>
 <html>
 <head>
@@ -156,6 +178,8 @@ function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacket) {
     @media print {
       .screen-only { display: none; }
       .chunk { break-inside: auto; }
+      .source-sheet img { max-height: 8in; width: auto !important; }
+      .source-sheet + .source-sheet { break-before: page; }
     }
   </style>
 </head>
@@ -171,10 +195,10 @@ function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacket) {
 }
 
 function renderChunk(chunk: ContentChunk, index: number) {
-  return `<section class="chunk">
+  return `<section class="chunk ${chunk.sourceType === "source" ? "source-sheet" : ""}">
   <div class="chunk-code">${index + 1}. ${escapeHtml(chunk.chunkCode)}</div>
   <h2>${escapeHtml(chunk.chunkTitle)}</h2>
-  ${renderMarkdownBlocks(chunk.contentMarkdown)}
+  ${chunk.contentDocument ? renderRichDocument(chunk.contentDocument) : renderMarkdownBlocks(chunk.contentMarkdown)}
 </section>`;
 }
 
