@@ -27,6 +27,7 @@ export interface UserProfile {
 }
 
 export interface Chaburah {
+  defaultProgramId?: string;
   id: string;
   name: string;
   status: "pending" | "active" | "inactive";
@@ -76,6 +77,7 @@ export interface Announcement {
 }
 
 export interface LearningFile {
+  programId?: string;
   id: string;
   title: string;
   coverage: FileCoverage;
@@ -97,6 +99,7 @@ export type ContentDifficulty = "core" | "advanced" | "practical";
 export type ReviewPacketStatus = "draft" | "published" | "archived";
 
 export interface ContentChunk {
+  programId?: string;
   id: string;
   chunkCode: string;
   sourceType: ContentSourceType;
@@ -126,6 +129,7 @@ export interface ContentChunkLink {
 }
 
 export interface ReviewPacket {
+  programId?: string;
   id: string;
   chaburahId: string;
   title: string;
@@ -160,6 +164,7 @@ export interface ReviewPacketCoverage {
 }
 
 export interface ReviewQuestion {
+  programId?: string;
   id: string;
   chaburahId?: string;
   sourceQuestionId?: string;
@@ -216,6 +221,8 @@ export interface NotificationItem {
 }
 
 export interface ReviewSession {
+  programId?: string;
+  chaburahId?: string;
   id: string;
   week: number | "all";
   totalQuestions: number;

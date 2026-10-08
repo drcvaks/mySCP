@@ -14,6 +14,7 @@ import {
   ReviewSession
 } from "../shared/types";
 import { fallbackCurrentReviewWeek } from "../shared/reviewWeeks";
+import { belongsToProgram, LearningProgram, legacySummerProgram, SUMMER_PROGRAM } from "../shared/learningPrograms";
 import { useAuthState } from "./AuthState";
 
 interface ReviewFeedback {
@@ -27,6 +28,14 @@ interface ReviewAnswer {
 }
 
 interface AppStateValue {
+  programs: LearningProgram[];
+  selectedProgramId: string;
+  selectedProgram: LearningProgram;
+  programsReady: boolean;
+  hasUnsavedProgramEdits: boolean;
+  registerProgramEdits: (editor: string, pending: boolean) => void;
+  selectProgram: (programId: string) => void;
+  makeProgramDefault: () => Promise<string | null>;
   hydrated: boolean;
   loading: boolean;
   error: string | null;
@@ -84,6 +93,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [programs, setPrograms] = useState<LearningProgram[]>([legacySummerProgram]);
+  const [programsReady, setProgramsReady] = useState(false);
+  const [programEditGuards, setProgramEditGuards] = useState<Record<string, boolean>>({});
+  const registerProgramEdits = useCallback((editor: string, pending: boolean) => {
+    setProgramEditGuards((values) => values[editor] === pending ? values : { ...values, [editor]: pending });
+  }, []);
+  const [programWeeks, setProgramWeeks] = useState<{ chaburah_id: string; program_id: string; current_week: number }[]>([]);
+  const [programSelection, setProgramSelection] = useState<{ userId?: string; chaburahId?: string; id: string } | null>(null);
+  const currentChaburah = chaburos.find((c) => c.id === profile?.chaburahId);
+  const selectedProgramId = programSelection && programSelection.userId === session?.user.id && programSelection.chaburahId === profile?.chaburahId
+    ? programSelection.id : currentChaburah?.defaultProgramId ?? SUMMER_PROGRAM;
+  const selectedProgram = programs.find((p) => p.id === selectedProgramId) ?? legacySummerProgram;
+  const activeReviewWeek = programWeeks.find((p) => p.chaburah_id === profile?.chaburahId && p.program_id === selectedProgramId)?.current_week
+    ?? (selectedProgramId === SUMMER_PROGRAM ? currentReviewWeek : selectedProgram.defaultWeek);
 
   const refresh = useCallback(async () => {
     if (!session) {
@@ -100,6 +123,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setNotifications([]);
       setNotificationUnreadCount(0);
       setCurrentReviewWeek(fallbackCurrentReviewWeek);
+      setPrograms([legacySummerProgram]);
+      setProgramWeeks([]);
+      setProgramsReady(false);
+      setProgramSelection(null);
+      setProgramEditGuards({});
       setHydrated(true);
       return;
     }
@@ -121,7 +149,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         discussionUnreadResult,
         notificationsResult,
         appSettingsResult,
-        memberDirectoryResult
+        memberDirectoryResult,
+        programsResult,
+        programWeeksResult
       ] = await Promise.all([
         supabase.from("chaburos").select("*").order("name"),
         supabase.from("chaburah_members").select("*").order("updated_at", { ascending: false }),
@@ -143,7 +173,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           ? supabase.rpc("list_chaburah_member_directory", {
               target_chaburah_id: profile.chaburahId
             })
-          : Promise.resolve({ data: [], error: null })
+          : Promise.resolve({ data: [], error: null }),
+        supabase.from("learning_programs").select("*").order("id"),
+        supabase.from("chaburah_programs").select("*")
       ]);
 
       const firstError = [
@@ -166,11 +198,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setError(formatSupabaseError(firstError));
         return;
       }
+      const missingPrograms = [programsResult.error, programWeeksResult.error].some((e) => e && ["42P01", "PGRST205"].includes(e.code));
+      const programError = programsResult.error ?? programWeeksResult.error;
+      if (programError && !missingPrograms) {
+        setError(formatSupabaseError(programError));
+        return;
+      }
+      setProgramsReady(!programError);
+      setPrograms(programsResult.data?.map((p) => ({
+        id: p.id, name: p.name, topic: p.topic, defaultWeek: p.default_week, archived: p.archived
+      })) ?? [legacySummerProgram]);
+      setProgramWeeks(programWeeksResult.data ?? []);
 
       setChaburos(
         (chaburosResult.data ?? []).map((row) => ({
           id: row.id,
           name: row.name,
+          defaultProgramId: row.default_program_id ?? SUMMER_PROGRAM,
           status: row.status,
           address: row.address ?? "",
           city: row.city,
@@ -281,6 +325,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             id: row.id,
             chaburahId: row.chaburah_id ?? undefined,
             title: row.title,
+            programId: row.program_id ?? SUMMER_PROGRAM,
             coverage: row.coverage ?? (row.week === null ? "entire_zman" : "week"),
             week: row.week,
             topic: row.topic,
@@ -301,6 +346,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           id: row.id,
           chaburahId: row.chaburah_id ?? undefined,
           sourceQuestionId: row.source_question_id ?? undefined,
+          programId: row.program_id ?? SUMMER_PROGRAM,
           week: row.week,
           topic: row.topic,
           prompt: row.prompt,
@@ -320,6 +366,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         (sessionsResult.data ?? []).map((row) => ({
           id: row.id,
           week: row.week ?? "all",
+          programId: row.program_id ?? SUMMER_PROGRAM,
+          chaburahId: row.chaburah_id ?? undefined,
           totalQuestions: row.total_questions,
           correctAnswers: row.correct_answers,
           completedAt: row.completed_at
@@ -365,29 +413,45 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       memberships,
       chaburahMemberDirectory,
       announcements,
-      learningFiles,
-      reviewQuestions,
-      reviewSessions,
+      learningFiles: learningFiles.filter((file) => belongsToProgram(file, selectedProgramId)),
+      reviewQuestions: reviewQuestions.filter((question) => belongsToProgram(question, selectedProgramId)),
+      reviewSessions: reviewSessions.filter((record) => belongsToProgram(record, selectedProgramId) &&
+        (!record.chaburahId || record.chaburahId === profile?.chaburahId)),
       askRavQuestions,
       discussionMessages,
       discussionUnreadCount,
       notifications,
       notificationUnreadCount,
-      currentReviewWeek,
+      currentReviewWeek: activeReviewWeek,
+      programs,
+      programsReady,
+      hasUnsavedProgramEdits: Object.values(programEditGuards).some(Boolean),
+      registerProgramEdits,
+      selectedProgram,
+      selectedProgramId,
+      selectProgram: (id) => {
+        if (!programs.some((p) => p.id === id)) return;
+        setProgramSelection({ id, userId: session?.user.id, chaburahId: profile?.chaburahId });
+      },
+      makeProgramDefault: async () => {
+        if (!programsReady || !profile?.chaburahId) return "Join a chaburah and install the learning-program migration first.";
+        const { error } = await supabase.from("chaburos").update({ default_program_id: selectedProgramId })
+          .eq("id", profile.chaburahId).select("id").single();
+        if (error) return error.message;
+        await refresh();
+        return null;
+      },
       refresh,
       updateCurrentReviewWeek: async (week) => {
         if (!Number.isInteger(week) || week < 1 || week > 52) {
           return "Current review week must be between 1 and 52.";
         }
-        const { error: settingsError } = await supabase
-          .from("app_settings")
-          .update({
-            current_review_week: week,
-            updated_by: session?.user.id ?? null
-          })
-          .eq("id", true);
+        if (!programsReady || !profile?.chaburahId) return "Join a chaburah and install the learning-program migration first.";
+        const { data, error: settingsError } = await supabase
+          .from("chaburah_programs").update({ current_week: week })
+          .eq("chaburah_id", profile.chaburahId).eq("program_id", selectedProgramId).select("current_week").single();
         if (settingsError) return settingsError.message;
-        setCurrentReviewWeek(week);
+        if (!data) return "Week setting was not updated.";
         await refresh();
         return null;
       },
@@ -590,6 +654,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       notifications,
       notificationUnreadCount,
       currentReviewWeek,
+      activeReviewWeek,
+      programs,
+      programsReady,
+      programEditGuards,
+      registerProgramEdits,
+      selectedProgram,
+      selectedProgramId,
       profile?.chaburahId,
       refresh,
       refreshProfile,

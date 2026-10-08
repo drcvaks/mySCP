@@ -10,6 +10,7 @@ import { theme } from "../../src/shared/theme";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { Announcement, DiscussionMessage } from "../../src/shared/types";
 
 type MyChaburahSection = "announcements" | "discussion" | "members" | "files" | "askRav";
@@ -327,6 +328,7 @@ export default function MyChaburahScreen() {
       scrollRef={scrollRef}
       onScroll={handleContentScroll}
     >
+      <ProgramSelector />
       <Card>
         <Row>
           <View>

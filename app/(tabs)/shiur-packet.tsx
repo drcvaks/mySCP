@@ -7,12 +7,15 @@ import { formatSupabaseError } from "../../src/lib/errors";
 import { theme } from "../../src/shared/theme";
 import { ContentChunk, ReviewPacket } from "../../src/shared/types";
 import { printPacket } from "../../src/shared/packetPrint";
+import { useAppState } from "../../src/state/AppState";
+import { programName, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
 
 export default function ShiurPacketScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const packetId = Array.isArray(params.id) ? params.id[0] : params.id;
   const [packet, setPacket] = useState<ReviewPacket | null>(null);
+  const { programs } = useAppState();
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,7 +62,7 @@ export default function ShiurPacketScreen() {
     if (!packet || chunks.length === 0) return;
     const printError = printPacket({
       chunks,
-      meta: `${packet.siman} - Week ${packet.week}`,
+      meta: `${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`,
       title: packet.title
     });
     if (printError) setMessage(printError);
@@ -79,6 +82,7 @@ export default function ShiurPacketScreen() {
               <Text style={styles.muted}>{packet.siman}</Text>
             </View>
             <Pill label={`Week ${packet.week}`} tone="primary" />
+            <Pill label={programName(packet.programId, programs)} />
             <Pill label={packet.status === "published" ? "Published" : "Draft"} tone={packet.status === "published" ? "success" : "accent"} />
             <Button label="Print" onPress={printCurrentPacket} disabled={chunks.length === 0} />
           </Row>
@@ -136,6 +140,7 @@ function PacketImage({ alt, uri }: { alt: string; uri: string }) {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
     chaburahId: row.chaburah_id,
     title: row.title,

@@ -18,10 +18,11 @@ import {
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
-import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { theme } from "../../src/shared/theme";
 import { ReviewQuestion, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
@@ -35,7 +36,7 @@ export default function RabbiHubScreen() {
   const { profile } = useAuthState();
   const scrollRef = useRef<ScrollView | null>(null);
   const { width } = useWindowDimensions();
-  const { askRavQuestions, chaburos, currentReviewWeek, loading, memberships, refresh, reviewQuestions, selectedChaburahId } = useAppState();
+  const { askRavQuestions, chaburos, currentReviewWeek, loading, memberships, refresh, reviewQuestions, selectedChaburahId, selectedProgramId, programsReady, registerProgramEdits } = useAppState();
   useRefreshOnFocus(refresh);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
@@ -56,7 +57,13 @@ export default function RabbiHubScreen() {
   const [stagedQuestionsOffset, setStagedQuestionsOffset] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const reviewWeeks = buildReviewWeeks(currentReviewWeek);
+  useEffect(() => {
+    registerProgramEdits("quick-review", !!prompt.trim() || !!editingQuestionId);
+    return () => registerProgramEdits("quick-review", false);
+  }, [prompt, editingQuestionId, registerProgramEdits]);
+  const reviewWeeks = buildProgramWeeks(selectedProgramId, currentReviewWeek);
+  useEffect(() => { resetReviewForm(); setBuildWeek(currentReviewWeek); setLibraryWeek(currentReviewWeek); setMessage(""); },
+    [selectedProgramId, selectedChaburahId]);
   const webQuestionWorkspace = Platform.OS === "web" && width >= 980;
 
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
@@ -298,6 +305,7 @@ export default function RabbiHubScreen() {
     setSaving(true);
     setMessage("");
     const questionPayload = {
+        program_id: programsReady ? selectedProgramId : undefined,
         chaburah_id: visibility === "chaburah" ? managedChaburahId : null,
         topic: `Week ${parsedWeek} Review`,
         week: parsedWeek,
@@ -425,6 +433,7 @@ export default function RabbiHubScreen() {
     setSaving(true);
     setMessage("");
     const { data, error } = await supabase.rpc("publish_review_week", {
+      target_program_id: programsReady ? selectedProgramId : undefined,
       target_chaburah_id: managedChaburahId,
       target_week: buildWeek
     });
@@ -434,6 +443,7 @@ export default function RabbiHubScreen() {
       return;
     }
     await supabase.rpc("notify_review_questions_published", {
+      target_program_id: programsReady ? selectedProgramId : undefined,
       target_chaburah_id: managedChaburahId,
       target_week: buildWeek
     });
@@ -452,6 +462,7 @@ export default function RabbiHubScreen() {
         published_at: new Date().toISOString()
       })
       .eq("is_library_question", true)
+      .in("id", stagedLibraryQuestions.map((q) => q.id))
       .eq("publication_status", "draft")
       .eq("week", buildWeek);
     setSaving(false);
@@ -495,6 +506,7 @@ export default function RabbiHubScreen() {
 
   return (
     <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
+      <ProgramSelector manage disabled={saving} unsaved={!!prompt.trim() || !!editingQuestionId} />
       <Card>
         <SectionTitle>Rabbi Tools</SectionTitle>
         <Text style={styles.muted}>Choose the workflow you want to work on.</Text>

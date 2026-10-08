@@ -29,6 +29,7 @@ type ProfileRow = {
 };
 
 type ChaburahRow = {
+  default_program_id: string;
   id: string;
   name: string;
   slug: string;
@@ -83,6 +84,7 @@ type AnnouncementRow = {
 };
 
 type LearningFileRow = {
+  program_id: string;
   id: string;
   chaburah_id: string | null;
   title: string;
@@ -101,6 +103,7 @@ type LearningFileRow = {
 };
 
 type ContentChunkRow = {
+  program_id: string;
   id: string;
   chunk_code: string;
   source_type: Database["public"]["Enums"]["content_source_type"];
@@ -133,6 +136,7 @@ type ContentChunkLinkRow = {
 };
 
 type ReviewPacketRow = {
+  program_id: string;
   id: string;
   chaburah_id: string;
   title: string;
@@ -154,6 +158,7 @@ type ReviewPacketItemRow = {
 };
 
 type ReviewPacketContentCoverageRow = {
+  program_id: string;
   chaburah_id: string;
   week: number;
   packet_id: string;
@@ -167,6 +172,7 @@ type ReviewPacketContentCoverageRow = {
 };
 
 type ReviewQuestionRow = {
+  program_id: string;
   id: string;
   chaburah_id: string | null;
   source_question_id: string | null;
@@ -194,6 +200,7 @@ type ReviewQuestionAnswerRow = {
 };
 
 type ReviewSessionRow = {
+  program_id: string;
   id: string;
   user_id: string;
   chaburah_id: string | null;
@@ -296,6 +303,8 @@ type BetaChecklistProgressRow = {
 export interface Database {
   public: {
     Tables: {
+      learning_programs: Table<{ id: string; name: string; topic: string; default_week: number; archived: boolean }>;
+      chaburah_programs: Table<{ chaburah_id: string; program_id: string; current_week: number }>;
       app_settings: Table<
         AppSettingsRow,
         Partial<AppSettingsRow>,
@@ -425,7 +434,7 @@ export interface Database {
         Returns: ReviewQuestionRow;
       };
       publish_review_week: {
-        Args: { target_chaburah_id: string; target_week: number };
+        Args: { target_chaburah_id: string; target_week: number; target_program_id?: string };
         Returns: number;
       };
       update_discussion_message: {
@@ -461,7 +470,7 @@ export interface Database {
         Returns: number;
       };
       notify_review_questions_published: {
-        Args: { target_chaburah_id: string; target_week: number };
+        Args: { target_chaburah_id: string; target_week: number; target_program_id?: string };
         Returns: number;
       };
       notify_join_request: {

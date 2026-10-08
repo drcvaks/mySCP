@@ -19,13 +19,14 @@ import {
   styles
 } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, visibilityLabel } from "../../src/shared/format";
-import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { formatSchedule, meridiems, parseSchedule, weekDays } from "../../src/shared/schedule";
 import { ChaburahMembership, FileCoverage, FileType, LearningFile, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "video", "pdf", "other"];
 type LeadershipRole = "rabbi" | "admin";
@@ -44,6 +45,9 @@ export default function AdminScreen() {
   const {
     chaburos,
     currentReviewWeek,
+    selectedProgramId,
+    programsReady,
+    registerProgramEdits,
     learningFiles,
     loading,
     memberships,
@@ -88,7 +92,12 @@ export default function AdminScreen() {
   const [message, setMessage] = useState("");
   const requestedSection = Array.isArray(params.section) ? params.section[0] : params.section;
   const targetSection = isAdminSection(requestedSection) ? requestedSection : undefined;
-  const fileWeekSelections = buildReviewWeeks(currentReviewWeek);
+  const fileWeekSelections = buildProgramWeeks(selectedProgramId, currentReviewWeek);
+  useEffect(() => {
+    registerProgramEdits("file-editor", !!fileTitle.trim() || !!editingFile);
+    return () => registerProgramEdits("file-editor", false);
+  }, [fileTitle, editingFile, registerProgramEdits]);
+  useEffect(() => { resetFileForm(); setFileWeek(currentReviewWeek); }, [selectedProgramId, selectedChaburahId]);
 
   useEffect(() => {
     setFileWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
@@ -252,6 +261,7 @@ export default function AdminScreen() {
       }
     }
     const filePayload = {
+      program_id: programsReady ? selectedProgramId : undefined,
       chaburah_id: visibility === "chaburah" ? managedChaburahId : null,
       title: fileTitle.trim(),
       description: fileDescription.trim() || null,
@@ -523,6 +533,7 @@ export default function AdminScreen() {
 
   return (
     <Screen title="Admin" eyebrow="Local chaburah tools" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
+      <ProgramSelector manage disabled={saving} unsaved={!!fileTitle.trim() || !!editingFile} />
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>

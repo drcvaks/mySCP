@@ -6,6 +6,8 @@ import { ContentChunk, ReviewPacket } from "./types";
 import { printPacket } from "./packetPrint";
 import { Button, MetaText, Pill, Row, SectionTitle, StatusBanner, styles } from "./components";
 import { theme } from "./theme";
+import { useAppState } from "../state/AppState";
+import { programName, SUMMER_PROGRAM } from "./learningPrograms";
 
 export function PacketPreviewModal({
   packetId,
@@ -17,6 +19,7 @@ export function PacketPreviewModal({
   onClose: () => void;
 }) {
   const [packet, setPacket] = useState<ReviewPacket | null>(null);
+  const { programs } = useAppState();
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,7 +70,7 @@ export function PacketPreviewModal({
     if (!packet || chunks.length === 0) return;
     const printError = printPacket({
       chunks,
-      meta: `${packet.siman} - Week ${packet.week}`,
+      meta: `${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`,
       title: packet.title
     });
     if (printError) setMessage(printError);
@@ -84,6 +87,7 @@ export function PacketPreviewModal({
               {packet ? <Text style={styles.muted}>{packet.siman}</Text> : null}
             </View>
             {packet ? <Pill label={`Week ${packet.week}`} tone="primary" /> : null}
+            {packet ? <Pill label={programName(packet.programId, programs)} /> : null}
             {packet ? (
               <Pill label={packet.status === "published" ? "Published" : "Draft"} tone={packet.status === "published" ? "success" : "accent"} />
             ) : null}
@@ -142,6 +146,7 @@ function PacketImage({ alt, uri }: { alt: string; uri: string }) {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
     chaburahId: row.chaburah_id,
     title: row.title,

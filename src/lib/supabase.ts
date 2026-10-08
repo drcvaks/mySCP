@@ -11,6 +11,7 @@ if (!supabaseUrl || !supabasePublishableKey) {
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
+  global: { headers: { "x-myscp-learning-programs": "1" } },
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

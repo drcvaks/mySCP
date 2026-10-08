@@ -52,7 +52,7 @@ function slugify(value: string) {
 
 export default function GlobalAdminScreen() {
   const { profile, refreshProfile } = useAuthState();
-  const { chaburos, currentReviewWeek, loading, refresh, updateCurrentReviewWeek } = useAppState();
+  const { chaburos, loading, refresh } = useAppState();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -66,7 +66,6 @@ export default function GlobalAdminScreen() {
   const [description, setDescription] = useState("");
   const [roleEmail, setRoleEmail] = useState("");
   const [targetRole, setTargetRole] = useState<UserRole>("participant");
-  const [reviewWeekInput, setReviewWeekInput] = useState(String(currentReviewWeek));
   const [chaburahSearch, setChaburahSearch] = useState("");
   const [participantSearch, setParticipantSearch] = useState("");
   const [participantRoleFilter, setParticipantRoleFilter] = useState<ParticipantRoleFilter>("all");
@@ -105,10 +104,6 @@ export default function GlobalAdminScreen() {
         : participant.activeMemberships.some((membership) => membership.chaburahId === participantChaburahFilter));
     return matchesSearch && matchesRole && matchesChaburah;
   });
-
-  useEffect(() => {
-    setReviewWeekInput(String(currentReviewWeek));
-  }, [currentReviewWeek]);
 
   useEffect(() => {
     void loadParticipantDirectory();
@@ -259,23 +254,6 @@ export default function GlobalAdminScreen() {
     await loadParticipantDirectory();
   }
 
-  async function saveCurrentReviewWeek() {
-    const parsedWeek = Number(reviewWeekInput);
-    if (!Number.isInteger(parsedWeek) || parsedWeek < 1 || parsedWeek > 52) {
-      setMessage("Current review week must be a number from 1 to 52.");
-      return;
-    }
-    setSaving(true);
-    setMessage("");
-    const result = await updateCurrentReviewWeek(parsedWeek);
-    setSaving(false);
-    if (result) {
-      setMessage(result);
-      return;
-    }
-    setMessage(`Current review week updated to Week ${parsedWeek}.`);
-  }
-
   return (
     <Screen title="Global Admin" eyebrow="SCP headquarters" onRefresh={refreshGlobalAdmin} refreshing={loading || loadingParticipants}>
       <Card>
@@ -285,7 +263,6 @@ export default function GlobalAdminScreen() {
             <Text style={styles.muted}>Create chaburos, manage active status, and manage global app access.</Text>
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <Pill label={`Week ${currentReviewWeek}`} tone="accent" />
             <Pill label={`${chaburos.length} chaburos`} tone="primary" />
           </View>
         </Row>
@@ -303,30 +280,7 @@ export default function GlobalAdminScreen() {
             <Text style={styles.statNumber}>{chaburos.length}</Text>
             <MetaText>Configured chaburos</MetaText>
           </View>
-          <View style={{ minWidth: 160 }}>
-            <Text style={styles.statNumber}>{currentReviewWeek}</Text>
-            <MetaText>Current review week</MetaText>
-          </View>
         </Row>
-      </Card>
-
-      <Card>
-        <SectionTitle>Current Review Week</SectionTitle>
-        <Text style={styles.muted}>This controls the default week across Review, Rabbi Hub, Files, Admin uploads, and Dashboard prompts.</Text>
-        <Row>
-          <View style={{ flex: 1, minWidth: 160 }}>
-            <FormInput
-              keyboardType="numeric"
-              onChangeText={setReviewWeekInput}
-              placeholder="Current week"
-              value={reviewWeekInput}
-            />
-          </View>
-          <View style={{ minWidth: 140 }}>
-            <Button disabled={saving} label={saving ? "Saving..." : "Save Week"} onPress={saveCurrentReviewWeek} />
-          </View>
-        </Row>
-        <MetaText>Current setting: Week {currentReviewWeek}</MetaText>
       </Card>
 
       <Card>

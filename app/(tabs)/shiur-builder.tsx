@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,11 +18,13 @@ import {
 import { supabase } from "../../src/lib/supabase";
 import { formatSupabaseError } from "../../src/lib/errors";
 import { theme } from "../../src/shared/theme";
-import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { ContentChunk, ContentChunkLink, ContentSourceType, ReviewPacket, ReviewPacketCoverage } from "../../src/shared/types";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { printPacket } from "../../src/shared/packetPrint";
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
+import { belongsToProgram, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -37,7 +39,8 @@ const builderCategories: { key: BuilderCategory; label: string; packetLabel: str
 export default function ShiurBuilderScreen() {
   const router = useRouter();
   const { height, width } = useWindowDimensions();
-  const { askRavQuestions, chaburos, currentReviewWeek, refresh, reviewQuestions, selectedChaburahId } = useAppState();
+  const { askRavQuestions, chaburos, currentReviewWeek, refresh, reviewQuestions, selectedChaburahId, selectedProgramId, selectedProgram, programsReady, registerProgramEdits } = useAppState();
+  const loadSequence = useRef(0);
   const { profile } = useAuthState();
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
   const [links, setLinks] = useState<ContentChunkLink[]>([]);
@@ -63,12 +66,16 @@ export default function ShiurBuilderScreen() {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    registerProgramEdits("shiur-builder", selectedIds.length > 0);
+    return () => registerProgramEdits("shiur-builder", false);
+  }, [selectedIds, registerProgramEdits]);
   const isWebPilot = Platform.OS === "web" && width >= 980;
   const canUseBuilder = profile?.role === "local_rabbi" || profile?.role === "global_admin";
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const managedChaburah = chaburos.find((chaburah) => chaburah.id === managedChaburahId);
   const askRavEnabled = managedChaburah?.askRavEnabled ?? true;
-  const reviewWeeks = buildReviewWeeks(currentReviewWeek, Math.max(currentReviewWeek, week));
+  const reviewWeeks = buildProgramWeeks(selectedProgramId, currentReviewWeek, Math.max(currentReviewWeek, week));
   const activeCategoryConfig = builderCategories.find((category) => category.key === activeCategory) ?? builderCategories[0];
   const chunkById = useMemo(() => new Map(chunks.map((chunk) => [chunk.id, chunk])), [chunks]);
   const selectedChunks = selectedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
@@ -164,8 +171,15 @@ export default function ShiurBuilderScreen() {
   }, [currentReviewWeek]);
 
   useEffect(() => {
+    resetDraftState();
+    setWeek(currentReviewWeek);
+    setChunks([]);
+    setLinks([]);
+    setPackets([]);
+    setCoverageRows([]);
+    setExpandedSectionKeys([]);
     void loadBuilderData();
-  }, [managedChaburahId]);
+  }, [managedChaburahId, selectedProgramId, programsReady]);
 
   useEffect(() => {
     if (managedChaburah?.name && (!title || isAutoPacketTitle(title, managedChaburah.name, week))) {
@@ -174,15 +188,19 @@ export default function ShiurBuilderScreen() {
   }, [activeCategoryConfig.label, managedChaburah?.name, title, week]);
 
   async function loadBuilderData() {
+    const sequence = ++loadSequence.current;
     if (!managedChaburahId) return;
     setLoading(true);
     setMessage("");
     const [chunksResult, linksResult, packetsResult, coverageResult] = await Promise.all([
-      supabase.from("content_chunks").select("*").eq("is_selectable", true).order("sort_order"),
+      programsReady
+        ? supabase.from("content_chunks").select("*").eq("program_id", selectedProgramId).eq("is_selectable", true).order("sort_order")
+        : supabase.from("content_chunks").select("*").eq("is_selectable", true).order("sort_order"),
       supabase.from("content_chunk_links").select("*"),
       supabase.from("review_packets").select("*").eq("chaburah_id", managedChaburahId).order("updated_at", { ascending: false }),
       supabase.from("review_packet_content_coverage").select("*").eq("chaburah_id", managedChaburahId)
     ]);
+    if (sequence !== loadSequence.current) return;
     setLoading(false);
 
     const firstError = [chunksResult.error, linksResult.error, packetsResult.error, coverageResult.error].find(Boolean);
@@ -191,11 +209,14 @@ export default function ShiurBuilderScreen() {
       return;
     }
 
-    setChunks((chunksResult.data ?? []).map(mapContentChunk));
+    setChunks((chunksResult.data ?? []).map(mapContentChunk).filter((c) => belongsToProgram(c, selectedProgramId)));
     setLinks((linksResult.data ?? []).map(mapContentChunkLink));
-    setCoverageRows((coverageResult.data ?? []).map(mapCoverage));
-    const packetRows = (packetsResult.data ?? []).map(mapPacket);
+    const programPacketRows = (packetsResult.data ?? []).filter((p) => (p.program_id ?? SUMMER_PROGRAM) === selectedProgramId);
+    const ids = new Set(programPacketRows.map((p) => p.id));
+    setCoverageRows((coverageResult.data ?? []).filter((c) => ids.has(c.packet_id)).map(mapCoverage));
+    const packetRows = programPacketRows.map(mapPacket);
     const packetSummaries = await summarizePacketItems(packetRows.map((packet) => packet.id));
+    if (sequence !== loadSequence.current) return;
     setPackets(
       packetRows.map((packet) => {
         const summary = packetSummaries.get(packet.id);
@@ -311,7 +332,7 @@ export default function ShiurBuilderScreen() {
   function printPreviewPacket() {
     const printError = printPacket({
       chunks: selectedCategoryChunks,
-      meta: `${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`,
+      meta: `${selectedProgram.name} - ${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`,
       title: buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)
     });
     if (printError) setMessage(printError);
@@ -595,10 +616,11 @@ export default function ShiurBuilderScreen() {
     setSaving(true);
     setMessage("");
     const packetPayload = {
+      program_id: programsReady ? selectedProgramId : undefined,
       chaburah_id: managedChaburahId,
       title: title.trim(),
       week,
-      siman: "Siman 95 Part 1",
+      siman: selectedChunks[0]?.workbookTitle ?? selectedProgram.topic,
       status: "draft" as const,
       created_by: profile.id
     };
@@ -734,10 +756,11 @@ export default function ShiurBuilderScreen() {
     const packetResult = await supabase
       .from("review_packets")
       .insert({
+        program_id: programsReady ? selectedProgramId : undefined,
         chaburah_id: managedChaburahId,
         title: categoryTitle,
         week,
-        siman: "Siman 95 Part 1",
+        siman: selectedCategoryChunks[0]?.workbookTitle ?? selectedProgram.topic,
         status: "draft" as const,
         created_by: profile.id
       })
@@ -804,6 +827,7 @@ export default function ShiurBuilderScreen() {
 
   return (
     <Screen title="Shiur Builder" eyebrow="Rabbi Hub" onRefresh={loadBuilderData} refreshing={loading}>
+      <ProgramSelector manage disabled={saving || loading} unsaved={selectedIds.length > 0} />
       <StatusBanner message={message} tone={message.toLowerCase().includes("error") || message.toLowerCase().includes("unable") ? "error" : "info"} />
       <Card>
         <SectionTitle>Rabbi Tools</SectionTitle>
@@ -1683,7 +1707,7 @@ function groupChunksBySection(chunks: ContentChunk[]) {
 
   chunks.forEach((chunk) => {
     const sectionCode = sectionCodeForChunk(chunk);
-    const key = `${chunk.sourceType}-${sectionCode}`;
+    const key = sectionKeyForChunk(chunk);
     const existing = sectionMap.get(key);
     if (existing) {
       existing.chunks.push(chunk);
@@ -1733,12 +1757,12 @@ function groupSelectedChunksBySection(chunks: ContentChunk[]) {
 }
 
 function sectionKeyForChunk(chunk: ContentChunk) {
-  return `${chunk.sourceType}-${sectionCodeForChunk(chunk)}`;
+  return `${chunk.programId ?? SUMMER_PROGRAM}:${chunk.workbookTitle}:${chunk.sourceType}-${sectionCodeForChunk(chunk)}`;
 }
 
 function sectionTitleForChunk(chunk: ContentChunk) {
   const sectionCode = sectionCodeForChunk(chunk);
-  if (chunk.sourceType === "qa") return "Q&A - Siman 95";
+  if (chunk.sourceType === "qa") return `Q&A - ${chunk.workbookTitle}`;
   if (chunk.sourceType === "source") return chunk.sectionTitle || "Source Sheets";
   return `Section ${sectionCode} - ${chunk.sectionTitle}`;
 }
@@ -1758,6 +1782,7 @@ function sourceLabelForChunk(chunk: ContentChunk) {
 
 function mapContentChunk(row: any): ContentChunk {
   return {
+    programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
     chunkCode: row.chunk_code,
     sourceType: row.source_type,
@@ -1791,6 +1816,7 @@ function mapContentChunkLink(row: any): ContentChunkLink {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
     chaburahId: row.chaburah_id,
     title: row.title,

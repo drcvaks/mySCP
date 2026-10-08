@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { Card, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { ChallahImportPreview } from "../../src/shared/ChallahImportPreview";
 import { theme } from "../../src/shared/theme";
 import { shiurImportPreviewMarkdown, shiurImportPreviewTitle } from "../../src/data/shiurImportPreview";
 
@@ -10,12 +12,25 @@ type MarkdownBlock =
   | { kind: "table"; rows: string[][] };
 
 export default function ShiurImportPreviewScreen() {
+  const [workbook, setWorkbook] = useState<"challah" | "siman95">("challah");
+  return (
+    <Screen title="Shiur Import Preview" eyebrow="Rabbi Hub">
+      <Row>
+        <Button label="Winter 5787 - Challah" variant={workbook === "challah" ? "primary" : "secondary"} onPress={() => setWorkbook("challah")} />
+        <Button label="Siman 95 Preview" variant={workbook === "siman95" ? "primary" : "secondary"} onPress={() => setWorkbook("siman95")} />
+      </Row>
+      {workbook === "challah" ? <ChallahImportPreview /> : <Siman95Preview />}
+    </Screen>
+  );
+}
+
+function Siman95Preview() {
   const blocks = parseMarkdownPreview(shiurImportPreviewMarkdown);
   const tableCount = blocks.filter((block) => block.kind === "table").length;
   const footnoteCount = blocks.filter((block) => block.kind === "paragraph" && /^\[\^\d+\]:/.test(block.text)).length;
 
   return (
-    <Screen title="Shiur Import Preview" eyebrow="Rabbi Hub">
+    <>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 240 }}>
@@ -37,7 +52,7 @@ export default function ShiurImportPreviewScreen() {
           </View>
         </View>
       </Card>
-    </Screen>
+    </>
   );
 }
 

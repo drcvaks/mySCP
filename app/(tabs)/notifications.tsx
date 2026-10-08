@@ -5,6 +5,8 @@ import { Button, Card, FilterChip, MetaText, Pill, Row, Screen, SectionTitle, st
 import { NotificationItem } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAppState } from "../../src/state/AppState";
+import { SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
+import { confirmProgramSwitch } from "../../src/shared/ProgramSelector";
 
 type NotificationFilter = "unread" | "all";
 
@@ -17,14 +19,23 @@ export default function NotificationsScreen() {
     markNotificationRead,
     notificationUnreadCount,
     notifications,
-    refresh
+    refresh,
+    selectProgram,
+    selectedProgramId,
+    hasUnsavedProgramEdits
   } = useAppState();
   useRefreshOnFocus(refresh);
   const visibleNotifications = filter === "unread" ? notifications.filter((notification) => !notification.readAt) : notifications;
 
   async function openNotification(notification: NotificationItem) {
+    const programId = notification.type === "review_questions" || notification.type === "uploads"
+      ? notification.actionParams.program_id ?? SUMMER_PROGRAM : undefined;
+    if (programId && programId !== selectedProgramId && hasUnsavedProgramEdits && !(await confirmProgramSwitch())) return;
     if (!notification.readAt) await markNotificationRead(notification.id);
     if (notification.actionRoute) {
+      if (notification.type === "review_questions" || notification.type === "uploads") {
+        selectProgram(programId!);
+      }
       router.push({
         pathname: notification.actionRoute as never,
         params: notification.actionParams

@@ -5,6 +5,7 @@ import { fileCoverageDetailLabel, learningFileTypeLabel } from "../../src/shared
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -75,6 +76,7 @@ export default function DashboardScreen() {
 
   return (
     <Screen title="This Week in SCP" eyebrow="Practical Kashrus" onRefresh={refresh} refreshing={loading}>
+      <ProgramSelector />
       <Card>
         <Pill label="Current Topic" tone="primary" />
         <Text style={styles.sectionTitle}>Practical Kashrus: Kitchen, Food & Wine</Text>

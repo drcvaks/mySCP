@@ -14,8 +14,9 @@ import {
   styles
 } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
-import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAppState } from "../../src/state/AppState";
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 interface Feedback {
   isCorrect: boolean;
@@ -39,9 +40,15 @@ export default function ReviewScreen() {
     reviewQuestions,
     reviewSessions,
     saveReviewSession,
-    selectedChaburahId
+    selectedChaburahId,
+    selectedProgramId,
+    registerProgramEdits
   } = useAppState();
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
+  useEffect(() => {
+    registerProgramEdits("review-quiz", Object.keys(answers).length > 0 && !complete);
+    return () => registerProgramEdits("review-quiz", false);
+  }, [answers, complete, registerProgramEdits]);
   const visibleReviewQuestions = useMemo(
     () =>
       reviewQuestions.filter(
@@ -73,12 +80,14 @@ export default function ReviewScreen() {
     : 0;
   const weeks = useMemo(() => {
     const maxQuestionWeek = visibleReviewQuestions.reduce((max, question) => Math.max(max, question.week), 0);
-    return buildReviewWeeks(currentReviewWeek, maxQuestionWeek);
-  }, [currentReviewWeek, visibleReviewQuestions]);
+    return buildProgramWeeks(selectedProgramId, currentReviewWeek, maxQuestionWeek);
+  }, [currentReviewWeek, visibleReviewQuestions, selectedProgramId]);
 
   useEffect(() => {
     setSelectedWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
   }, [currentReviewWeek]);
+
+  useEffect(() => { reset(currentReviewWeek); }, [selectedProgramId, selectedChaburahId]);
 
   function reset(week: number | "all" = selectedWeek) {
     setSelectedWeek(week);
@@ -137,7 +146,7 @@ export default function ReviewScreen() {
   }
 
   if (complete) {
-    const percentage = Math.round((score / currentQuestions.length) * 100);
+    const percentage = currentQuestions.length ? Math.round((score / currentQuestions.length) * 100) : 0;
     return (
       <Screen
         title="Review Complete"
@@ -145,6 +154,7 @@ export default function ReviewScreen() {
         onRefresh={refresh}
         refreshing={loading}
       >
+        <ProgramSelector disabled={submitting} />
         <Card>
           <Pill label={percentage >= 80 ? "Strong result" : "Keep reviewing"} tone={percentage >= 80 ? "success" : "accent"} />
           <Text style={[styles.statNumber, { fontSize: 44 }]}>{percentage}%</Text>
@@ -175,6 +185,7 @@ export default function ReviewScreen() {
 
   return (
     <Screen title="Review Questions" eyebrow="Bechina prep" onRefresh={refresh} refreshing={loading}>
+      <ProgramSelector disabled={submitting} />
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
