@@ -13,13 +13,14 @@ import {
   styles
 } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, learningFileTypeLabel, visibilityLabel } from "../../src/shared/format";
-import { buildReviewWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
+import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { FileCoverage, FileType, LearningFile, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 import { PacketPreviewModal } from "../../src/shared/PacketPreviewModal";
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 type FileTypeFilter = FileType | "all" | "qa_packet";
 
@@ -34,7 +35,7 @@ export default function FilesScreen() {
   const [selectedCoverage, setSelectedCoverage] = useState<FileCoverage | "all">("all");
   const [selectedWeek, setSelectedWeek] = useState(fallbackCurrentReviewWeek);
   const [previewPacketId, setPreviewPacketId] = useState<string | null>(null);
-  const { chaburos, currentReviewWeek, learningFiles, loading, refresh, selectedChaburahId } = useAppState();
+  const { chaburos, currentReviewWeek, learningFiles, loading, refresh, selectedChaburahId, selectedProgramId, selectedProgram } = useAppState();
   const { profile } = useAuthState();
   const isGlobalAdmin = profile?.role === "global_admin";
   useRefreshOnFocus(refresh);
@@ -42,6 +43,7 @@ export default function FilesScreen() {
   useEffect(() => {
     setSelectedWeek((week) => (week === fallbackCurrentReviewWeek ? currentReviewWeek : week));
   }, [currentReviewWeek]);
+  useEffect(() => { setSelectedWeek(currentReviewWeek); setPreviewPacketId(null); }, [selectedProgramId, selectedChaburahId]);
 
   const visibleFiles = useMemo(
     () =>
@@ -52,7 +54,7 @@ export default function FilesScreen() {
   );
   const fileWeeks = useMemo(
     () =>
-      buildReviewWeeks(
+      buildProgramWeeks(selectedProgramId,
         currentReviewWeek,
         Math.max(
           0,
@@ -61,7 +63,7 @@ export default function FilesScreen() {
             .map((file) => file.week ?? 0)
         )
       ),
-    [currentReviewWeek, visibleFiles]
+    [currentReviewWeek, visibleFiles, selectedProgramId]
   );
 
   const filteredFiles = useMemo(() => {
@@ -102,6 +104,7 @@ export default function FilesScreen() {
 
   return (
     <Screen title="Files" eyebrow="Source sheets, review sheets, recordings" onRefresh={refresh} refreshing={loading}>
+      <ProgramSelector />
       <Card>
         <SectionTitle>Find Learning Materials</SectionTitle>
         <Text style={styles.muted}>Organized by title, topic, coverage, type, and scope.</Text>
@@ -218,6 +221,7 @@ export default function FilesScreen() {
                 <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
               )}
               <Pill label={`By ${uploaderLabel(file, isGlobalAdmin, profile)}`} />
+              <Pill label={selectedProgram.name} />
             </View>
 
           </Card>
