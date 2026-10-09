@@ -733,16 +733,16 @@ export default function ShiurBuilderScreen() {
         {
           text: "Publish",
           onPress: () => {
-            void publishConfirmedCategoryPacket();
+            void publishConfirmedCategoryPacket(packetId);
           }
         }
       ]);
       return;
     }
-    await publishConfirmedCategoryPacket();
+    await publishConfirmedCategoryPacket(packetId);
   }
 
-  async function publishConfirmedCategoryPacket() {
+  async function publishConfirmedCategoryPacket(sourceDraftId: string) {
     if (!profile?.id || !managedChaburahId) {
       setMessage("Choose or join a chaburah before publishing.");
       return;
@@ -789,17 +789,36 @@ export default function ShiurBuilderScreen() {
     }
 
     const { data, error } = await supabase.rpc("publish_review_packet", { target_packet_id: publishPacketId });
-    setSaving(false);
     if (error) {
+      setSaving(false);
       setMessage(error.message);
       return;
     }
+    // Retire only the chunks successfully published, preserving the other draft categories.
+    const cleanupResult = await supabase.from("review_packet_items").delete()
+      .eq("packet_id", sourceDraftId).in("chunk_id", categoryIds);
+    let cleanupError = cleanupResult.error;
+    if (!cleanupError) {
+      const remaining = await supabase.from("review_packet_items").select("id", { count: "exact", head: true })
+        .eq("packet_id", sourceDraftId);
+      cleanupError = remaining.error;
+      if (!cleanupError && remaining.count === 0) {
+        const deleted = await supabase.from("review_packets").delete().eq("id", sourceDraftId).eq("status", "draft");
+        cleanupError = deleted.error;
+        if (!cleanupError) setActivePacketId(null);
+      }
+    }
+    setSelectedIds((current) => current.filter((id) => !categoryIds.includes(id)));
+    clearPreview();
     if (data?.id) {
       await supabase.rpc("notify_learning_file", { target_file_id: data.id });
     }
+    setSaving(false);
     setActivePacketStatus("draft");
-    setMessage(`${activeCategoryConfig.label} packet published to Files.`);
     await Promise.all([loadBuilderData(), refresh()]);
+    setMessage(cleanupError
+      ? `${activeCategoryConfig.label} published to Files, but the saved draft could not be fully cleaned up: ${cleanupError.message}`
+      : `${activeCategoryConfig.label} published to Files and removed from the draft. Other draft categories are unchanged.`);
   }
 
   if (!canUseBuilder) {
@@ -1323,7 +1342,7 @@ function DocumentChunk({
       <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunk.chunkCode}</MetaText>
       <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text>
       {showCoverageState ? <CoverageLine coverage={coverage} showEmpty /> : null}
-      {chunk.contentDocument ? <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} /> : blocks.map((block, blockIndex) => {
+      {chunk.contentDocument ? <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} /> : blocks.map((block, blockIndex) => {
         if (block.kind === "question") {
           return (
             <View key={`${chunk.id}-${blockIndex}`} style={localStyles.documentQuestionBlock}>
@@ -1358,6 +1377,7 @@ function DocumentChunk({
           return <DocumentFootnotes key={`${chunk.id}-${blockIndex}`} notes={block.notes} />;
         }
         if (block.kind === "image") {
+          if (chunk.sourceType === "source" && Platform.OS === "web") return <ImportDocument key={`${chunk.id}-${blockIndex}`} compactSources blocks={[{ kind: "image", paragraph: blockIndex, uri: block.uri, alt: block.alt }]} />;
           return <DocumentImage key={`${chunk.id}-${blockIndex}`} alt={block.alt} uri={block.uri} />;
         }
         return (

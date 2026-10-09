@@ -203,7 +203,7 @@ export function ChallahImportPreview() {
                     <MetaText>{c.code} - {c.sourceType === "sources" ? `PDF page ${c.pdfPage}` : `Paragraphs ${c.paragraphStart}-${c.paragraphEnd}`}</MetaText>
                     <SectionTitle>{c.title}</SectionTitle>
                   </View>
-                  <ImportDocument blocks={c.blocks} footnotes={c.footnotes} />
+                  <ImportDocument blocks={c.blocks} footnotes={c.footnotes} compactSources={c.sourceType === "sources"} />
                 </View>
               ))}
             </ScrollView>

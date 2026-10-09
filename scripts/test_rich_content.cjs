@@ -91,6 +91,12 @@ async function main() {
     chunkCode: "95-B1", chunkTitle: "Summer", sourceType: "notes", contentMarkdown: "Original Summer text"
   }] });
   assert.ok(legacy.includes("Original Summer text") && !legacy.includes("rich-document"));
+  const sourcePrint = print.buildPrintablePacketHtml({ title: "Source Sheets", chunks: [{
+    chunkCode: "HC1-S11", chunkTitle: "Source 11", sourceType: "source", contentMarkdown: "Original source image content"
+  }] });
+  assert.ok(!sourcePrint.includes("HC1-S11") && !sourcePrint.includes("<h2>Source 11</h2>"));
+  assert.ok(sourcePrint.includes("Original source image content"));
+  assert.ok(legacy.includes("95-B1") && legacy.includes("<h2>Summer</h2>"), "Keep headings for notes and Q&A");
   fs.writeFileSync("tmp/shiur-import-preview/challah-part1/import/print-preview.html",
     print.buildPrintablePacketHtml({ title: "Challah Part 1 print review", chunks: source.chunks.map((c, i) => ({
       chunkCode: c.code, chunkTitle: c.title, sourceType: c.sourceType === "sources" ? "source" : c.sourceType,

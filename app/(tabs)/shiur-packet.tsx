@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
 import { supabase } from "../../src/lib/supabase";
@@ -110,7 +110,7 @@ export default function ShiurPacketScreen() {
 }
 
 function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
-  if (chunk.contentDocument) return <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} />;
+  if (chunk.contentDocument) return <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} />;
   const blocks = chunk.contentMarkdown
     .split(/\n\s*\n/)
     .map((block) => block.replace(/\r/g, "").trim())
@@ -121,6 +121,7 @@ function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
       {blocks.map((block, index) => {
         const imageMatch = block.match(/^!\[(.*?)\]\((data:image\/[^)]+)\)$/);
         if (imageMatch) {
+          if (chunk.sourceType === "source" && Platform.OS === "web") return <ImportDocument key={`${chunk.id}-${index}`} compactSources blocks={[{ kind: "image", paragraph: index, uri: imageMatch[2], alt: imageMatch[1] }]} />;
           return <PacketImage key={`${chunk.id}-${index}`} alt={imageMatch[1]} uri={imageMatch[2]} />;
         }
         return (

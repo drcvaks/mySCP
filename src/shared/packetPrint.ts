@@ -1,6 +1,7 @@
 import { ContentChunk } from "./types";
 import { renderRichDocument } from "./richDocumentHtml";
 import { resolveDocumentAssets } from "./documentAssets";
+import { compactSourceDocument, compactSourceImage } from "./sourceSheetLayout";
 
 export interface PrintablePacket {
   chunks: ContentChunk[];
@@ -17,8 +18,19 @@ export async function printPacket(packet: PrintablePacket): Promise<string | nul
   try {
     const docs = await resolveDocumentAssets(packet.chunks.flatMap((chunk) => chunk.contentDocument ? [chunk.contentDocument] : []));
     let index = 0;
-    resolvedPacket = { ...packet, chunks: packet.chunks.map((chunk) => chunk.contentDocument
-      ? { ...chunk, contentDocument: docs[index++] } : chunk) };
+    const resolvedChunks = packet.chunks.map((chunk) => chunk.contentDocument
+      ? { ...chunk, contentDocument: docs[index++] } : chunk);
+    resolvedPacket = { ...packet, chunks: await Promise.all(resolvedChunks.map(async (chunk) => {
+      if (chunk.sourceType !== "source") return chunk;
+      if (chunk.contentDocument) return { ...chunk, contentDocument: await compactSourceDocument(chunk.contentDocument) };
+      const images = [...chunk.contentMarkdown.matchAll(/!\[(.*?)\]\((data:image\/[^)]+)\)/g)];
+      let contentMarkdown = chunk.contentMarkdown;
+      for (const image of images) {
+        const compact = await compactSourceImage(image[2]);
+        if (compact) contentMarkdown = contentMarkdown.replace(image[0], `![${image[1]}](${compact.uri})`);
+      }
+      return { ...chunk, contentMarkdown };
+    })) };
   } catch {
     return "Unable to load official images for printing. Please refresh and try again.";
   }
@@ -109,6 +121,8 @@ export function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacke
       font-size: 9pt;
       margin-bottom: 4px;
     }
+    .source-sheet { margin-bottom: 12px; }
+    .source-sheet h2 { font-size: 12pt; margin-bottom: 4px; }
     h2 {
       font-family: Arial, Helvetica, sans-serif;
       font-size: 15pt;
@@ -178,8 +192,8 @@ export function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacke
     @media print {
       .screen-only { display: none; }
       .chunk { break-inside: auto; }
-      .source-sheet img { max-height: 8in; width: auto !important; }
-      .source-sheet + .source-sheet { break-before: page; }
+      .source-sheet { break-inside: avoid; }
+      .source-sheet img { max-height: 8in; max-width: 100% !important; width: auto !important; }
     }
   </style>
 </head>
@@ -196,8 +210,8 @@ export function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacke
 
 function renderChunk(chunk: ContentChunk, index: number) {
   return `<section class="chunk ${chunk.sourceType === "source" ? "source-sheet" : ""}">
-  <div class="chunk-code">${index + 1}. ${escapeHtml(chunk.chunkCode)}</div>
-  <h2>${escapeHtml(chunk.chunkTitle)}</h2>
+  ${chunk.sourceType === "source" ? "" : `<div class="chunk-code">${index + 1}. ${escapeHtml(chunk.chunkCode)}</div>
+  <h2>${escapeHtml(chunk.chunkTitle)}</h2>`}
   ${chunk.contentDocument ? renderRichDocument(chunk.contentDocument) : renderMarkdownBlocks(chunk.contentMarkdown)}
 </section>`;
 }

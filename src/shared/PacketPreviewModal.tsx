@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { formatSupabaseError } from "../lib/errors";
 import { supabase } from "../lib/supabase";
 import { ContentChunk, ReviewPacket } from "./types";
@@ -116,7 +116,7 @@ export function PacketPreviewModal({
 }
 
 function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
-  if (chunk.contentDocument) return <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} />;
+  if (chunk.contentDocument) return <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} />;
   const blocks = chunk.contentMarkdown
     .split(/\n\s*\n/)
     .map((block) => block.replace(/\r/g, "").trim())
@@ -127,6 +127,7 @@ function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
       {blocks.map((block, index) => {
         const imageMatch = block.match(/^!\[(.*?)\]\((data:image\/[^)]+)\)$/);
         if (imageMatch) {
+          if (chunk.sourceType === "source" && Platform.OS === "web") return <ImportDocument key={`${chunk.id}-${index}`} compactSources blocks={[{ kind: "image", paragraph: index, uri: imageMatch[2], alt: imageMatch[1] }]} />;
           return <PacketImage key={`${chunk.id}-${index}`} alt={imageMatch[1]} uri={imageMatch[2]} />;
         }
         return (

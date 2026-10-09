@@ -3,6 +3,7 @@ import { Image, Linking, Platform, StyleSheet, Text, View } from "react-native";
 import { isolateImportSpans, paragraphLayout, paragraphSpans, RichContentDocument, safeImageUri, safeLinkUri } from "./documentContent";
 import { resolveDocumentAssets } from "./documentAssets";
 import { renderRichDocument } from "./richDocumentHtml";
+import { compactSourceDocument } from "./sourceSheetLayout";
 
 export interface ImportSpan {
   text: string;
@@ -64,7 +65,7 @@ export { isolateImportSpans } from "./documentContent";
 
 const emptyFootnotes: ImportChunk["footnotes"] = [];
 
-export function ImportDocument({ blocks, footnotes = emptyFootnotes }: { blocks: ImportBlock[]; footnotes?: ImportChunk["footnotes"] }) {
+export function ImportDocument({ blocks, footnotes = emptyFootnotes, compactSources = false }: { blocks: ImportBlock[]; footnotes?: ImportChunk["footnotes"]; compactSources?: boolean }) {
   const document = useMemo<RichContentDocument>(() => ({ version: 1, blocks, footnotes }), [blocks, footnotes]);
   const [resolved, setResolved] = useState<RichContentDocument | null>(null);
   const [error, setError] = useState("");
@@ -72,14 +73,17 @@ export function ImportDocument({ blocks, footnotes = emptyFootnotes }: { blocks:
     let active = true;
     setResolved(null);
     setError("");
-    void resolveDocumentAssets([document]).then(([doc]) => { if (active) setResolved(doc); })
+    void resolveDocumentAssets([document]).then(async ([doc]) => {
+      const displayed = compactSources ? await compactSourceDocument(doc) : doc;
+      if (active) setResolved(displayed);
+    })
       .catch(() => { if (active) setError("Unable to load official images. Please refresh and try again."); });
     return () => { active = false; };
-  }, [document]);
+  }, [document, compactSources]);
   if (error) return <Text>{error}</Text>;
   if (!resolved) return <Text>Loading material...</Text>;
   if (Platform.OS === "web") {
-    return <View style={s.page}><div style={{ width: "100%", minWidth: 0, fontSize: 16 }}
+    return <View style={[s.page, compactSources && { padding: 0 }]}><div style={{ width: "100%", minWidth: 0, fontSize: 16 }}
       dangerouslySetInnerHTML={{ __html: renderRichDocument(resolved) }} /></View>;
   }
   return (
