@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Redirect, Tabs } from "expo-router";
-import { ActivityIndicator, Platform, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { SidebarItem, SidebarNavigation, isSidebarRoute } from "../../src/shared/SidebarNavigation";
 import { isAdmin, isGlobalAdmin, isRabbi } from "../../src/shared/permissions";
 import { Button } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
@@ -103,6 +105,9 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => leftRailNav
+        ? <SidebarTabBar {...props} chaburah={selectedChaburah?.name} width={width < 1100 ? 224 : 248} />
+        : <BottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveBackgroundColor: leftRailNav ? undefined : theme.colors.primarySoft,
@@ -205,4 +210,16 @@ export default function TabLayout() {
       <Tabs.Screen name="shiur-packet" options={{ title: "Review Packet", href: null }} />
     </Tabs>
   );
+}
+
+function SidebarTabBar({ state, descriptors, navigation, chaburah, width }: BottomTabBarProps & { chaburah?: string; width: number }) {
+  const items: SidebarItem[] = state.routes.flatMap((route) => {
+    const options = descriptors[route.key].options;
+    if (!isSidebarRoute(route.name) || StyleSheet.flatten(options.tabBarItemStyle)?.display === "none") return [];
+    return [{ name: route.name, label: options.title ?? route.name, href: `/${route.name}` as SidebarItem["href"],
+      onSelect: () => !navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true }).defaultPrevented }];
+  });
+  const active = state.routes[state.index].name;
+  const selected = ["shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(active) ? "rabbi-hub" : active;
+  return <SidebarNavigation items={items} selected={selected} chaburah={chaburah} width={width} />;
 }
