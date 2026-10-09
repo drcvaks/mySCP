@@ -28,6 +28,8 @@ const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
 type LibraryWeek = number | "all";
 type LibraryKind = "all" | "model";
+import { WorkflowCard as RabbiToolCard } from "../../src/shared/WorkflowCard";
+
 type RabbiHubTool = "ask-rav" | "shiur-builder" | "quick-review";
 
 export default function RabbiHubScreen() {
@@ -508,7 +510,7 @@ export default function RabbiHubScreen() {
     <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
       <ProgramSelector manage disabled={saving} unsaved={!!prompt.trim() || !!editingQuestionId} />
       <Card>
-        <SectionTitle>Rabbi Tools</SectionTitle>
+        <SectionTitle icon="library-outline">Rabbi Tools</SectionTitle>
         <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
         <View style={localStyles.toolCards}>
           {askRavEnabled ? (
@@ -1299,33 +1301,6 @@ export default function RabbiHubScreen() {
   );
 }
 
-function RabbiToolCard({
-  active,
-  count,
-  label,
-  meta,
-  onPress
-}: {
-  active: boolean;
-  count?: number;
-  label: string;
-  meta: string;
-  onPress: () => void;
-}) {
-  return (
-    <View style={[localStyles.toolCard, active && localStyles.toolCardActive]}>
-      <Row>
-        <View style={{ flex: 1, minWidth: 180 }}>
-          <Text style={[localStyles.toolCardTitle, active && localStyles.toolCardTitleActive]}>{label}</Text>
-          <Text style={[styles.muted, active && localStyles.toolCardMetaActive]}>{meta}</Text>
-        </View>
-        {count !== undefined ? <Pill label={`${count}`} tone={count > 0 ? "accent" : "neutral"} /> : null}
-      </Row>
-      <Button label={active ? "Selected" : "Open"} onPress={onPress} variant={active ? "primary" : "secondary"} />
-    </View>
-  );
-}
-
 function ReviewQuestionManagerRow({
   compact = false,
   index,
@@ -1387,32 +1362,6 @@ const localStyles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: theme.spacing.md
-  },
-  toolCard: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    flexBasis: 260,
-    flexGrow: 1,
-    gap: theme.spacing.md,
-    padding: theme.spacing.md
-  },
-  toolCardActive: {
-    backgroundColor: theme.colors.primarySoft,
-    borderColor: theme.colors.primary
-  },
-  toolCardTitle: {
-    color: theme.colors.ink,
-    fontSize: 16,
-    fontWeight: "900",
-    lineHeight: 21
-  },
-  toolCardTitleActive: {
-    color: theme.colors.primary
-  },
-  toolCardMetaActive: {
-    color: theme.colors.ink
   },
   compactQuestionRow: {
     borderColor: theme.colors.border,

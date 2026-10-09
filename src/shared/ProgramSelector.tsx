@@ -80,7 +80,7 @@ export function ProgramControls({ state, canManage, unsaved = false, disabled = 
       setSaving(false);
     }
   }
-  return <View style={{ gap: 8, paddingVertical: 8 }}>
+  return <View style={{ gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#E2E8F0", paddingBottom: 14 }}>
     <MetaText>Learning Program</MetaText>
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
       {programs.filter((p) => !p.archived || showPast || p.id === selectedProgramId).map((p) =>

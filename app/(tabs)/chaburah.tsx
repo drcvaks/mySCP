@@ -12,6 +12,7 @@ import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { Announcement, DiscussionMessage } from "../../src/shared/types";
+import { Ionicons } from "@expo/vector-icons";
 
 type MyChaburahSection = "announcements" | "discussion" | "members" | "files" | "askRav";
 type MessagePostMode = "announcement" | "discussion";
@@ -331,7 +332,7 @@ export default function MyChaburahScreen() {
       <ProgramSelector />
       <Card>
         <Row>
-          <View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.sectionTitle}>{chaburah?.name}</Text>
             <Text style={styles.muted}>{chaburah?.rabbiName}</Text>
           </View>
@@ -343,12 +344,13 @@ export default function MyChaburahScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Index</SectionTitle>
+        <SectionTitle icon="compass-outline">Index</SectionTitle>
         <View style={localStyles.indexGrid}>
           {indexItems
             .filter((item) => item.show)
             .map((item) => (
               <Pressable key={item.key} accessibilityRole="button" onPress={() => jumpToSection(item.key)} style={localStyles.indexButton}>
+                <Ionicons name={item.key === "members" ? "people-outline" : item.key === "files" ? "folder-open-outline" : "chatbubbles-outline"} size={17} color="#3F6F9D" />
                 <Text style={localStyles.indexButtonText}>{item.label}</Text>
                 {typeof item.count === "number" ? <Text style={localStyles.indexCount}>{item.count}</Text> : null}
               </Pressable>
@@ -360,7 +362,7 @@ export default function MyChaburahScreen() {
         <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Members</SectionTitle>
+            <SectionTitle icon="people-outline">Members</SectionTitle>
             <Text style={styles.muted}>Active people in this chaburah.</Text>
           </View>
           <Pill label={`${activeMembers.length} active`} tone="success" />
@@ -390,7 +392,7 @@ export default function MyChaburahScreen() {
         <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Chaburah Messages</SectionTitle>
+            <SectionTitle icon="chatbubbles-outline">Chaburah Messages</SectionTitle>
             <Text style={styles.muted}>
               Official announcements and chaburah discussion in one place.
             </Text>
@@ -602,7 +604,7 @@ export default function MyChaburahScreen() {
         <Card>
         <View style={localStyles.filesHeader}>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Recent Files</SectionTitle>
+            <SectionTitle icon="folder-open-outline">Recent Files</SectionTitle>
             <Text style={styles.muted}>Newest source sheets, review sheets, recordings, and links.</Text>
           </View>
           <View style={localStyles.viewAllFilesAction}>
@@ -891,7 +893,7 @@ const localStyles = StyleSheet.create({
   },
   indexButton: {
     alignItems: "center",
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: "#F0F4FA",
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
     borderWidth: 1,

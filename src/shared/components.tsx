@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { globalStyles, theme } from "./theme";
 import { useAuthState } from "../state/AuthState";
 import { useAppState } from "../state/AppState";
+import { PageHeading } from "./PageHeading";
 
 interface ScreenProps {
   title: string;
@@ -75,8 +76,9 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   return (
     <SafeAreaView style={globalStyles.screen} edges={["top"]}>
       <View style={[styles.headerShell, width >= 768 && styles.wideHeaderShell]}>
-        <View style={styles.screenHeader}>
-          {showDrawerButton ? (
+        <View style={[styles.screenHeader, width >= 768 && styles.wideHeaderContent]}>
+          <PageHeading title={title} eyebrow={eyebrow} pathname={pathname} onRefresh={onRefresh} refreshing={refreshing}
+            navigationButton={showDrawerButton ? (
             <Pressable
               accessibilityLabel="Open navigation menu"
               accessibilityRole="button"
@@ -85,22 +87,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
             >
               <Ionicons name="menu" color={theme.colors.ink} size={28} />
             </Pressable>
-          ) : null}
-          <View style={styles.titleBlock}>
-            {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-            <Text style={globalStyles.title}>{title}</Text>
-          </View>
-          {onRefresh ? (
-            <Pressable
-              accessibilityLabel="Refresh"
-              accessibilityRole="button"
-              disabled={refreshing}
-              onPress={onRefresh}
-              style={[styles.menuButton, refreshing && styles.disabledButton]}
-            >
-              <Ionicons name="refresh" color={refreshing ? theme.colors.muted : theme.colors.primary} size={22} />
-            </Pressable>
-          ) : null}
+          ) : null} />
         </View>
       </View>
       <ScrollView
@@ -377,8 +364,11 @@ export function Button({
   );
 }
 
-export function SectionTitle({ children }: { children: ReactNode }) {
-  return <Text style={styles.sectionTitle}>{children}</Text>;
+export function SectionTitle({ children, icon }: { children: ReactNode; icon?: keyof typeof Ionicons.glyphMap }) {
+  return icon ? <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 }}>
+    <Ionicons name={icon} color="#3F6F9D" size={18} />
+    <Text style={[styles.sectionTitle, { flexShrink: 1 }]}>{children}</Text>
+  </View> : <Text style={styles.sectionTitle}>{children}</Text>;
 }
 
 export const styles = StyleSheet.create({
@@ -397,25 +387,26 @@ export const styles = StyleSheet.create({
   },
   headerShell: {
     alignItems: "center",
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
     borderBottomColor: theme.colors.border,
     borderBottomWidth: 1,
-    padding: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
+    paddingVertical: 12,
     width: "100%",
     zIndex: 10
   },
   wideHeaderShell: {
     alignSelf: "center",
-    paddingHorizontal: theme.spacing.lg
+    paddingHorizontal: 0
   },
   screenHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
     gap: theme.spacing.sm,
     maxWidth: 1040,
+    paddingHorizontal: theme.spacing.md,
     width: "100%"
   },
+  wideHeaderContent: { paddingHorizontal: theme.spacing.lg },
   titleBlock: {
     flex: 1,
     gap: 2
@@ -502,8 +493,8 @@ export const styles = StyleSheet.create({
     padding: theme.spacing.md,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6
+    shadowOpacity: 0.025,
+    shadowRadius: 3
   },
   compactCard: {
     backgroundColor: theme.colors.surface,
@@ -514,8 +505,8 @@ export const styles = StyleSheet.create({
     padding: theme.spacing.md,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 5
+    shadowOpacity: 0.02,
+    shadowRadius: 3
   },
   row: {
     alignItems: "center",
@@ -563,13 +554,13 @@ export const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs
   },
   filterChipSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB"
   },
   filterChipText: {
     color: theme.colors.ink,
     fontSize: 14,
-    fontWeight: "800"
+    fontWeight: "600"
   },
   filterChipTextSelected: {
     color: "#FFFFFF"
@@ -662,16 +653,18 @@ export const styles = StyleSheet.create({
   },
   button: {
     alignItems: "center",
-    backgroundColor: theme.colors.primary,
+    backgroundColor: "#2563EB",
     borderRadius: theme.radius.sm,
     alignSelf: "stretch",
     justifyContent: "center",
-    minHeight: 52,
+    minHeight: 44,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: 13
+    paddingVertical: 10
   },
   secondaryButton: {
-    backgroundColor: theme.colors.primarySoft
+    backgroundColor: "#F0F4FA",
+    borderWidth: 1,
+    borderColor: "#DCE5F1"
   },
   ghostButton: {
     backgroundColor: "transparent",
@@ -686,15 +679,15 @@ export const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "800",
-    lineHeight: 21,
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 20,
     textAlign: "center"
   },
   betaNotice: {
     alignItems: "center",
-    backgroundColor: theme.colors.accentSoft,
-    borderColor: "#F2D37A",
+    backgroundColor: "#FFFAED",
+    borderColor: "#F1E3B4",
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     flexDirection: "row",
@@ -705,9 +698,9 @@ export const styles = StyleSheet.create({
   betaNoticeText: {
     color: theme.colors.primary,
     flex: 1,
-    fontSize: 14,
-    fontWeight: "800",
-    lineHeight: 20
+    fontSize: 12,
+    fontWeight: "500",
+    lineHeight: 18
   },
   secondaryButtonText: {
     color: theme.colors.primary
@@ -717,9 +710,9 @@ export const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: theme.colors.ink,
-    fontSize: 18,
-    fontWeight: "900",
-    lineHeight: 24
+    fontSize: 17,
+    fontWeight: "700",
+    lineHeight: 23
   },
   body: {
     color: theme.colors.ink,

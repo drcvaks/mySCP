@@ -27,6 +27,7 @@ import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { belongsToProgram, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
 import { readRichContent } from "../../src/shared/documentContent";
 import { ImportDocument } from "../../src/shared/ImportDocument";
+import { WorkflowCard as BuilderToolCard } from "../../src/shared/WorkflowCard";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -851,7 +852,7 @@ export default function ShiurBuilderScreen() {
       <ProgramSelector manage disabled={saving || loading} unsaved={selectedIds.length > 0} />
       <StatusBanner message={message} tone={message.toLowerCase().includes("error") || message.toLowerCase().includes("unable") ? "error" : "info"} />
       <Card>
-        <SectionTitle>Rabbi Tools</SectionTitle>
+        <SectionTitle icon="library-outline">Rabbi Tools</SectionTitle>
         <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
         <View style={localStyles.toolCards}>
           {askRavEnabled ? (
@@ -1672,33 +1673,6 @@ function PacketGroup({
   );
 }
 
-function BuilderToolCard({
-  active = false,
-  count,
-  label,
-  meta,
-  onPress
-}: {
-  active?: boolean;
-  count?: number;
-  label: string;
-  meta: string;
-  onPress: () => void;
-}) {
-  return (
-    <View style={[localStyles.toolCard, active && localStyles.toolCardActive]}>
-      <Row>
-        <View style={{ flex: 1, minWidth: 180 }}>
-          <Text style={[localStyles.toolCardTitle, active && localStyles.toolCardTitleActive]}>{label}</Text>
-          <Text style={[styles.muted, active && localStyles.toolCardMetaActive]}>{meta}</Text>
-        </View>
-        {count !== undefined ? <Pill label={`${count}`} tone={count > 0 ? "accent" : "neutral"} /> : null}
-      </Row>
-      <Button label={active ? "Selected" : "Open"} onPress={onPress} variant={active ? "primary" : "secondary"} />
-    </View>
-  );
-}
-
 function CoverageLine({ coverage, showEmpty = false }: { coverage: ReviewPacketCoverage[]; showEmpty?: boolean }) {
   if (coverage.length === 0) {
     return showEmpty ? (
@@ -1876,32 +1850,6 @@ const localStyles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: theme.spacing.md
-  },
-  toolCard: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    flexBasis: 260,
-    flexGrow: 1,
-    gap: theme.spacing.md,
-    padding: theme.spacing.md
-  },
-  toolCardActive: {
-    backgroundColor: theme.colors.primarySoft,
-    borderColor: theme.colors.primary
-  },
-  toolCardTitle: {
-    color: theme.colors.ink,
-    fontSize: 16,
-    fontWeight: "900",
-    lineHeight: 21
-  },
-  toolCardTitleActive: {
-    color: theme.colors.primary
-  },
-  toolCardMetaActive: {
-    color: theme.colors.ink
   },
   workspace: {
     alignItems: "stretch",

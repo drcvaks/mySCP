@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Href, Link } from "expo-router";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-const navigationItems = {
+export const navigationItems = {
   dashboard: { icon: "speedometer", color: "#2563EB", tint: "#EAF1FF", group: "Learning" },
   chaburah: { icon: "people", color: "#087E8B", tint: "#E6F5F5", group: "Learning" },
   review: { icon: "checkmark-circle", color: "#22834A", tint: "#EAF7EE", group: "Learning" },
