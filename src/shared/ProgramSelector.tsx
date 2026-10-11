@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 import { useAppState } from "../state/AppState";
 import { useAuthState } from "../state/AuthState";
+import { rolloutProgramSelection, selectablePrograms } from "./learningPrograms";
 import { Button, FilterChip, FormInput, MetaText, Row, styles } from "./components";
 
 type SelectorProps = {
@@ -54,6 +55,7 @@ export function ProgramControls({ state, canManage, unsaved = false, disabled = 
   const [saving, setSaving] = useState(false);
   useEffect(() => { setWeek(String(currentReviewWeek)); setEditingWeek(false); setMessage(""); }, [selectedProgramId, currentReviewWeek, selectedChaburahId]);
   const chaburah = chaburos.find((c) => c.id === selectedChaburahId);
+  const availablePrograms = selectablePrograms(programs);
 
   async function choose(id: string) {
     if (disabled || saving || id === selectedProgramId) return;
@@ -83,15 +85,15 @@ export function ProgramControls({ state, canManage, unsaved = false, disabled = 
   return <View style={{ gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#E2E8F0", paddingBottom: 14 }}>
     <MetaText>Learning Program</MetaText>
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-      {programs.filter((p) => !p.archived || showPast || p.id === selectedProgramId).map((p) =>
+      {availablePrograms.filter((p) => !p.archived || showPast || p.id === selectedProgramId).map((p) =>
         <FilterChip key={p.id} label={p.name} selected={p.id === selectedProgramId} onPress={() => choose(p.id)} />)}
-      {programs.some((p) => p.archived) ? <FilterChip label="Past Programs" selected={showPast} onPress={() => setShowPast(!showPast)} /> : null}
+      {availablePrograms.some((p) => p.archived) ? <FilterChip label="Past Programs" selected={showPast} onPress={() => setShowPast(!showPast)} /> : null}
     </View>
     <MetaText>{selectedProgram.topic} - Current Week {currentReviewWeek}</MetaText>
     {canManage && programsReady ? <Row>
       <Button label={editingWeek ? "Cancel Week Change" : "Change Current Week"} variant="secondary"
         disabled={disabled || saving} onPress={() => setEditingWeek(!editingWeek)} />
-      {chaburah?.defaultProgramId !== selectedProgramId ? <View style={{ maxWidth: "100%", flexShrink: 1 }}>
+      {rolloutProgramSelection(chaburah?.defaultProgramId, programs, programsReady) !== selectedProgramId ? <View style={{ maxWidth: "100%", flexShrink: 1 }}>
         <Button label={`Set ${selectedProgram.name} as Chaburah Default`} variant="secondary" disabled={disabled || saving}
           onPress={() => { void setDefaultProgram(); }} />
       </View> : null}

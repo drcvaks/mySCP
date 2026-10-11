@@ -7,6 +7,7 @@ import { PageHeading } from "../src/shared/PageHeading";
 import { WorkflowCard } from "../src/shared/WorkflowCard";
 import { Button, Card, FilterChip, MetaText, Pill, Row, SectionTitle, styles } from "../src/shared/components";
 import { globalStyles } from "../src/shared/theme";
+import { WINTER_ONLY_ROLLOUT } from "../src/shared/learningPrograms";
 
 const labels: [SidebarRoute, string][] = [
   ["dashboard", "Dashboard"], ["chaburah", "My Chaburah"], ["review", "Review"], ["files", "Files"],
@@ -36,9 +37,9 @@ export default function NavigationPreview() {
         </View>
         <View style={{ gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#E2E8F0", paddingBottom: 14 }}>
           <MetaText>Learning Program</MetaText><View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip label="Summer 5786" selected={!winter} onPress={() => setWinter(false)} />
-            <FilterChip label="Winter 5787" selected={winter} onPress={() => setWinter(true)} />
-          </View><MetaText>{winter ? "Challah & Terumos/Maasros" : "Nat Bar Nat"} - Current Week 1</MetaText>
+            {!WINTER_ONLY_ROLLOUT ? <FilterChip label="Summer 5786" selected={!winter} onPress={() => setWinter(false)} /> : null}
+            <FilterChip label="Winter 5787" selected={WINTER_ONLY_ROLLOUT || winter} onPress={() => setWinter(true)} />
+          </View><MetaText>{WINTER_ONLY_ROLLOUT || winter ? "Challah & Terumos/Maasros" : "Nat Bar Nat"} - Current Week 1</MetaText>
         </View>
         {selected === "chaburah" ? <>
           <Card><Row><View style={{ flex: 1, minWidth: 0 }}><SectionTitle>Preview Chaburah</SectionTitle>

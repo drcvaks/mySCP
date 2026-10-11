@@ -14,7 +14,7 @@ import {
   ReviewSession
 } from "../shared/types";
 import { fallbackCurrentReviewWeek } from "../shared/reviewWeeks";
-import { belongsToProgram, LearningProgram, legacySummerProgram, SUMMER_PROGRAM } from "../shared/learningPrograms";
+import { belongsToProgram, LearningProgram, legacySummerProgram, rolloutProgramSelection, selectablePrograms, SUMMER_PROGRAM } from "../shared/learningPrograms";
 import { useAuthState } from "./AuthState";
 
 interface ReviewFeedback {
@@ -102,8 +102,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [programWeeks, setProgramWeeks] = useState<{ chaburah_id: string; program_id: string; current_week: number }[]>([]);
   const [programSelection, setProgramSelection] = useState<{ userId?: string; chaburahId?: string; id: string } | null>(null);
   const currentChaburah = chaburos.find((c) => c.id === profile?.chaburahId);
-  const selectedProgramId = programSelection && programSelection.userId === session?.user.id && programSelection.chaburahId === profile?.chaburahId
+  const requestedProgramId = programSelection && programSelection.userId === session?.user.id && programSelection.chaburahId === profile?.chaburahId
     ? programSelection.id : currentChaburah?.defaultProgramId ?? SUMMER_PROGRAM;
+  const selectedProgramId = rolloutProgramSelection(requestedProgramId, programs, programsReady);
   const selectedProgram = programs.find((p) => p.id === selectedProgramId) ?? legacySummerProgram;
   const activeReviewWeek = programWeeks.find((p) => p.chaburah_id === profile?.chaburahId && p.program_id === selectedProgramId)?.current_week
     ?? (selectedProgramId === SUMMER_PROGRAM ? currentReviewWeek : selectedProgram.defaultWeek);
@@ -430,7 +431,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       selectedProgram,
       selectedProgramId,
       selectProgram: (id) => {
-        if (!programs.some((p) => p.id === id)) return;
+        if (!selectablePrograms(programs).some((p) => p.id === id)) return;
         setProgramSelection({ id, userId: session?.user.id, chaburahId: profile?.chaburahId });
       },
       makeProgramDefault: async () => {

@@ -1,12 +1,23 @@
 # Summer and Winter learning programs
 
+## Winter rollout
+
+`WINTER_ONLY_ROLLOUT` in `src/shared/learningPrograms.ts` is temporarily enabled.
+When Winter is installed, only Winter 5787 appears in the selector and it is selected
+on sign-in/reload even for chaburos whose stored default is Summer. Its own week counter is used.
+Summer data, labels, counters and database defaults are not altered or deleted.
+No new SQL is required. Older mobile builds must be updated to receive this behavior.
+
+To bring back both buttons, disable this flag and redeploy. Normal chaburah defaults
+then apply again; set those to Winter before restoring switching if Winter should remain the default.
+
 ## Apply
 
 1. Back up the database using your normal Supabase backup process.
 2. Apply supabase/migrations/202610070001_learning_programs.sql once, after the existing migrations through 202608210003.
    The complete file can be run in the Supabase SQL Editor. It runs in a transaction.
 3. Deploy this app version to Web and distribute updated Android/iOS builds.
-4. Refresh the app. Select Summer 5786 or Winter 5787 in Files, Review, Rabbi Hub or Shiur Builder.
+4. Refresh the app. During the Winter rollout, Winter 5787 is selected in Files, Review, Rabbi Hub and Shiur Builder.
 
 This migration has been tested in an isolated PostgreSQL instance. It has not been applied to the live Supabase project.
 Do not rerun the migration after it succeeds: it creates new tables, columns and functions.
@@ -25,7 +36,7 @@ Do not rerun the migration after it succeeds: it creates new tables, columns and
 ## Current behavior
 
 - Selecting a program is shared across the current user's app navigation. It does not advance a counter or change the chaburah default.
-- Reloading/signing in uses the chaburah's configured default program.
+- Reloading/signing in uses Winter during the rollout; otherwise it uses the chaburah's configured default program.
 - Change Current Week updates only the current chaburah's selected program.
 - Choosing a packet/question week does not change that counter.
 - Program switching clears form/quiz state. Unsaved packet/question/file edits require confirmation; saved drafts remain available in the original program.
