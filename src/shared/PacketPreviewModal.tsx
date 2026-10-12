@@ -10,6 +10,7 @@ import { useAppState } from "../state/AppState";
 import { programName, SUMMER_PROGRAM } from "./learningPrograms";
 import { readRichContent } from "./documentContent";
 import { ImportDocument } from "./ImportDocument";
+import { chunkDisplayCode } from "./chunkLabels";
 
 export function PacketPreviewModal({
   packetId,
@@ -103,7 +104,7 @@ export function PacketPreviewModal({
           <ScrollView contentContainerStyle={modalStyles.pageContent} style={modalStyles.pageShell}>
             {chunks.map((chunk, index) => (
               <View key={chunk.id} style={modalStyles.chunk}>
-                <MetaText>{index + 1}. {chunk.chunkCode}</MetaText>
+                <MetaText>{index + 1}. {chunkDisplayCode(chunk.chunkCode)}</MetaText>
                 <Text style={modalStyles.chunkTitle}>{chunk.chunkTitle}</Text>
                 <PacketChunkContent chunk={chunk} />
               </View>

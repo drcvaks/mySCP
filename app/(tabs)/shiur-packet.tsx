@@ -11,6 +11,7 @@ import { useAppState } from "../../src/state/AppState";
 import { programName, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
 import { readRichContent } from "../../src/shared/documentContent";
 import { ImportDocument } from "../../src/shared/ImportDocument";
+import { chunkDisplayCode } from "../../src/shared/chunkLabels";
 
 export default function ShiurPacketScreen() {
   const router = useRouter();
@@ -100,7 +101,7 @@ export default function ShiurPacketScreen() {
 
       {chunks.map((chunk, index) => (
         <Card key={chunk.id}>
-          <MetaText>{index + 1}. {chunk.chunkCode}</MetaText>
+          <MetaText>{index + 1}. {chunkDisplayCode(chunk.chunkCode)}</MetaText>
           <Text style={localStyles.chunkTitle}>{chunk.chunkTitle}</Text>
           <PacketChunkContent chunk={chunk} />
         </Card>

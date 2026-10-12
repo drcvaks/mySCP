@@ -24,7 +24,9 @@ import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { printPacket } from "../../src/shared/packetPrint";
 import { ProgramSelector } from "../../src/shared/ProgramSelector";
-import { belongsToProgram, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
+import { belongsToProgram, SUMMER_PROGRAM, WINTER_PROGRAM } from "../../src/shared/learningPrograms";
+import { PaceReference } from "../../src/shared/PaceReference";
+import { chunkDisplayCode } from "../../src/shared/chunkLabels";
 import { readRichContent } from "../../src/shared/documentContent";
 import { ImportDocument } from "../../src/shared/ImportDocument";
 import { WorkflowCard as BuilderToolCard } from "../../src/shared/WorkflowCard";
@@ -264,8 +266,8 @@ export default function ShiurBuilderScreen() {
       });
       return normalizePacketIds(next);
     });
-    const firstChunk = sectionChunks[0];
-    if (firstChunk) expandPacketSection(sectionKeyForChunk(firstChunk));
+    const sectionKeys = new Set(sectionChunks.map(sectionKeyForChunk));
+    sectionKeys.forEach(expandPacketSection);
   }
 
   function toggleSection(sectionKey: string) {
@@ -842,6 +844,7 @@ export default function ShiurBuilderScreen() {
             This first Shiur Builder pilot is optimized for the web layout, where the official material and packet draft can sit side by side.
           </Text>
           <Button label="Back to Rabbi Hub" onPress={() => router.push("/(tabs)/rabbi-hub")} variant="secondary" />
+          {selectedProgramId === WINTER_PROGRAM ? <PaceReference /> : null}
         </Card>
       </Screen>
     );
@@ -894,7 +897,10 @@ export default function ShiurBuilderScreen() {
             <FilterChip key={reviewWeek} label={`Week ${reviewWeek}`} onPress={() => setWeek(reviewWeek)} selected={week === reviewWeek} />
           ))}
         </View>
-        <MetaText>Current week is Week {currentReviewWeek}.</MetaText>
+        <Row>
+          <MetaText>Current week is Week {currentReviewWeek}.</MetaText>
+          {selectedProgramId === WINTER_PROGRAM ? <PaceReference /> : null}
+        </Row>
       </Card>
 
       <Card>
@@ -998,7 +1004,7 @@ export default function ShiurBuilderScreen() {
                             <Ionicons name="document-text-outline" color={theme.colors.muted} size={19} />
                             <View style={localStyles.fileText}>
                               <Text style={localStyles.fileTitle}>{chunk.chunkTitle}</Text>
-                              <MetaText>{chunk.chunkCode}{chunk.chunkSummary ? ` - ${chunk.chunkSummary}` : ""}</MetaText>
+                              <MetaText>{chunkDisplayCode(chunk.chunkCode)}{chunk.chunkSummary ? ` - ${chunk.chunkSummary}` : ""}</MetaText>
                               <CoverageLine coverage={coverageByChunkId.get(chunk.id) ?? []} />
                             </View>
                             <View style={localStyles.fileActions}>
@@ -1082,7 +1088,7 @@ export default function ShiurBuilderScreen() {
                               <Ionicons name="document-text-outline" color={theme.colors.muted} size={19} />
                               <View style={localStyles.fileText}>
                                 <Text style={localStyles.fileTitle} numberOfLines={2}>{chunk.chunkTitle}</Text>
-                                <MetaText>{chunk.chunkCode}</MetaText>
+                                <MetaText>{chunkDisplayCode(chunk.chunkCode)}</MetaText>
                               </View>
                             </View>
                             <View style={localStyles.packetFileOrderActions}>
@@ -1111,11 +1117,20 @@ export default function ShiurBuilderScreen() {
             </ScrollView>
             {uniqueSuggestedChunks.length > 0 && canEditPacket ? (
               <View style={localStyles.suggestionBox}>
-                <MetaText>Suggested {activeCategoryConfig.label}</MetaText>
+                <Row>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <MetaText>Suggested {activeCategoryConfig.label}</MetaText>
+                  </View>
+                  <Button
+                    label={`Add All Suggested (${uniqueSuggestedChunks.length})`}
+                    onPress={() => addSection(uniqueSuggestedChunks)}
+                    variant="secondary"
+                  />
+                </Row>
                 {uniqueSuggestedChunks.map((chunk) => (
                   <Row key={chunk.id}>
                     <Text style={[styles.body, { flex: 1 }]} numberOfLines={2}>
-                      {chunk.chunkCode}: {chunk.chunkTitle}
+                      {chunkDisplayCode(chunk.chunkCode)}: {chunk.chunkTitle}
                     </Text>
                     <Pill label={categoryLabel(chunk.sourceType as BuilderCategory)} tone={chunk.sourceType === "source" ? "primary" : "success"} />
                     <Button label={previewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => previewSuggestedChunk(chunk.id)} variant="ghost" />
@@ -1221,7 +1236,7 @@ export default function ShiurBuilderScreen() {
                           ? previewSection.sourceLabel
                           : packetPreviewChunk
                             ? activeCategoryConfig.packetLabel
-                            : `${previewChunk?.chunkCode} - ${previewChunk?.sectionTitle}`}
+                            : `${previewChunk ? chunkDisplayCode(previewChunk.chunkCode) : ""} - ${previewChunk?.sectionTitle}`}
                     </MetaText>
                     <Text style={localStyles.modalTitle}>
                       {previewingPacket
@@ -1340,7 +1355,7 @@ function DocumentChunk({
 
   return (
     <View style={[localStyles.documentChunk, index === 0 && localStyles.documentChunkFirst]}>
-      <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunk.chunkCode}</MetaText>
+      <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunkDisplayCode(chunk.chunkCode)}</MetaText>
       <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text>
       {showCoverageState ? <CoverageLine coverage={coverage} showEmpty /> : null}
       {chunk.contentDocument ? <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} /> : blocks.map((block, blockIndex) => {
