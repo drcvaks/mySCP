@@ -62,6 +62,8 @@ export default function AdminScreen() {
   const isGlobalAdmin = profile?.role === "global_admin";
   const managedChaburahId = isGlobalAdmin ? adminChaburahId : profile?.chaburahId;
   const chaburah = chaburos.find((item) => item.id === managedChaburahId);
+  const fileChaburahId = profile?.chaburahId;
+  const fileChaburah = chaburos.find((item) => item.id === fileChaburahId);
   const [address, setAddress] = useState("");
   const [scheduleDay, setScheduleDay] = useState("Sunday");
   const [scheduleTime, setScheduleTime] = useState("");
@@ -124,7 +126,7 @@ export default function AdminScreen() {
   }, [chaburah]);
 
   const localFiles = learningFiles.filter(
-    (file) => file.visibility === "everyone" || file.chaburahId === managedChaburahId
+    (file) => file.visibility === "everyone" || (!!fileChaburahId && file.chaburahId === fileChaburahId)
   );
   const pendingJoinRequests = memberships.filter(
     (membership) =>
@@ -228,6 +230,10 @@ export default function AdminScreen() {
 
   async function publishFile() {
     if (!profile?.id) return;
+    if (editingFile?.visibility === "chaburah" && editingFile.chaburahId !== fileChaburahId) {
+      setMessage("Files for another chaburah cannot be edited here.");
+      return;
+    }
     if (!fileTitle.trim()) {
       setMessage("Add a file title.");
       return;
@@ -240,8 +246,8 @@ export default function AdminScreen() {
       setMessage("Choose a file to upload.");
       return;
     }
-    if (visibility === "chaburah" && !managedChaburahId) {
-      setMessage("Choose or join a chaburah before publishing chaburah-only files.");
+    if (visibility === "chaburah" && !fileChaburahId) {
+      setMessage("Join a chaburah before publishing to My Chaburah.");
       return;
     }
 
@@ -250,7 +256,7 @@ export default function AdminScreen() {
     const wasEditing = Boolean(editingFile);
     const storagePath =
       filePublishMode === "upload"
-        ? editingFile?.storagePath ?? buildStoragePath(visibility, managedChaburahId, selectedFile?.name || fileTitle.trim())
+        ? editingFile?.storagePath ?? buildStoragePath(visibility, fileChaburahId, selectedFile?.name || fileTitle.trim())
         : null;
     if (editingFile?.storagePath && filePublishMode === "link") {
       const { error: storageRemoveError } = await supabase.storage.from("learning-files").remove([editingFile.storagePath]);
@@ -262,7 +268,7 @@ export default function AdminScreen() {
     }
     const filePayload = {
       program_id: programsReady ? selectedProgramId : undefined,
-      chaburah_id: visibility === "chaburah" ? managedChaburahId : null,
+      chaburah_id: visibility === "chaburah" ? fileChaburahId : null,
       title: fileTitle.trim(),
       description: fileDescription.trim() || null,
       topic: fileTopic.trim() || defaultFileTopic(fileCoverage, fileWeek),
@@ -363,6 +369,10 @@ export default function AdminScreen() {
   }
 
   function startEditFile(file: LearningFile) {
+    if (file.visibility === "chaburah" && file.chaburahId !== fileChaburahId) {
+      setMessage("Files for another chaburah cannot be edited here.");
+      return;
+    }
     setEditingFile(file);
     setFileTitle(file.title);
     setFileTopic(file.topic);
@@ -561,7 +571,6 @@ export default function AdminScreen() {
           <Row>
             <View style={{ flex: 1, minWidth: 220 }}>
               <SectionTitle>Managing Chaburah</SectionTitle>
-              <Text style={styles.muted}>Choose which local chaburah these admin tools should control.</Text>
             </View>
             {chaburah ? <Pill label={chaburah.name} tone="primary" /> : null}
           </Row>
@@ -853,9 +862,10 @@ export default function AdminScreen() {
         {profile?.role === "global_admin" ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <FilterChip label="Everyone" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
-            <FilterChip label="Current Chaburah" onPress={() => setVisibility("chaburah")} selected={visibility === "chaburah"} />
+            <FilterChip label="My Chaburah" onPress={() => setVisibility("chaburah")} selected={visibility === "chaburah"} />
           </View>
         ) : null}
+        {visibility === "chaburah" ? <MetaText>My Chaburah: {fileChaburah?.name ?? "No chaburah joined"}</MetaText> : null}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <FilterChip label="Upload File" onPress={() => setFilePublishMode("upload")} selected={filePublishMode === "upload"} />
           <FilterChip label="External Link" onPress={() => setFilePublishMode("link")} selected={filePublishMode === "link"} />
