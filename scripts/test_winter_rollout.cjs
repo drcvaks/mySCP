@@ -9,6 +9,9 @@ function load(text) {
   return exports;
 }
 const winter = { id: "winter-5787", name: "Winter 5787", defaultWeek: 1, archived: false };
+const target = "70a993a2-7668-4775-aa46-7ac82117d35b";
+const tefillin = { id: "summer-5787", name: "Summer 5787", topic: "Hilchos Tefillin", defaultWeek: 1,
+  archived: false, earlyAccess: true, allowedChaburahIds: [target] };
 const api = load(source);
 const programs = [api.legacySummerProgram, winter];
 assert.equal(api.selectablePrograms(programs).map((p) => p.id).join(","), "winter-5787");
@@ -23,4 +26,17 @@ assert.equal(api.programName("summer-5786"), "Summer 5786");
 const restored = load(source.replace("WINTER_ONLY_ROLLOUT = true", "WINTER_ONLY_ROLLOUT = false"));
 assert.equal(restored.selectablePrograms(programs).length, 2);
 assert.equal(restored.rolloutProgramSelection("summer-5786", programs, true), "summer-5786");
-console.log("PASS: Winter-only selector/default, old defaults overridden, legacy fallback, preserved Summer, and reversible rollout.");
+const all = [...programs, tefillin];
+for (const access of [{}, { chaburahId: "other" }]) {
+  assert.equal(api.selectablePrograms(all, access).map((p) => p.id).join(","), "winter-5787");
+  assert.equal(api.rolloutProgramSelection("summer-5787", all, true, access), "winter-5787");
+}
+for (const access of [{ chaburahId: target }, { isGlobalAdmin: true }]) {
+  assert.equal(api.selectablePrograms(all, access).map((p) => p.id).join(","), "winter-5787,summer-5787");
+  assert.equal(api.rolloutProgramSelection("summer-5787", all, true, access), "summer-5787");
+  assert.equal(api.rolloutProgramSelection("winter-5787", all, true, access), "winter-5787");
+}
+assert.equal(api.rolloutProgramSelection("missing", all, true, { isGlobalAdmin: true }), "winter-5787");
+assert.equal(api.programName("summer-5787"), "Summer 5787");
+assert.equal(api.selectablePrograms([...programs, { ...tefillin, earlyAccess: false }]).length, 2, "Future public release needs no rename");
+console.log("PASS: access-aware Winter/Tefillin selection, independent defaults, revoked-access fallback, hidden legacy Summer, and reversible rollout.");

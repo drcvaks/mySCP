@@ -104,7 +104,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const currentChaburah = chaburos.find((c) => c.id === profile?.chaburahId);
   const requestedProgramId = programSelection && programSelection.userId === session?.user.id && programSelection.chaburahId === profile?.chaburahId
     ? programSelection.id : currentChaburah?.defaultProgramId ?? SUMMER_PROGRAM;
-  const selectedProgramId = rolloutProgramSelection(requestedProgramId, programs, programsReady);
+  const programAccess = { chaburahId: profile?.chaburahId, isGlobalAdmin: profile?.role === "global_admin" };
+  const selectedProgramId = rolloutProgramSelection(requestedProgramId, programs, programsReady, programAccess);
   const selectedProgram = programs.find((p) => p.id === selectedProgramId) ?? legacySummerProgram;
   const activeReviewWeek = programWeeks.find((p) => p.chaburah_id === profile?.chaburahId && p.program_id === selectedProgramId)?.current_week
     ?? (selectedProgramId === SUMMER_PROGRAM ? currentReviewWeek : selectedProgram.defaultWeek);
@@ -152,7 +153,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         appSettingsResult,
         memberDirectoryResult,
         programsResult,
-        programWeeksResult
+        programWeeksResult,
+        programAccessResult
       ] = await Promise.all([
         supabase.from("chaburos").select("*").order("name"),
         supabase.from("chaburah_members").select("*").order("updated_at", { ascending: false }),
@@ -176,7 +178,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             })
           : Promise.resolve({ data: [], error: null }),
         supabase.from("learning_programs").select("*").order("id"),
-        supabase.from("chaburah_programs").select("*")
+        supabase.from("chaburah_programs").select("*"),
+        supabase.from("learning_program_chaburos").select("program_id,chaburah_id")
       ]);
 
       const firstError = [
@@ -205,9 +208,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setError(formatSupabaseError(programError));
         return;
       }
+      if (programAccessResult.error && !["42P01", "PGRST205"].includes(programAccessResult.error.code)) {
+        setError(formatSupabaseError(programAccessResult.error));
+        return;
+      }
       setProgramsReady(!programError);
       setPrograms(programsResult.data?.map((p) => ({
-        id: p.id, name: p.name, topic: p.topic, defaultWeek: p.default_week, archived: p.archived
+        id: p.id, name: p.name, topic: p.topic, defaultWeek: p.default_week, archived: p.archived,
+        earlyAccess: p.early_access ?? false,
+        allowedChaburahIds: (programAccessResult.data ?? []).filter((grant) => grant.program_id === p.id).map((grant) => grant.chaburah_id)
       })) ?? [legacySummerProgram]);
       setProgramWeeks(programWeeksResult.data ?? []);
 
@@ -398,7 +407,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setHydrated(true);
     }
-  }, [profile?.chaburahId, session]);
+  }, [profile?.chaburahId, profile?.role, session]);
 
   useEffect(() => {
     refresh();
@@ -431,7 +440,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       selectedProgram,
       selectedProgramId,
       selectProgram: (id) => {
-        if (!selectablePrograms(programs).some((p) => p.id === id)) return;
+        if (!selectablePrograms(programs, programAccess).some((p) => p.id === id)) return;
         setProgramSelection({ id, userId: session?.user.id, chaburahId: profile?.chaburahId });
       },
       makeProgramDefault: async () => {
@@ -663,6 +672,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       selectedProgram,
       selectedProgramId,
       profile?.chaburahId,
+      profile?.role,
       refresh,
       refreshProfile,
       reviewQuestions,

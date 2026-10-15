@@ -1,15 +1,46 @@
-# Summer and Winter learning programs
+# Learning Programs
 
 ## Winter rollout
 
 `WINTER_ONLY_ROLLOUT` in `src/shared/learningPrograms.ts` is temporarily enabled.
-When Winter is installed, only Winter 5787 appears in the selector and it is selected
-on sign-in/reload even for chaburos whose stored default is Summer. Its own week counter is used.
+When Winter is installed, the old Summer 5786 test program is hidden. Winter 5787
+is the fallback for hidden/unavailable defaults. Authorized new programs remain
+selectable, and their configured chaburah defaults are honored.
 Summer data, labels, counters and database defaults are not altered or deleted.
-No new SQL is required. Older mobile builds must be updated to receive this behavior.
+Older mobile builds must be updated to receive this behavior.
 
 To bring back both buttons, disable this flag and redeploy. Normal chaburah defaults
 then apply again; set those to Winter before restoring switching if Winter should remain the default.
+
+## Summer 5787 Early Access
+
+Deploy the updated app, then run the entire file
+`supabase/migrations/202610140001_early_access_learning_programs.sql` once in the
+Supabase SQL Editor, after the learning-program and rich-content migrations.
+The migration is transactional and checks that the supplied chaburah exists.
+It has been tested locally, not applied to the live project by Codex.
+
+- Adds Summer 5787 / Hilchos Tefillin, starting at Week 1, with an Early Access badge.
+- Grants access to Global Admins and active members of chaburah
+  `70a993a2-7668-4775-aa46-7ac82117d35b`.
+- Sets only that chaburah's default to Summer 5787. Other stored defaults and all
+  existing week counters, questions, files, packets and scores remain unchanged.
+- The pilot chaburah retains Winter. Global Admins retain Winter in their own
+  chaburah and can explicitly choose either program and set its chaburah default.
+- The default button is labelled `Set <program> as Chaburah Default`, appears for
+  authorized managers when the selected program differs from the stored default,
+  and asks for confirmation. Participants cannot manage defaults.
+- App selection is scoped to the user's current chaburah. Membership is enforced
+  by Supabase for program metadata, content, assets, answer checks and clone writes.
+- Existing image signing caches/URLs may remain valid until their normal expiry.
+- No Tefillin learning material is imported yet. New imports must use
+  `program_id = 'summer-5787'`.
+- Later, setting `learning_programs.early_access=false` for Summer 5787 releases it
+  to everyone without renaming or copying its content. Setting `archived` alone
+  does not grant/revoke access. SQL grants can authorize further pilot chaburos.
+
+Local regression tests: `node scripts/test_early_access_programs.cjs`,
+`node scripts/test_winter_rollout.cjs`, and `node scripts/test_program_controls.cjs`.
 
 ## Apply
 
@@ -36,7 +67,7 @@ Do not rerun the migration after it succeeds: it creates new tables, columns and
 ## Current behavior
 
 - Selecting a program is shared across the current user's app navigation. It does not advance a counter or change the chaburah default.
-- Reloading/signing in uses Winter during the rollout; otherwise it uses the chaburah's configured default program.
+- Reloading/signing in uses the chaburah's configured default if available to the user; otherwise it falls back to Winter.
 - Change Current Week updates only the current chaburah's selected program.
 - Choosing a packet/question week does not change that counter.
 - Program switching clears form/quiz state. Unsaved packet/question/file edits require confirmation; saved drafts remain available in the original program.

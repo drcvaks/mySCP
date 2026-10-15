@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 import { useAppState } from "../state/AppState";
 import { useAuthState } from "../state/AuthState";
-import { rolloutProgramSelection, selectablePrograms } from "./learningPrograms";
-import { Button, FilterChip, FormInput, MetaText, Row, styles } from "./components";
+import { ProgramAccessContext, selectablePrograms } from "./learningPrograms";
+import { Button, FilterChip, FormInput, MetaText, Pill, Row, styles } from "./components";
 
 type SelectorProps = {
   manage?: boolean; unsaved?: boolean; disabled?: boolean;
@@ -14,7 +14,8 @@ export function ProgramSelector({ manage = false, ...props }: SelectorProps) {
   const { profile } = useAuthState();
   const canManage = manage && !!state.selectedChaburahId && (profile?.role === "global_admin" || state.memberships.some((m) =>
     m.chaburahId === state.selectedChaburahId && m.userId === profile?.id && m.status === "active" && ["rabbi", "admin"].includes(m.memberRole)));
-  return <ProgramControls {...props} unsaved={props.unsaved || state.hasUnsavedProgramEdits} state={state} canManage={canManage} />;
+  return <ProgramControls {...props} unsaved={props.unsaved || state.hasUnsavedProgramEdits} state={state} canManage={canManage}
+    access={{ chaburahId: state.selectedChaburahId, isGlobalAdmin: profile?.role === "global_admin" }} />;
 }
 
 export function confirmProgramSwitch(): Promise<boolean> {
@@ -30,7 +31,7 @@ export function confirmProgramSwitch(): Promise<boolean> {
 
 export function confirmDefaultProgram(programName: string, chaburahName: string, otherPrograms: string[]): Promise<boolean> {
   const remaining = otherPrograms.length ? `${otherPrograms.join(", ")} will remain available.` : "Existing content will remain available.";
-  const body = `Members of ${chaburahName} will start in ${programName} when they open or reload the app. ${remaining} Week counters won't change.`;
+  const body = `Members of ${chaburahName} with access to ${programName} will start there when they open or reload the app. ${remaining} Week counters won't change.`;
   if (Platform.OS === "web") return Promise.resolve(window.confirm(body));
   return new Promise((resolve) => {
     Alert.alert(`Set ${programName} as Default?`, body, [
@@ -40,11 +41,11 @@ export function confirmDefaultProgram(programName: string, chaburahName: string,
   });
 }
 
-export function ProgramControls({ state, canManage, unsaved = false, disabled = false }: {
+export function ProgramControls({ state, canManage, unsaved = false, disabled = false, access = {} }: {
   state: Pick<ReturnType<typeof useAppState>, "programs" | "programsReady" | "selectedProgram" | "selectedProgramId" |
     "selectedChaburahId" | "selectProgram" | "currentReviewWeek" | "updateCurrentReviewWeek" | "makeProgramDefault"> &
     { chaburos: { id: string; name?: string; defaultProgramId?: string }[] };
-  canManage: boolean; unsaved?: boolean; disabled?: boolean;
+  canManage: boolean; unsaved?: boolean; disabled?: boolean; access?: ProgramAccessContext;
 }) {
   const { programs, programsReady, selectedProgram, selectedProgramId, selectedChaburahId, selectProgram,
     currentReviewWeek, updateCurrentReviewWeek, makeProgramDefault, chaburos } = state;
@@ -55,7 +56,7 @@ export function ProgramControls({ state, canManage, unsaved = false, disabled = 
   const [saving, setSaving] = useState(false);
   useEffect(() => { setWeek(String(currentReviewWeek)); setEditingWeek(false); setMessage(""); }, [selectedProgramId, currentReviewWeek, selectedChaburahId]);
   const chaburah = chaburos.find((c) => c.id === selectedChaburahId);
-  const availablePrograms = selectablePrograms(programs);
+  const availablePrograms = selectablePrograms(programs, access);
 
   async function choose(id: string) {
     if (disabled || saving || id === selectedProgramId) return;
@@ -74,7 +75,7 @@ export function ProgramControls({ state, canManage, unsaved = false, disabled = 
     setSaving(true);
     try {
       const confirmed = await confirmDefaultProgram(selectedProgram.name, chaburah?.name ?? "this chaburah",
-        programs.filter((p) => p.id !== selectedProgramId).map((p) => p.name));
+        availablePrograms.filter((p) => p.id !== selectedProgramId).map((p) => p.name));
       if (!confirmed) return;
       const result = await makeProgramDefault();
       setMessage(result ?? `${selectedProgram.name} is now the default for ${chaburah?.name ?? "this chaburah"}.`);
@@ -90,10 +91,11 @@ export function ProgramControls({ state, canManage, unsaved = false, disabled = 
       {availablePrograms.some((p) => p.archived) ? <FilterChip label="Past Programs" selected={showPast} onPress={() => setShowPast(!showPast)} /> : null}
     </View>
     <MetaText>{selectedProgram.topic} - Current Week {currentReviewWeek}</MetaText>
+    {selectedProgram.earlyAccess ? <Pill label="Early Access" tone="accent" /> : null}
     {canManage && programsReady ? <Row>
       <Button label={editingWeek ? "Cancel Week Change" : "Change Current Week"} variant="secondary"
         disabled={disabled || saving} onPress={() => setEditingWeek(!editingWeek)} />
-      {rolloutProgramSelection(chaburah?.defaultProgramId, programs, programsReady) !== selectedProgramId ? <View style={{ maxWidth: "100%", flexShrink: 1 }}>
+      {chaburah?.defaultProgramId !== selectedProgramId ? <View style={{ maxWidth: "100%", flexShrink: 1 }}>
         <Button label={`Set ${selectedProgram.name} as Chaburah Default`} variant="secondary" disabled={disabled || saving}
           onPress={() => { void setDefaultProgram(); }} />
       </View> : null}
