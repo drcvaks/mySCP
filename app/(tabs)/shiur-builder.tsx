@@ -1,3 +1,4 @@
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -23,7 +24,6 @@ import { ContentChunk, ContentChunkLink, ContentSourceType, ReviewPacket, Review
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { printPacket } from "../../src/shared/packetPrint";
-import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { belongsToProgram, SUMMER_PROGRAM, WINTER_PROGRAM } from "../../src/shared/learningPrograms";
 import { PaceReference } from "../../src/shared/PaceReference";
 import { chunkDisplayCode } from "../../src/shared/chunkLabels";
@@ -851,8 +851,8 @@ export default function ShiurBuilderScreen() {
   }
 
   return (
-    <Screen title="Shiur Builder" eyebrow="Rabbi Hub" onRefresh={loadBuilderData} refreshing={loading}>
-      <ProgramSelector manage disabled={saving || loading} unsaved={selectedIds.length > 0} />
+    <Screen title="Shiur Builder" eyebrow="Rabbi Hub" onRefresh={loadBuilderData} refreshing={loading}
+      programSelector={<ProgramSelector manage disabled={saving || loading} unsaved={selectedIds.length > 0} />}>
       <StatusBanner message={message} tone={message.toLowerCase().includes("error") || message.toLowerCase().includes("unable") ? "error" : "info"} />
       <Card>
         <SectionTitle icon="library-outline">Rabbi Tools</SectionTitle>

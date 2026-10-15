@@ -1,3 +1,4 @@
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import {
@@ -16,7 +17,6 @@ import {
 import { theme } from "../../src/shared/theme";
 import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAppState } from "../../src/state/AppState";
-import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 interface Feedback {
   isCorrect: boolean;
@@ -153,8 +153,8 @@ export default function ReviewScreen() {
         eyebrow={selectedWeek === "all" ? "All weeks" : `Week ${selectedWeek}`}
         onRefresh={refresh}
         refreshing={loading}
+        programSelector={<ProgramSelector disabled={submitting} />}
       >
-        <ProgramSelector disabled={submitting} />
         <Card>
           <Pill label={percentage >= 80 ? "Strong result" : "Keep reviewing"} tone={percentage >= 80 ? "success" : "accent"} />
           <Text style={[styles.statNumber, { fontSize: 44 }]}>{percentage}%</Text>
@@ -184,8 +184,7 @@ export default function ReviewScreen() {
   }
 
   return (
-    <Screen title="Review Questions" eyebrow="Bechina prep" onRefresh={refresh} refreshing={loading}>
-      <ProgramSelector disabled={submitting} />
+    <Screen title="Review Questions" eyebrow="Bechina prep" onRefresh={refresh} refreshing={loading} programSelector={<ProgramSelector disabled={submitting} />}>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>

@@ -1,3 +1,4 @@
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
@@ -26,7 +27,6 @@ import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
-import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "video", "pdf", "other"];
 type LeadershipRole = "rabbi" | "admin";
@@ -532,8 +532,8 @@ export default function AdminScreen() {
   }
 
   return (
-    <Screen title="Admin" eyebrow="Local chaburah tools" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
-      <ProgramSelector manage disabled={saving} unsaved={!!fileTitle.trim() || !!editingFile} />
+    <Screen title="Admin" eyebrow="Local chaburah tools" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}
+      programSelector={<ProgramSelector manage disabled={saving} unsaved={!!fileTitle.trim() || !!editingFile} />}>
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>

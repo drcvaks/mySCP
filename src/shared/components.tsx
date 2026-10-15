@@ -1,4 +1,4 @@
-import { ReactNode, RefObject, useEffect, useRef, useState } from "react";
+import { cloneElement, ReactElement, ReactNode, RefObject, useEffect, useRef, useState } from "react";
 import { Alert, Modal, Platform, Pressable, ScrollView, ScrollViewProps, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
@@ -16,9 +16,10 @@ interface ScreenProps {
   refreshing?: boolean;
   scrollRef?: RefObject<ScrollView | null>;
   onScroll?: ScrollViewProps["onScroll"];
+  programSelector?: ReactElement<{ render?: (slots: { header: ReactNode; management: ReactNode }) => ReactNode }>;
 }
 
-export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef, onScroll }: ScreenProps) {
+export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef, onScroll, programSelector }: ScreenProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { profile } = useAuthState();
@@ -73,11 +74,13 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
     return pathname === href || pathname === normalizedHref;
   }
 
-  return (
+  // One controller owns both slots, keeping switches and management saves in sync.
+  const renderScreen = ({ header = null, management = null }: { header?: ReactNode; management?: ReactNode } = {}) => (
     <SafeAreaView style={globalStyles.screen} edges={["top"]}>
       <View style={[styles.headerShell, width >= 768 && styles.wideHeaderShell]}>
         <View style={[styles.screenHeader, width >= 768 && styles.wideHeaderContent]}>
           <PageHeading title={title} eyebrow={eyebrow} pathname={pathname} onRefresh={onRefresh} refreshing={refreshing}
+            accessory={header} stackAccessory={width < 1100}
             navigationButton={showDrawerButton ? (
             <Pressable
               accessibilityLabel="Open navigation menu"
@@ -104,6 +107,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
             You are using a beta version of mySCP. Please report bugs or confusing parts in Beta Feedback.
           </Text>
         </View>
+        {management}
         {children}
       </ScrollView>
       <Modal animationType="fade" transparent visible={menuOpen} onRequestClose={() => setMenuOpen(false)}>
@@ -144,6 +148,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
       </Modal>
     </SafeAreaView>
   );
+  return programSelector ? cloneElement(programSelector, { render: renderScreen }) : renderScreen();
 }
 
 export function Card({ children }: { children: ReactNode }) {

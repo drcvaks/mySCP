@@ -1,3 +1,4 @@
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -10,7 +11,6 @@ import { theme } from "../../src/shared/theme";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
-import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { Announcement, DiscussionMessage } from "../../src/shared/types";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -328,8 +328,8 @@ export default function MyChaburahScreen() {
       refreshing={loading}
       scrollRef={scrollRef}
       onScroll={handleContentScroll}
+      programSelector={<ProgramSelector />}
     >
-      <ProgramSelector />
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 0 }}>

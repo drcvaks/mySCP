@@ -1,3 +1,4 @@
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
@@ -22,7 +23,6 @@ import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/r
 import { theme } from "../../src/shared/theme";
 import { ReviewQuestion, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
-import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
@@ -507,8 +507,8 @@ export default function RabbiHubScreen() {
   }
 
   return (
-    <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}>
-      <ProgramSelector manage disabled={saving} unsaved={!!prompt.trim() || !!editingQuestionId} />
+    <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}
+      programSelector={<ProgramSelector manage disabled={saving} unsaved={!!prompt.trim() || !!editingQuestionId} />}>
       <Card>
         <SectionTitle icon="library-outline">Rabbi Tools</SectionTitle>
         <Text style={styles.muted}>Choose the workflow you want to work on.</Text>

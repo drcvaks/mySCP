@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 import { useAppState } from "../state/AppState";
 import { useAuthState } from "../state/AuthState";
@@ -8,8 +8,11 @@ import { Button, FilterChip, FormInput, MetaText, Pill, Row, styles } from "./co
 type SelectorProps = {
   manage?: boolean; unsaved?: boolean; disabled?: boolean;
 };
+type ProgramSlots = { header: ReactNode; management: ReactNode };
 
-export function ProgramSelector({ manage = false, ...props }: SelectorProps) {
+export function ProgramSelector({ manage = false, ...props }: SelectorProps & {
+  render?: (slots: ProgramSlots) => ReactNode;
+}) {
   const state = useAppState();
   const { profile } = useAuthState();
   const canManage = manage && !!state.selectedChaburahId && (profile?.role === "global_admin" || state.memberships.some((m) =>
@@ -41,11 +44,12 @@ export function confirmDefaultProgram(programName: string, chaburahName: string,
   });
 }
 
-export function ProgramControls({ state, canManage, unsaved = false, disabled = false, access = {} }: {
+export function ProgramControls({ state, canManage, unsaved = false, disabled = false, access = {}, render }: {
   state: Pick<ReturnType<typeof useAppState>, "programs" | "programsReady" | "selectedProgram" | "selectedProgramId" |
     "selectedChaburahId" | "selectProgram" | "currentReviewWeek" | "updateCurrentReviewWeek" | "makeProgramDefault"> &
     { chaburos: { id: string; name?: string; defaultProgramId?: string }[] };
   canManage: boolean; unsaved?: boolean; disabled?: boolean; access?: ProgramAccessContext;
+  render?: (slots: ProgramSlots) => ReactNode;
 }) {
   const { programs, programsReady, selectedProgram, selectedProgramId, selectedChaburahId, selectProgram,
     currentReviewWeek, updateCurrentReviewWeek, makeProgramDefault, chaburos } = state;
@@ -83,15 +87,19 @@ export function ProgramControls({ state, canManage, unsaved = false, disabled = 
       setSaving(false);
     }
   }
-  return <View style={{ gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#E2E8F0", paddingBottom: 14 }}>
-    <MetaText>Learning Program</MetaText>
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+  const header = <View style={{ gap: 4, minWidth: 0 }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
       {availablePrograms.filter((p) => !p.archived || showPast || p.id === selectedProgramId).map((p) =>
         <FilterChip key={p.id} label={p.name} selected={p.id === selectedProgramId} onPress={() => choose(p.id)} />)}
       {availablePrograms.some((p) => p.archived) ? <FilterChip label="Past Programs" selected={showPast} onPress={() => setShowPast(!showPast)} /> : null}
     </View>
-    <MetaText>{selectedProgram.topic} - Current Week {currentReviewWeek}</MetaText>
-    {selectedProgram.earlyAccess ? <Pill label="Early Access" tone="accent" /> : null}
+    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+      <Text style={{ color: "#52647E", fontSize: 12, lineHeight: 17, flexShrink: 1 }}>{selectedProgram.topic}</Text>
+      {selectedProgram.earlyAccess ? <Pill label="Early Access" tone="accent" /> : null}
+    </View>
+  </View>;
+  const management = (canManage && programsReady) || !programsReady || message ? <View style={{ gap: 8 }}>
+    {canManage && programsReady ? <MetaText>Current Week {currentReviewWeek}</MetaText> : null}
     {canManage && programsReady ? <Row>
       <Button label={editingWeek ? "Cancel Week Change" : "Change Current Week"} variant="secondary"
         disabled={disabled || saving} onPress={() => setEditingWeek(!editingWeek)} />
@@ -108,5 +116,6 @@ export function ProgramControls({ state, canManage, unsaved = false, disabled = 
     </Row> : null}
     {!programsReady ? <MetaText>Summer content is available. Install the learning-program migration to enable Winter.</MetaText> : null}
     {message ? <Text style={styles.muted}>{message}</Text> : null}
-  </View>;
+  </View> : null;
+  return render ? render({ header, management }) : <>{header}{management}</>;
 }

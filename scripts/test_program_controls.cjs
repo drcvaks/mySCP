@@ -28,8 +28,8 @@ function all(tree,type){
 const winter={id:"winter-5787",name:"Winter 5787",topic:"Challah",defaultWeek:1,archived:false};
 const tefillin={id:"summer-5787",name:"Summer 5787",topic:"Hilchos Tefillin",defaultWeek:1,archived:false,earlyAccess:true,allowedChaburahIds:["pilot"]};
 let madeDefault=0,switched;
-function render({selected=winter,stored="winter-5787",manage=true,access={chaburahId:"pilot"},disabled=false}={}){
-  return api.ProgramControls({canManage:manage,access,disabled,state:{programs:[programsApi.legacySummerProgram,winter,tefillin],programsReady:true,
+function render({selected=winter,stored="winter-5787",manage=true,access={chaburahId:"pilot"},disabled=false,slots=false}={}){
+  return api.ProgramControls({canManage:manage,access,disabled,render:slots ? value=>value : undefined,state:{programs:[programsApi.legacySummerProgram,winter,tefillin],programsReady:true,
     selectedProgramId:selected.id,selectedProgram:selected,selectedChaburahId:access.chaburahId,
     chaburos:[{id:access.chaburahId,name:"Preview Chaburah",defaultProgramId:stored}],currentReviewWeek:1,
     selectProgram:id=>{switched=id;},updateCurrentReviewWeek:async()=>null,makeProgramDefault:async()=>{madeDefault++;return null;}}});
@@ -53,6 +53,13 @@ async function main(){
   switched=undefined;
   await all(render({disabled:true}),"FilterChip")[1].props.onPress();
   assert.equal(switched,undefined);
-  console.log("PASS: role/chaburah program buttons, Early Access badge, named default actions, participant restrictions and disabled switches.");
+  const slots=render({selected:tefillin,slots:true});
+  assert.equal(all(slots.header,"FilterChip").length,2);
+  assert.equal(all(slots.management,"FilterChip").length,0);
+  assert.ok(all(slots.header,"Text").some(node=>node.props.children==="Hilchos Tefillin"));
+  assert.ok(all(slots.management,"MetaText").some(node=>JSON.stringify(node.props.children).includes("Current Week")));
+  assert.equal(render({manage:false,slots:true}).management,null);
+  assert.ok(!fs.readFileSync("src/shared/ProgramSelector.tsx","utf8").includes("<MetaText>Learning Program</MetaText>"));
+  console.log("PASS: role/chaburah program buttons, Early Access badge, named default actions, participant restrictions, disabled switches and split header/management slots.");
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

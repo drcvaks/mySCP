@@ -1,3 +1,4 @@
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import {
@@ -20,7 +21,6 @@ import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 import { PacketPreviewModal } from "../../src/shared/PacketPreviewModal";
-import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 type FileTypeFilter = FileType | "all" | "qa_packet";
 
@@ -103,8 +103,7 @@ export default function FilesScreen() {
   }
 
   return (
-    <Screen title="Files" eyebrow="Source sheets, review sheets, recordings" onRefresh={refresh} refreshing={loading}>
-      <ProgramSelector />
+    <Screen title="Files" eyebrow="Source sheets, review sheets, recordings" onRefresh={refresh} refreshing={loading} programSelector={<ProgramSelector />}>
       <Card>
         <SectionTitle>Find Learning Materials</SectionTitle>
         <Text style={styles.muted}>Organized by title, topic, coverage, type, and scope.</Text>

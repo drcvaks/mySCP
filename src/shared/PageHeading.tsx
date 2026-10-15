@@ -3,32 +3,40 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { isSidebarRoute, navigationItems } from "./SidebarNavigation";
 
-export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefresh, refreshing = false }: {
+export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefresh, refreshing = false, accessory, stackAccessory = false }: {
   title: string; eyebrow?: string; pathname: string; navigationButton?: ReactNode;
   onRefresh?: () => void | Promise<void>; refreshing?: boolean;
+  accessory?: ReactNode; stackAccessory?: boolean;
 }) {
   const route = pathname.split("/").filter(Boolean).pop() ?? "dashboard";
   const visual = isSidebarRoute(route) ? navigationItems[route]
     : /shiur|source-sheets/.test(route) ? navigationItems["rabbi-hub"]
     : { icon: "book" as const, color: "#2563EB", tint: "#EAF1FF" };
   return <View style={s.header}>
-    {navigationButton}
-    <View style={[s.icon, { backgroundColor: visual.tint }]}>
-      <Ionicons name={visual.icon} size={23} color={visual.color} />
+    <View style={s.mainRow}>
+      {navigationButton}
+      <View style={[s.icon, { backgroundColor: visual.tint }]}>
+        <Ionicons name={visual.icon} size={23} color={visual.color} />
+      </View>
+      <View style={s.titleBlock}>
+        {eyebrow ? <Text style={s.eyebrow}>{eyebrow}</Text> : null}
+        <Text accessibilityRole="header" style={s.title}>{title}</Text>
+      </View>
+      {accessory && !stackAccessory ? <View style={s.accessory}>{accessory}</View> : null}
+      {onRefresh ? <Pressable accessibilityLabel="Refresh" accessibilityRole="button" disabled={refreshing}
+        onPress={onRefresh} style={({ pressed }) => [s.refresh, pressed && { backgroundColor: "#EDF3FC" }, refreshing && { opacity: 0.5 }]}>
+        <Ionicons name="refresh" size={20} color="#365C91" />
+      </Pressable> : null}
     </View>
-    <View style={s.titleBlock}>
-      {eyebrow ? <Text style={s.eyebrow}>{eyebrow}</Text> : null}
-      <Text accessibilityRole="header" style={s.title}>{title}</Text>
-    </View>
-    {onRefresh ? <Pressable accessibilityLabel="Refresh" accessibilityRole="button" disabled={refreshing}
-      onPress={onRefresh} style={({ pressed }) => [s.refresh, pressed && { backgroundColor: "#EDF3FC" }, refreshing && { opacity: 0.5 }]}>
-      <Ionicons name="refresh" size={20} color="#365C91" />
-    </Pressable> : null}
+    {accessory && stackAccessory ? <View style={s.stackedAccessory}>{accessory}</View> : null}
   </View>;
 }
 
 const s = StyleSheet.create({
-  header: { width: "100%", flexDirection: "row", alignItems: "center", gap: 12 },
+  header: { width: "100%", gap: 8 },
+  mainRow: { width: "100%", flexDirection: "row", alignItems: "center", gap: 12 },
+  accessory: { maxWidth: 420, minWidth: 0, flexShrink: 1 },
+  stackedAccessory: { width: "100%", minWidth: 0 },
   icon: { width: 40, height: 40, borderRadius: 8, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   titleBlock: { flex: 1, minWidth: 0, gap: 2 },
   eyebrow: { color: "#67768B", fontSize: 11, fontWeight: "600", lineHeight: 16, letterSpacing: 0 },

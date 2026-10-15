@@ -1,3 +1,4 @@
+import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button, Card, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
@@ -5,7 +6,6 @@ import { fileCoverageDetailLabel, learningFileTypeLabel } from "../../src/shared
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
-import { ProgramSelector } from "../../src/shared/ProgramSelector";
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -75,8 +75,7 @@ export default function DashboardScreen() {
     : [];
 
   return (
-    <Screen title="This Week in SCP" eyebrow="Practical Kashrus" onRefresh={refresh} refreshing={loading}>
-      <ProgramSelector />
+    <Screen title="This Week in SCP" eyebrow="Practical Kashrus" onRefresh={refresh} refreshing={loading} programSelector={<ProgramSelector />}>
       <Card>
         <Pill label="Current Topic" tone="primary" />
         <Text style={styles.sectionTitle}>Practical Kashrus: Kitchen, Food & Wine</Text>
