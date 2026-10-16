@@ -21,6 +21,7 @@ import { formatSchedule, meridiems, weekDays } from "../../src/shared/schedule";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
+import { PublicReviewCsvImport } from "../../src/shared/PublicReviewCsvImport";
 
 const assignableRoles: UserRole[] = ["global_admin", "participant"];
 const participantRoleFilters = ["all", "participant", "local_rabbi", "local_admin", "global_admin"] as const;
@@ -282,6 +283,8 @@ export default function GlobalAdminScreen() {
           </View>
         </Row>
       </Card>
+
+      <PublicReviewCsvImport />
 
       <Card>
         <SectionTitle>Create Chaburah</SectionTitle>

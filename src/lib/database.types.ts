@@ -380,6 +380,10 @@ export interface Database {
       };
     };
     Functions: {
+      import_public_review_library: {
+        Args: { target_program_id: string; questions: Json; apply_import?: boolean };
+        Returns: Json;
+      };
       join_chaburah: {
         Args: { target_chaburah_id: string };
         Returns: Database["public"]["Enums"]["membership_status"];
