@@ -12,6 +12,7 @@ vm.runInNewContext(ts.transpileModule(screen,{compilerOptions:{jsx:ts.JsxEmit.Re
   exports:exportsObject,require:name=>{assert.equal(name,"react/jsx-runtime");return{jsx,jsxs:jsx};},
   useRouter:()=>({push:()=>{}}),usePathname:()=>"/rabbi-hub",useAuthState:()=>({profile:{role:"local_rabbi"}}),
   useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width}),
+  chaburahToolAccess:()=>({rabbiHub:true,admin:true}),
   useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{}},
   SafeAreaView:"SafeAreaView",View:"View",ScrollView:"ScrollView",Pressable:"Pressable",Modal:"Modal",Text:"Text",PageHeading:"Heading",Ionicons:"Icon",
   cloneElement:(element,props)=>({type:element.type,props:{...element.props,...props}})

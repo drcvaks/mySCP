@@ -7,6 +7,7 @@ import { globalStyles, theme } from "./theme";
 import { useAuthState } from "../state/AuthState";
 import { useAppState } from "../state/AppState";
 import { PageHeading } from "./PageHeading";
+import { chaburahToolAccess } from "./permissions";
 
 interface ScreenProps {
   title: string;
@@ -23,7 +24,8 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const router = useRouter();
   const pathname = usePathname();
   const { profile } = useAuthState();
-  const { chaburos, selectedChaburahId } = useAppState();
+  const { chaburos, memberships, selectedChaburahId } = useAppState();
+  const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
   const { width } = useWindowDimensions();
   const showDrawerButton = Platform.OS !== "web" && width < 768;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -37,7 +39,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
       label: "Review",
       href: "/(tabs)/review",
       icon: "checkmark-circle-outline" as const,
-      show: profile?.role === "local_rabbi" || profile?.role === "global_admin"
+      show: toolAccess.rabbiHub
     },
     { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" as const, show: true },
     { label: "Ask Rav", href: "/(tabs)/ask-rav", icon: "chatbubble-ellipses-outline" as const, show: askRavEnabled },
@@ -51,7 +53,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
       label: "Admin",
       href: "/(tabs)/admin",
       icon: "settings-outline" as const,
-      show: profile?.role === "local_admin" || profile?.role === "local_rabbi" || profile?.role === "global_admin"
+      show: toolAccess.admin
     },
     {
       label: "Global Admin",

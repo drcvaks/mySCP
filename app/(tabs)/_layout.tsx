@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useSegments } from "expo-router";
 import { ActivityIndicator, Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SidebarItem, SidebarNavigation, isSidebarRoute } from "../../src/shared/SidebarNavigation";
-import { isAdmin, isGlobalAdmin, isRabbi } from "../../src/shared/permissions";
+import { chaburahToolAccess, isGlobalAdmin } from "../../src/shared/permissions";
 import { Button } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
 import { useAppState } from "../../src/state/AppState";
@@ -69,7 +69,8 @@ function betaSupportLabel(label: string, badge: string, leftRailNav: boolean, co
 
 export default function TabLayout() {
   const { loading, profile, session } = useAuthState();
-  const { chaburos, error: dataError, hydrated, loading: dataLoading, refresh, selectedChaburahId } = useAppState();
+  const { chaburos, error: dataError, hydrated, loading: dataLoading, memberships, refresh, selectedChaburahId } = useAppState();
+  const segments = useSegments();
   const { height, width } = useWindowDimensions();
   const compactPhoneNav = Platform.OS !== "web" && width < 768;
   if (loading || (session && !hydrated)) {
@@ -91,8 +92,14 @@ export default function TabLayout() {
     );
   }
 
-  const showRabbiHub = isRabbi(profile) || isGlobalAdmin(profile);
-  const showAdmin = isAdmin(profile) || isRabbi(profile) || isGlobalAdmin(profile);
+  const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
+  const showRabbiHub = toolAccess.rabbiHub;
+  const showAdmin = toolAccess.admin;
+  const currentRoute = segments[segments.length - 1];
+  if ((currentRoute === "admin" && !showAdmin) ||
+    (["rabbi-hub", "shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(currentRoute) && !showRabbiHub)) {
+    return <Redirect href="/(tabs)/dashboard" />;
+  }
   const showGlobalAdmin = isGlobalAdmin(profile);
   const showProfile = true;
   const showReviewInBottomTabs = !(compactPhoneNav && showRabbiHub);
