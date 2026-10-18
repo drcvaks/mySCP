@@ -30,12 +30,16 @@ const stubs = {
 };
 vm.runInNewContext(compile(fs.readFileSync("app/(tabs)/_layout.tsx", "utf8")), {exports: layout, require: name => stubs[name]});
 function screen(tree, name) {return tree.props.children.find(child => child.props.name === name);}
-for (const os of ["web", "android", "ios"]) {
-  platform = os; width = os === "web" ? 1440 : 390;
+for (const [os, viewportWidth] of [["web",1440],["web",320],["web",390],["web",430],["web",768],["android",390],["ios",390]]) {
+  platform = os; width = viewportWidth;
   chaburah = "own"; role = "local_rabbi"; route = "dashboard";
   let tree = layout.default();
   assert.equal(screen(tree, "rabbi-hub").props.options.href, undefined);
-  assert.equal(screen(tree, "review").props.options.href, os === "web" ? undefined : null);
+  assert.equal(screen(tree, "review").props.options.href, width >= 768 ? undefined : null);
+  assert.equal(tree.props.screenOptions.tabBarPosition, width >= 768 ? "left" : "bottom");
+  for (const name of ["directory", "profile", "settings", "beta-feedback"]) {
+    assert.equal(screen(tree,name).props.options.href, width >= 768 ? undefined : null);
+  }
   chaburah = "other";
   tree = layout.default();
   assert.equal(screen(tree, "rabbi-hub").props.options.href, null);

@@ -13,7 +13,7 @@ vm.runInNewContext(ts.transpileModule(screen,{compilerOptions:{jsx:ts.JsxEmit.Re
   useRouter:()=>({push:()=>{}}),usePathname:()=>"/rabbi-hub",useAuthState:()=>({profile:{role:"local_rabbi"}}),
   useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width}),
   chaburahToolAccess:()=>({rabbiHub:true,admin:true}),
-  useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{}},
+  useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{},spacing:{xs:6}},
   SafeAreaView:"SafeAreaView",View:"View",ScrollView:"ScrollView",Pressable:"Pressable",Modal:"Modal",Text:"Text",PageHeading:"Heading",Ionicons:"Icon",
   cloneElement:(element,props)=>({type:element.type,props:{...element.props,...props}})
 });
@@ -28,6 +28,7 @@ for(width of [1440,390]){
   const header=jsx("ProgramButtons",{}),management=jsx("WeekControls",{});
   const frame=controller.props.render({header,management});
   const heading=all(frame,"Heading")[0],scroll=all(frame,"ScrollView")[0];
+  assert.equal(Boolean(heading.props.navigationButton), width < 768, "Mobile browser gets the hamburger menu, just like native phones");
   assert.equal(heading.props.accessory,header);
   assert.equal(heading.props.stackAccessory,width<1100);
   assert.equal(all(scroll,"ProgramButtons").length,0,"Program selection stays outside scrolling content");

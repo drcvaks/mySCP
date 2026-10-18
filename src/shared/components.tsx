@@ -27,7 +27,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const { chaburos, memberships, selectedChaburahId } = useAppState();
   const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
   const { width } = useWindowDimensions();
-  const showDrawerButton = Platform.OS !== "web" && width < 768;
+  const showDrawerButton = width < 768;
   const [menuOpen, setMenuOpen] = useState(false);
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
@@ -126,6 +126,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
                 <Ionicons name="close" color={theme.colors.ink} size={24} />
               </Pressable>
             </View>
+            <ScrollView contentContainerStyle={{ gap: theme.spacing.xs }}>
             {drawerItems.map((item) => {
               const active = isActiveDrawerItem(item.href);
               return (
@@ -145,6 +146,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
                 </Pressable>
               );
             })}
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -425,6 +427,7 @@ export const styles = StyleSheet.create({
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     height: 44,
+    flexShrink: 0,
     justifyContent: "center",
     width: 44
   },

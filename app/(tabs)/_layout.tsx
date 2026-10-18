@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Redirect, Tabs, useSegments } from "expo-router";
-import { ActivityIndicator, Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SidebarItem, SidebarNavigation, isSidebarRoute } from "../../src/shared/SidebarNavigation";
 import { chaburahToolAccess, isGlobalAdmin } from "../../src/shared/permissions";
 import { Button } from "../../src/shared/components";
@@ -72,7 +72,7 @@ export default function TabLayout() {
   const { chaburos, error: dataError, hydrated, loading: dataLoading, memberships, refresh, selectedChaburahId } = useAppState();
   const segments = useSegments();
   const { height, width } = useWindowDimensions();
-  const compactPhoneNav = Platform.OS !== "web" && width < 768;
+  const compactPhoneNav = width < 768;
   if (loading || (session && !hydrated)) {
     return (
       <View style={{ alignItems: "center", flex: 1, justifyContent: "center" }}>
@@ -106,7 +106,7 @@ export default function TabLayout() {
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
   const showAskRav = askRavEnabled;
-  const leftRailNav = Platform.OS === "web" || width >= 768;
+  const leftRailNav = !compactPhoneNav;
   const compactLeftRail = leftRailNav && height < 760;
   const denseLeftRail = leftRailNav && height < 640;
 
