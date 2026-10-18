@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, Card, FilterChip, FormInput, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, TextArea, styles } from "../../src/shared/components";
 import { supabase } from "../../src/lib/supabase";
 import { formatSupabaseError } from "../../src/lib/errors";
@@ -15,6 +15,7 @@ interface FeedbackItem {
   id: string;
   userId: string;
   userName?: string;
+  userEmail?: string;
   role: string;
   category: FeedbackCategory;
   body: string;
@@ -47,6 +48,7 @@ export default function BetaFeedbackScreen() {
   const [saving, setSaving] = useState(false);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const canReview = profile ? isAdmin(profile) || isRabbi(profile) || isGlobalAdmin(profile) : false;
+  const canContact = profile ? isGlobalAdmin(profile) : false;
 
   const visibleFeedback = useMemo(
     () =>
@@ -60,14 +62,20 @@ export default function BetaFeedbackScreen() {
 
   useEffect(() => {
     void loadFeedback();
-  }, []);
+  }, [profile?.id, canContact]);
 
   async function loadFeedback() {
+    if (!profile) {
+      setFeedback([]);
+      return;
+    }
     setLoading(true);
     setMessage("");
     const [feedbackResult, profilesResult] = await Promise.all([
       supabase.from("beta_feedback").select("*").order("created_at", { ascending: false }).limit(150),
-      supabase.from("profiles").select("id,email,full_name")
+      canContact
+        ? supabase.from("profiles").select("id,email,full_name")
+        : supabase.from("profiles").select("id,full_name")
     ]);
     setLoading(false);
 
@@ -77,13 +85,14 @@ export default function BetaFeedbackScreen() {
       return;
     }
 
-    const profileNames = new Map(
-      (profilesResult.data ?? []).map((row) => [row.id, row.full_name ?? row.email ?? "Tester"])
+    const feedbackProfiles = new Map(
+      (profilesResult.data ?? []).map((row) => [row.id, row])
     );
     const mapped = (feedbackResult.data ?? []).map((row) => ({
       id: row.id,
       userId: row.user_id,
-      userName: profileNames.get(row.user_id),
+      userName: feedbackProfiles.get(row.user_id)?.full_name?.trim() || "Tester",
+      userEmail: canContact ? (feedbackProfiles.get(row.user_id) as { email?: string } | undefined)?.email : undefined,
       role: row.role,
       category: row.category,
       body: row.body,
@@ -94,6 +103,15 @@ export default function BetaFeedbackScreen() {
       createdAt: row.created_at
     }));
     setFeedback(mapped);
+  }
+
+  async function emailTester(item: FeedbackItem) {
+    if (!canContact || !item.userEmail) return;
+    try {
+      await Linking.openURL(`mailto:${encodeURIComponent(item.userEmail)}?subject=${encodeURIComponent("Your mySCP beta feedback")}`);
+    } catch {
+      setMessage("Unable to open your email app. Copy the email address shown under the tester's name.");
+    }
   }
 
   async function submitFeedback() {
@@ -217,6 +235,17 @@ export default function BetaFeedbackScreen() {
             <Row>
               <View style={{ flex: 1, minWidth: 180 }}>
                 <Text style={styles.body}>{item.userName ?? "Tester"}</Text>
+                {canContact && item.userEmail ? (
+                  <Text
+                    selectable
+                    accessibilityRole="link"
+                    accessibilityLabel={`Email ${item.userName ?? "tester"}: ${item.userEmail}`}
+                    onPress={() => emailTester(item)}
+                    style={localStyles.emailLink}
+                  >
+                    {item.userEmail}
+                  </Text>
+                ) : null}
                 <MetaText>
                   {categoryLabel(item.category)} - {platformLabel(item.platform)} - {roleLabel(item.role)} - {formatDate(item.createdAt)}
                 </MetaText>
@@ -289,6 +318,12 @@ function formatDate(value: string) {
 }
 
 const localStyles = StyleSheet.create({
+  emailLink: {
+    color: theme.colors.primary,
+    fontSize: 13,
+    textDecorationLine: "underline",
+    flexShrink: 1
+  },
   feedbackCard: {
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,

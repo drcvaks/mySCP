@@ -23,7 +23,8 @@ export default function DashboardScreen() {
     reviewSessions,
     discussionUnreadCount,
     notificationUnreadCount,
-    selectedChaburahId
+    selectedChaburahId,
+    selectedProgram
   } = useAppState();
   useRefreshOnFocus(refresh);
   const currentChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
@@ -75,11 +76,11 @@ export default function DashboardScreen() {
     : [];
 
   return (
-    <Screen title="This Week in SCP" eyebrow="Practical Kashrus" onRefresh={refresh} refreshing={loading} programSelector={<ProgramSelector />}>
+    <Screen title="This Week in SCP" onRefresh={refresh} refreshing={loading} programSelector={<ProgramSelector />}>
       <Card>
         <Pill label="Current Topic" tone="primary" />
-        <Text style={styles.sectionTitle}>Practical Kashrus: Kitchen, Food & Wine</Text>
-        <Text style={styles.muted}>Week 1 of Nat Bar Nat & Kitchen Kashrus</Text>
+        <Text style={styles.sectionTitle}>{selectedProgram.topic}</Text>
+        <Text style={styles.muted}>{selectedProgram.name} - Week {currentReviewWeek}</Text>
         <Row>
           <View>
             <Text style={styles.muted}>Next Shiur</Text>
