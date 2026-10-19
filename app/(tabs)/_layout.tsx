@@ -129,7 +129,7 @@ export default function TabLayout() {
           : {
               borderRadius: 12,
               marginHorizontal: 4,
-              marginVertical: 4
+              marginVertical: 2
             },
         tabBarLabelStyle: {
           fontSize: denseLeftRail ? 10 : compactLeftRail ? 11 : 12,
@@ -141,8 +141,8 @@ export default function TabLayout() {
         tabBarStyle: {
           borderTopColor: theme.colors.border,
           borderRightColor: leftRailNav ? theme.colors.border : undefined,
-          height: leftRailNav ? "100%" : undefined,
-          minHeight: leftRailNav ? undefined : 72,
+          height: leftRailNav ? "100%" : 80,
+          minHeight: leftRailNav ? undefined : 80,
           overflow: leftRailNav ? "scroll" : "visible",
           paddingBottom: leftRailNav ? 0 : 10,
           paddingTop: denseLeftRail ? 2 : compactLeftRail ? 4 : 8,

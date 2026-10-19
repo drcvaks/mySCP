@@ -132,6 +132,8 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
               return (
                 <Pressable
                   key={item.href}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
                   onPress={() => navigateTo(item.href)}
                   style={[styles.drawerItem, item.beta && styles.drawerItemBeta, active && styles.drawerItemActive]}
                 >
@@ -445,7 +447,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     gap: theme.spacing.xs,
     padding: theme.spacing.md,
-    paddingTop: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
     width: 288
   },
   drawerHeader: {
@@ -472,7 +474,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: theme.spacing.md,
-    minHeight: 50,
+    minHeight: 44,
     paddingHorizontal: theme.spacing.md
   },
   drawerItemActive: {
