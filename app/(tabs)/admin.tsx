@@ -65,6 +65,7 @@ export default function AdminScreen() {
   const fileChaburahId = profile?.chaburahId;
   const fileChaburah = chaburos.find((item) => item.id === fileChaburahId);
   const [address, setAddress] = useState("");
+  const [rabbiName, setRabbiName] = useState("");
   const [scheduleDay, setScheduleDay] = useState("Sunday");
   const [scheduleTime, setScheduleTime] = useState("");
   const [scheduleMeridiem, setScheduleMeridiem] = useState("PM");
@@ -114,6 +115,7 @@ export default function AdminScreen() {
     if (!chaburah) return;
     const parsedSchedule = parseSchedule(chaburah.schedule);
     setAddress(chaburah.address);
+    setRabbiName(chaburah.rabbiName === "Rabbi not assigned" ? "" : chaburah.rabbiName);
     setScheduleDay(parsedSchedule.day);
     setScheduleTime(parsedSchedule.time);
     setScheduleMeridiem(parsedSchedule.meridiem);
@@ -209,6 +211,7 @@ export default function AdminScreen() {
     const { error } = await supabase
       .from("chaburos")
       .update({
+        rabbi_name: rabbiName.trim() || null,
         address: address.trim() || null,
         schedule_text: scheduleTime.trim() ? formatSchedule(scheduleDay, scheduleTime, scheduleMeridiem) : null,
         contact_email: contactEmail.trim() || null,
@@ -671,6 +674,8 @@ export default function AdminScreen() {
           <Text style={styles.muted}>Join or select a chaburah before editing local settings.</Text>
         ) : (
           <>
+            <MetaText>Rabbi name</MetaText>
+            <FormInput onChangeText={setRabbiName} placeholder="Rabbi name" value={rabbiName} />
             <FormInput onChangeText={setAddress} placeholder="Address" value={address} />
             <FormInput keyboardType="email-address" onChangeText={setContactEmail} placeholder="Contact email" value={contactEmail} />
             <View style={{ gap: 8 }}>
