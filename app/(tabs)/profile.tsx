@@ -63,7 +63,6 @@ export default function ProfileScreen() {
         <SectionTitle>{profile.fullName || "Name not set"}</SectionTitle>
         <Text style={styles.muted}>{roleLabel(profile.role)}</Text>
         <Text style={styles.body}>{profile.email}</Text>
-        <Text style={styles.muted}>Email changes are managed through Supabase Auth.</Text>
       </Card>
 
       <StatusBanner message={message} tone={message.includes("saved") ? "success" : "error"} />

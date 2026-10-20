@@ -48,7 +48,7 @@ export default function AuthScreen() {
     setSubmitting(true);
     setMessage("");
     const result = await resetPassword(email.trim(), Linking.createURL("/auth"));
-    setMessage(result ?? "Password reset email sent. Check your inbox for the reset link.");
+    setMessage(result ?? "Password reset email sent. The email may show Supabase, mySCP's sign-in provider, as the sender. Check your inbox and spam/junk folder for the reset link.");
     setSubmitting(false);
   }
 
@@ -113,7 +113,7 @@ export default function AuthScreen() {
           <SectionTitle>{mode === "sign-in" ? "Sign In" : "Join mySCP"}</SectionTitle>
           <Text style={styles.muted}>
             {mode === "sign-in"
-              ? "Use the email and password from your Supabase account."
+              ? "Sign in with your mySCP email and password."
               : "Create an account to join a chaburah and access learning materials."}
           </Text>
           {mode === "sign-up" ? (
