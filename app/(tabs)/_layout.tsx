@@ -2,12 +2,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Redirect, Tabs, useSegments } from "expo-router";
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SidebarItem, SidebarNavigation, SidebarRoute, isSidebarRoute, navigationItems } from "../../src/shared/SidebarNavigation";
 import { chaburahToolAccess, isGlobalAdmin } from "../../src/shared/permissions";
 import { Button } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
-import { navigationRailWidth, usesCompactNavigation, usesLandscapeRail } from "../../src/shared/responsiveLayout";
+import { navigationRailWidth, usesCompactNavigation, usesLandscapeMenu } from "../../src/shared/responsiveLayout";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 
@@ -59,7 +59,7 @@ export default function TabLayout() {
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const compactPhoneNav = usesCompactNavigation(width, height);
-  const landscapeRail = usesLandscapeRail(width, height);
+  const landscapeMenu = usesLandscapeMenu(width, height);
   const railWidth = navigationRailWidth(width, height);
   if (loading || (session && !hydrated)) {
     return (
@@ -94,16 +94,14 @@ export default function TabLayout() {
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
   const showAskRav = askRavEnabled;
-  const leftRailNav = !compactPhoneNav || landscapeRail;
+  const leftRailNav = !compactPhoneNav;
   const compactLeftRail = leftRailNav && height < 760;
   const denseLeftRail = leftRailNav && height < 640;
 
   return (
     <Tabs
-      tabBar={(props) => landscapeRail
-        ? <SafeAreaView edges={["top", "bottom", "left"]} style={{ width: railWidth + insets.left, height: "100%", backgroundColor: "#FFFFFF" }}>
-            <SidebarTabBar {...props} chaburah={selectedChaburah?.name} width={railWidth} iconsOnly />
-          </SafeAreaView>
+      tabBar={(props) => landscapeMenu
+        ? null
         : leftRailNav
           ? <SidebarTabBar {...props} chaburah={selectedChaburah?.name} width={railWidth} />
           : <MobileTabBar {...props} />}
@@ -134,6 +132,7 @@ export default function TabLayout() {
         tabBarLabelPosition: leftRailNav ? "beside-icon" : "below-icon",
         tabBarPosition: leftRailNav ? "left" : "bottom",
         tabBarStyle: {
+          display: landscapeMenu ? "none" : "flex",
           borderTopColor: theme.colors.border,
           borderRightColor: leftRailNav ? theme.colors.border : undefined,
           backgroundColor: "#FFFFFF",
@@ -142,7 +141,7 @@ export default function TabLayout() {
           overflow: leftRailNav ? "scroll" : "visible",
           paddingBottom: leftRailNav ? 0 : Math.max(insets.bottom, 12),
           paddingTop: leftRailNav ? (denseLeftRail ? 2 : compactLeftRail ? 4 : 8) : 4,
-          width: leftRailNav ? railWidth + (landscapeRail ? insets.left : 0) : undefined
+          width: leftRailNav ? railWidth : undefined
         }
       }}
     >

@@ -2,14 +2,14 @@ import { cloneElement, ReactElement, ReactNode, RefObject, useEffect, useRef, us
 import { Alert, Modal, Platform, Pressable, ScrollView, ScrollViewProps, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { globalStyles, theme } from "./theme";
 import { useAuthState } from "../state/AuthState";
 import { useAppState } from "../state/AppState";
 import { PageHeading } from "./PageHeading";
 import { chaburahToolAccess } from "./permissions";
 import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
-import { usesCompactNavigation, usesLandscapeRail } from "./responsiveLayout";
+import { usesCompactNavigation, usesLandscapeMenu } from "./responsiveLayout";
 
 interface ScreenProps {
   title: string;
@@ -31,12 +31,18 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
   const { width, height } = useWindowDimensions();
   const showDrawerButton = usesCompactNavigation(width, height);
-  const landscapePhone = usesLandscapeRail(width, height);
+  const landscapePhone = usesLandscapeMenu(width, height);
+  const insets = useSafeAreaInsets();
+  const drawerWidth = Math.min(width - 24 - (landscapePhone ? insets.left : 0), 344);
   const [menuOpen, setMenuOpen] = useState(false);
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
   const drawerRoutes: { name: SidebarItem["name"]; label: string; show?: boolean }[] = [
-    { name: "review", label: "Review", show: toolAccess.rabbiHub },
+    { name: "dashboard", label: "Dashboard", show: landscapePhone },
+    { name: "chaburah", label: "My Chaburah", show: landscapePhone },
+    { name: "review", label: "Review", show: landscapePhone || toolAccess.rabbiHub },
+    { name: "files", label: "Files", show: landscapePhone },
+    { name: "rabbi-hub", label: "Rabbi Hub", show: landscapePhone && toolAccess.rabbiHub },
     { name: "admin", label: "Admin", show: toolAccess.admin },
     { name: "global-admin", label: "Global Admin", show: profile?.role === "global_admin" },
     { name: "beta-feedback", label: "Beta Feedback" },
@@ -62,7 +68,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
 
   // One controller owns both slots, keeping switches and management saves in sync.
   const renderScreen = ({ header = null, management = null }: { header?: ReactNode; management?: ReactNode } = {}) => (
-    <SafeAreaView style={globalStyles.screen} edges={landscapePhone ? ["top", "right"] : ["top"]}>
+    <SafeAreaView style={globalStyles.screen} edges={landscapePhone ? ["top", "left", "right", "bottom"] : ["top"]}>
       <View style={[styles.headerShell, !showDrawerButton && styles.wideHeaderShell]}>
         <View style={[styles.screenHeader, !showDrawerButton && styles.wideHeaderContent]}>
           <PageHeading title={title} eyebrow={eyebrow} pathname={pathname} onRefresh={onRefresh} refreshing={refreshing}
@@ -101,9 +107,10 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
         <View style={styles.drawerBackdrop}>
           <Pressable accessibilityRole="button" accessibilityLabel="Dismiss navigation menu"
             style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} />
-          <SafeAreaView edges={["top", "bottom"]} style={[styles.drawerPanel, { width: Math.min(width - 24, 344) }]}>
+          <SafeAreaView edges={landscapePhone ? ["top", "bottom", "left"] : ["top", "bottom"]}
+            style={[styles.drawerPanel, { width: drawerWidth + (landscapePhone ? insets.left : 0) }]}>
             <SidebarNavigation items={drawerItems} selected={selectedRoute} chaburah={selectedChaburah?.name}
-              width={Math.min(width - 24, 344)} onClose={() => setMenuOpen(false)} />
+              width={drawerWidth} onClose={() => setMenuOpen(false)} />
           </SafeAreaView>
         </View>
       </Modal>

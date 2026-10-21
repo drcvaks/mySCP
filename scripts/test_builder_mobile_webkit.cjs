@@ -93,10 +93,15 @@ async function main() {
       assert.equal(await page.getByRole("tab", { name: "Official Material", exact: true }).count(), 0);
       if (height < 600) {
         await page.getByRole("button", { name: "Open navigation menu", exact: true }).waitFor();
-        const rail=page.locator('[aria-label="Main navigation"]');
-        const box=await rail.boundingBox();
-        assert.ok(box.width<=65&&box.height>=height-1,"Landscape navigation is a narrow full-height left rail");
-        assert.equal(await rail.getByRole("link", { name: "Rabbi Hub", exact:true }).getAttribute("aria-current"),"page");
+        assert.equal(await page.locator('[aria-label="Main navigation"]').count(),0,"Landscape has no persistent sidebar");
+        assert.equal(await page.getByRole("tab",{name:/Dashboard/}).count(),0,"Landscape has no bottom tabs");
+        await page.getByRole("button",{name:"Open navigation menu",exact:true}).click();
+        const menu=page.locator('[aria-label="Main navigation"]');
+        for(const label of ["Dashboard","My Chaburah","Review","Files","Rabbi Hub","Admin","Settings"]){
+          await menu.getByRole("button",{name:label,exact:true}).waitFor({state:"attached"});
+        }
+        assert.equal(await menu.getByRole("button",{name:"Rabbi Hub",exact:true}).getAttribute("aria-current"),"page");
+        await page.getByRole("button",{name:"Close navigation menu",exact:true}).click();
       }
       await official.scrollIntoViewIfNeeded();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));

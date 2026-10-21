@@ -44,16 +44,17 @@ function screen(tree, name) {return tree.props.children.find(child => child.prop
 for (const [os, viewportWidth, viewportHeight = 900] of [["web",1440],["web",320],["web",390],["web",430],["web",768],["android",390],["ios",390],["android",844,390],["ios",667,375],["web",844,390]]) {
   platform = os; width = viewportWidth; height = viewportHeight;
   const compact = responsive.usesCompactNavigation(width,height);
-  const landscapeRail = responsive.usesLandscapeRail(width,height);
+  const landscapeMenu = responsive.usesLandscapeMenu(width,height);
   chaburah = "own"; role = "local_rabbi"; route = "dashboard";
   let tree = layout.default();
   assert.equal(screen(tree, "rabbi-hub").props.options.href, undefined);
   assert.equal(screen(tree, "review").props.options.href, compact ? null : undefined);
-  assert.equal(tree.props.screenOptions.tabBarPosition, compact && !landscapeRail ? "bottom" : "left");
-  if (landscapeRail) {
-    assert.equal(tree.props.screenOptions.tabBarStyle.width,64,"Landscape uses a narrow rail rather than a bottom bar");
+  assert.equal(tree.props.screenOptions.tabBarPosition, compact ? "bottom" : "left");
+  if (landscapeMenu) {
+    assert.equal(tree.props.screenOptions.tabBarStyle.display,"none");
+    assert.equal(tree.props.tabBar({}),null,"Landscape has no persistent navigation bar");
   }
-  if (compact && !landscapeRail) {
+  if (compact && !landscapeMenu) {
     const icon = screen(tree, "files").props.options.tabBarIcon;
     const idle = icon({ focused: false }), active = icon({ focused: true });
     assert.equal(idle.props.children.props.name, navigationItems.files.icon);
@@ -94,5 +95,5 @@ assert.equal(permissions.chaburahToolAccess(profile(), adminMembership, "other")
 assert.equal(permissions.chaburahToolAccess(profile(), adminMembership, "other").rabbiHub, false);
 const components = fs.readFileSync("src/shared/components.tsx", "utf8");
 assert.ok(components.includes("show: toolAccess.admin"), "Hamburger Admin uses the same scoped permission");
-assert.ok(components.includes("show: toolAccess.rabbiHub"), "Review moves to hamburger only when Rabbi Hub occupies bottom navigation");
+assert.ok(components.includes("show: landscapePhone || toolAccess.rabbiHub"), "Review is reachable from the full landscape menu and the portrait Rabbi menu");
 console.log("PASS: scoped Rabbi/Admin menus on web, Android and iOS; participant-in-another-chaburah and inactive/missing memberships denied; direct routes redirected; Review restored on participant bottom bar; Global Admin unchanged.");

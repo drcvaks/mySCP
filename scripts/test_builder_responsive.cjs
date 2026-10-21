@@ -13,7 +13,7 @@ for (const [width, height, twoColumns, compactNavigation] of [
 ]) {
   assert.equal(responsive.shiurBuilderLayout(width, height).twoColumns, twoColumns, `${width}x${height}`);
   assert.equal(responsive.usesCompactNavigation(width, height), compactNavigation);
-  if (height < 600) assert.equal(responsive.navigationRailWidth(width,height),64);
+  if (height < 600) assert.equal(responsive.navigationRailWidth(width,height),0);
 }
 const builder = fs.readFileSync("app/(tabs)/shiur-builder.tsx", "utf8");
 assert.ok(!builder.includes("Use the Web Version"));

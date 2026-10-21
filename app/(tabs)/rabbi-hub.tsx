@@ -24,7 +24,7 @@ import { theme } from "../../src/shared/theme";
 import { ReviewQuestion, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
-import { availableContentWidth, usesLandscapeRail } from "../../src/shared/responsiveLayout";
+import { availableContentWidth, usesLandscapeMenu } from "../../src/shared/responsiveLayout";
 
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
@@ -40,7 +40,7 @@ export default function RabbiHubScreen() {
   const { profile } = useAuthState();
   const scrollRef = useRef<ScrollView | null>(null);
   const { width, height } = useWindowDimensions();
-  const compactTools = availableContentWidth(width, height) < 900 || usesLandscapeRail(width, height);
+  const compactTools = availableContentWidth(width, height) < 900 || usesLandscapeMenu(width, height);
   const { askRavQuestions, chaburos, currentReviewWeek, loading, memberships, refresh, reviewQuestions, selectedChaburahId, selectedProgramId, programsReady, registerProgramEdits } = useAppState();
   useRefreshOnFocus(refresh);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
