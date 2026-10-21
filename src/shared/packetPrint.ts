@@ -125,12 +125,6 @@ export function buildPrintablePacketHtml({ chunks, meta, title, chunkHeadingOpti
       break-inside: avoid;
       margin-bottom: 24px;
     }
-    .chunk-code {
-      color: #475569;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 9pt;
-      margin-bottom: 4px;
-    }
     .source-sheet { margin-bottom: 12px; }
     .source-sheet h2 { font-size: 12pt; margin-bottom: 4px; }
     h2 {
@@ -216,15 +210,14 @@ export function buildPrintablePacketHtml({ chunks, meta, title, chunkHeadingOpti
     </div>
     <img class="packet-logo" alt="SCP logo" src="${logoUri}" width="96" height="96" />
   </header>
-  ${chunks.map((chunk, index) => renderChunk(chunk, index, chunkHeadingOptions)).join("\n")}
+  ${chunks.map((chunk) => renderChunk(chunk, chunkHeadingOptions)).join("\n")}
 </body>
 </html>`;
 }
 
-function renderChunk(chunk: ContentChunk, index: number, options?: PacketHeadingOptions) {
+function renderChunk(chunk: ContentChunk, options?: PacketHeadingOptions) {
   return `<section class="chunk ${chunk.sourceType === "source" ? "source-sheet" : ""}">
-  ${chunk.sourceType === "source" ? "" : `<div class="chunk-code">${index + 1}. ${escapeHtml(chunk.chunkCode)}</div>
-  ${includesChunkHeading(chunk, options) ? `<h2>${escapeHtml(chunk.chunkTitle)}</h2>` : ""}`}
+  ${chunk.sourceType !== "source" && includesChunkHeading(chunk, options) ? `<h2>${escapeHtml(chunk.chunkTitle)}</h2>` : ""}
   ${chunk.contentDocument ? renderRichDocument(chunk.contentDocument) : renderMarkdownBlocks(chunk.contentMarkdown)}
 </section>`;
 }

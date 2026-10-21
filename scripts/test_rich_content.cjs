@@ -102,7 +102,12 @@ async function main() {
   }] });
   assert.ok(!sourcePrint.includes("HC1-S11") && !sourcePrint.includes("<h2>Source 11</h2>"));
   assert.ok(sourcePrint.includes("Original source image content"));
-  assert.ok(legacy.includes("95-B1") && legacy.includes("<h2>Summer</h2>"), "Keep headings for notes and Q&A");
+  assert.ok(!legacy.includes("95-B1") && legacy.includes("<h2>Summer</h2>"), "Omit printed chunk codes while keeping optional titles");
+  const qaPrint = print.buildPrintablePacketHtml({ title: "Q&A Packet", chunks: [{
+    chunkCode: "HC1-Q18", chunkTitle: "Question topic", sourceType: "qa", contentMarkdown: "Question: Original question\n\nAnswer: Original answer"
+  }] });
+  assert.ok(!qaPrint.includes("HC1-Q18") && !qaPrint.includes('class="chunk-code"'));
+  assert.ok(qaPrint.includes("Question topic") && qaPrint.includes("Original question") && qaPrint.includes("Original answer"));
   const headingChunks = ["notes", "qa", "source"].map((sourceType) => ({
     chunkCode: sourceType, chunkTitle: `Generated ${sourceType} heading`, sourceType,
     contentMarkdown: `Official ${sourceType} body`,
