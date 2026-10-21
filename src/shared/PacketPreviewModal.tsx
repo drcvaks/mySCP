@@ -4,6 +4,7 @@ import { formatSupabaseError } from "../lib/errors";
 import { supabase } from "../lib/supabase";
 import { ContentChunk, ReviewPacket } from "./types";
 import { printPacket } from "./packetPrint";
+import { includesChunkHeading } from "./packetHeadings";
 import { Button, MetaText, Pill, Row, SectionTitle, StatusBanner, styles } from "./components";
 import { theme } from "./theme";
 import { useAppState } from "../state/AppState";
@@ -73,6 +74,7 @@ export function PacketPreviewModal({
   async function printCurrentPacket() {
     if (!packet || chunks.length === 0) return;
     const printError = await printPacket({
+      chunkHeadingOptions: packet.chunkHeadingOptions,
       chunks,
       meta: `${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`,
       title: packet.title
@@ -110,7 +112,7 @@ export function PacketPreviewModal({
             {chunks.map((chunk, index) => (
               <View key={chunk.id} style={modalStyles.chunk}>
                 <MetaText>{index + 1}. {chunkDisplayCode(chunk.chunkCode)}</MetaText>
-                <Text style={modalStyles.chunkTitle}>{chunk.chunkTitle}</Text>
+                {includesChunkHeading(chunk, packet?.chunkHeadingOptions) ? <Text style={modalStyles.chunkTitle}>{chunk.chunkTitle}</Text> : null}
                 <PacketChunkContent chunk={chunk} />
               </View>
             ))}
@@ -156,6 +158,7 @@ function PacketImage({ alt, uri }: { alt: string; uri: string }) {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    chunkHeadingOptions: row.chunk_heading_options ?? {},
     programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
     chaburahId: row.chaburah_id,

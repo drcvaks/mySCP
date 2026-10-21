@@ -7,6 +7,7 @@ import { formatSupabaseError } from "../../src/lib/errors";
 import { theme } from "../../src/shared/theme";
 import { ContentChunk, ReviewPacket } from "../../src/shared/types";
 import { printPacket } from "../../src/shared/packetPrint";
+import { includesChunkHeading } from "../../src/shared/packetHeadings";
 import { useAppState } from "../../src/state/AppState";
 import { programName, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
 import { readRichContent } from "../../src/shared/documentContent";
@@ -65,6 +66,7 @@ export default function ShiurPacketScreen() {
   async function printCurrentPacket() {
     if (!packet || chunks.length === 0) return;
     const printError = await printPacket({
+      chunkHeadingOptions: packet.chunkHeadingOptions,
       chunks,
       meta: `${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`,
       title: packet.title
@@ -100,7 +102,7 @@ export default function ShiurPacketScreen() {
       {chunks.map((chunk, index) => (
         <Card key={chunk.id}>
           <MetaText>{index + 1}. {chunkDisplayCode(chunk.chunkCode)}</MetaText>
-          <Text style={localStyles.chunkTitle}>{chunk.chunkTitle}</Text>
+          {includesChunkHeading(chunk, packet?.chunkHeadingOptions) ? <Text style={localStyles.chunkTitle}>{chunk.chunkTitle}</Text> : null}
           <PacketChunkContent chunk={chunk} />
         </Card>
       ))}
@@ -143,6 +145,7 @@ function PacketImage({ alt, uri }: { alt: string; uri: string }) {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    chunkHeadingOptions: row.chunk_heading_options ?? {},
     programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
     chaburahId: row.chaburah_id,

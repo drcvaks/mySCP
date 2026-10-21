@@ -103,6 +103,17 @@ async function main() {
   assert.ok(!sourcePrint.includes("HC1-S11") && !sourcePrint.includes("<h2>Source 11</h2>"));
   assert.ok(sourcePrint.includes("Original source image content"));
   assert.ok(legacy.includes("95-B1") && legacy.includes("<h2>Summer</h2>"), "Keep headings for notes and Q&A");
+  const headingChunks = ["notes", "qa", "source"].map((sourceType) => ({
+    chunkCode: sourceType, chunkTitle: `Generated ${sourceType} heading`, sourceType,
+    contentMarkdown: `Official ${sourceType} body`,
+    contentDocument: { version: 1, blocks: [{ kind: "paragraph", spans: [{ text: `Official ${sourceType} body`, bold: true }] }], footnotes: [] }
+  }));
+  const hiddenHeadings = print.buildPrintablePacketHtml({ title: "Packet title remains", chunks: headingChunks,
+    chunkHeadingOptions: { notes: false, qa: false } });
+  assert.ok(!hiddenHeadings.includes("Generated notes heading") && !hiddenHeadings.includes("Generated qa heading"));
+  assert.ok(hiddenHeadings.includes("Packet title remains") && hiddenHeadings.includes("Official notes body") && hiddenHeadings.includes("Official qa body"));
+  const independentHeadings = print.buildPrintablePacketHtml({ title: "Packet", chunks: headingChunks, chunkHeadingOptions: { notes: false } });
+  assert.ok(!independentHeadings.includes("Generated notes heading") && independentHeadings.includes("Generated qa heading"));
   fs.mkdirSync("tmp/print-logo-preview", { recursive: true });
   for (const [category, label] of [["notes", "Review Notes"], ["qa", "Q&A"], ["sources", "Source Sheets"]]) {
     const preview = print.buildPrintablePacketHtml({ title: `Challah - Week 1 - ${label}`, meta: "Winter 5787", chunks:

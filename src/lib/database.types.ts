@@ -137,6 +137,7 @@ type ContentChunkLinkRow = {
 };
 
 type ReviewPacketRow = {
+  chunk_heading_options: Json;
   program_id: string;
   id: string;
   chaburah_id: string;
@@ -489,6 +490,10 @@ export interface Database {
       };
       update_published_review_packet: {
         Args: { target_packet_id: string; new_title: string; new_week: number; chunk_ids: string[] };
+        Returns: LearningFileRow;
+      };
+      update_published_review_packet_display: {
+        Args: { target_packet_id: string; new_title: string; new_week: number; chunk_ids: string[]; new_chunk_heading_options: Json };
         Returns: LearningFileRow;
       };
       delete_review_packet: {

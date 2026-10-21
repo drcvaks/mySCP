@@ -1,10 +1,12 @@
 import { ContentChunk } from "./types";
+import { includesChunkHeading, PacketHeadingOptions } from "./packetHeadings";
 import { renderRichDocument } from "./richDocumentHtml";
 import { resolveDocumentAssets } from "./documentAssets";
 import { compactSourceDocument, compactSourceImage } from "./sourceSheetLayout";
 import { uri as logoUri } from "../data/scpLogo.json";
 
 export interface PrintablePacket {
+  chunkHeadingOptions?: PacketHeadingOptions;
   chunks: ContentChunk[];
   meta?: string;
   title: string;
@@ -79,7 +81,7 @@ export async function printPacket(packet: PrintablePacket): Promise<string | nul
   return null;
 }
 
-export function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacket) {
+export function buildPrintablePacketHtml({ chunks, meta, title, chunkHeadingOptions }: PrintablePacket) {
   return `<!doctype html>
 <html>
 <head>
@@ -214,15 +216,15 @@ export function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacke
     </div>
     <img class="packet-logo" alt="SCP logo" src="${logoUri}" width="96" height="96" />
   </header>
-  ${chunks.map((chunk, index) => renderChunk(chunk, index)).join("\n")}
+  ${chunks.map((chunk, index) => renderChunk(chunk, index, chunkHeadingOptions)).join("\n")}
 </body>
 </html>`;
 }
 
-function renderChunk(chunk: ContentChunk, index: number) {
+function renderChunk(chunk: ContentChunk, index: number, options?: PacketHeadingOptions) {
   return `<section class="chunk ${chunk.sourceType === "source" ? "source-sheet" : ""}">
   ${chunk.sourceType === "source" ? "" : `<div class="chunk-code">${index + 1}. ${escapeHtml(chunk.chunkCode)}</div>
-  <h2>${escapeHtml(chunk.chunkTitle)}</h2>`}
+  ${includesChunkHeading(chunk, options) ? `<h2>${escapeHtml(chunk.chunkTitle)}</h2>` : ""}`}
   ${chunk.contentDocument ? renderRichDocument(chunk.contentDocument) : renderMarkdownBlocks(chunk.contentMarkdown)}
 </section>`;
 }

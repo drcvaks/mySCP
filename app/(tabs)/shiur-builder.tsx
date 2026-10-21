@@ -24,6 +24,7 @@ import { ContentChunk, ContentChunkLink, ContentSourceType, ReviewPacket, Review
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { printPacket } from "../../src/shared/packetPrint";
+import { includesChunkHeading, PacketHeadingOptions } from "../../src/shared/packetHeadings";
 import { belongsToProgram, SUMMER_PROGRAM, WINTER_PROGRAM } from "../../src/shared/learningPrograms";
 import { PaceReference } from "../../src/shared/PaceReference";
 import { chunkDisplayCode } from "../../src/shared/chunkLabels";
@@ -63,7 +64,8 @@ export default function ShiurBuilderScreen() {
   const [activePacketId, setActivePacketId] = useState<string | null>(null);
   const [activePacketStatus, setActivePacketStatus] = useState<ReviewPacket["status"]>("draft");
   const [editingPublishedPacket, setEditingPublishedPacket] = useState(false);
-  const [publishedEditSnapshot, setPublishedEditSnapshot] = useState<{ chunkIds: string[]; title: string; week: number } | null>(null);
+  const [chunkHeadingOptions, setChunkHeadingOptions] = useState<PacketHeadingOptions>({});
+  const [publishedEditSnapshot, setPublishedEditSnapshot] = useState<{ chunkIds: string[]; title: string; week: number; chunkHeadingOptions: PacketHeadingOptions } | null>(null);
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null);
   const [previewChunkListIds, setPreviewChunkListIds] = useState<string[] | null>(null);
   const [previewSectionKey, setPreviewSectionKey] = useState<string | null>(null);
@@ -170,6 +172,7 @@ export default function ShiurBuilderScreen() {
       publishedEditSnapshot &&
       (title.trim() !== publishedEditSnapshot.title ||
         week !== publishedEditSnapshot.week ||
+        (activeCategory !== "source" && (chunkHeadingOptions[activeCategory] !== false) !== (publishedEditSnapshot.chunkHeadingOptions[activeCategory] !== false)) ||
         !sameStringArray(selectedCategoryIds, publishedEditSnapshot.chunkIds))
   );
   const suggestedChunks = links
@@ -344,6 +347,7 @@ export default function ShiurBuilderScreen() {
 
   async function printPreviewPacket() {
     const printError = await printPacket({
+      chunkHeadingOptions,
       chunks: selectedCategoryChunks,
       meta: `${selectedProgram.name} - ${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`,
       title: buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)
@@ -438,6 +442,7 @@ export default function ShiurBuilderScreen() {
   }
 
   function resetDraftState() {
+    setChunkHeadingOptions({});
     setActivePane("official");
     setActivePacketId(null);
     setActivePacketStatus("draft");
@@ -460,6 +465,7 @@ export default function ShiurBuilderScreen() {
       return;
     }
     setActivePacketId(packet.id);
+    setChunkHeadingOptions(packet.chunkHeadingOptions ?? {});
     setActivePacketStatus(packet.status);
     setEditingPublishedPacket(false);
     setPublishedEditSnapshot(null);
@@ -500,6 +506,7 @@ export default function ShiurBuilderScreen() {
       return;
     }
     setActivePacketId(packet.id);
+    setChunkHeadingOptions(packet.chunkHeadingOptions ?? {});
     setActivePacketStatus("published");
     setEditingPublishedPacket(true);
     setActivePane("packet");
@@ -514,6 +521,7 @@ export default function ShiurBuilderScreen() {
       setActiveCategory(firstCategoryChunk.sourceType);
     }
     setPublishedEditSnapshot({
+      chunkHeadingOptions: packet.chunkHeadingOptions ?? {},
       chunkIds: loadedChunks.filter((chunk) => chunk.sourceType === editCategory).map((chunk) => chunk.id),
       title: packet.title,
       week: packet.week
@@ -632,6 +640,7 @@ export default function ShiurBuilderScreen() {
     setSaving(true);
     setMessage("");
     const packetPayload = {
+      chunk_heading_options: chunkHeadingOptions,
       program_id: programsReady ? selectedProgramId : undefined,
       chaburah_id: managedChaburahId,
       title: title.trim(),
@@ -641,7 +650,7 @@ export default function ShiurBuilderScreen() {
       created_by: profile.id
     };
     const packetResult = activePacketId
-      ? await supabase.from("review_packets").update({ title: packetPayload.title, week: packetPayload.week }).eq("id", activePacketId).select("id").single()
+      ? await supabase.from("review_packets").update({ title: packetPayload.title, week: packetPayload.week, chunk_heading_options: chunkHeadingOptions }).eq("id", activePacketId).select("id").single()
       : await supabase.from("review_packets").insert(packetPayload).select("id").single();
 
     if (packetResult.error || !packetResult.data) {
@@ -697,7 +706,8 @@ export default function ShiurBuilderScreen() {
     setSaving(true);
     setMessage("");
     const publishedTitle = buildPublishedCategoryTitle(title.trim(), activeCategoryConfig.label);
-    const { data, error } = await supabase.rpc("update_published_review_packet", {
+    const { data, error } = await supabase.rpc("update_published_review_packet_display", {
+      new_chunk_heading_options: chunkHeadingOptions,
       target_packet_id: activePacketId,
       new_title: publishedTitle,
       new_week: week,
@@ -712,7 +722,7 @@ export default function ShiurBuilderScreen() {
       await supabase.rpc("notify_learning_file", { target_file_id: data.id });
     }
     setTitle(publishedTitle);
-    setPublishedEditSnapshot({ chunkIds: categoryIds, title: publishedTitle, week });
+    setPublishedEditSnapshot({ chunkIds: categoryIds, title: publishedTitle, week, chunkHeadingOptions });
     setMessage(`${activeCategoryConfig.label} packet updated in Files.`);
     await Promise.all([loadBuilderData(), refresh()]);
     return activePacketId;
@@ -775,6 +785,7 @@ export default function ShiurBuilderScreen() {
         program_id: programsReady ? selectedProgramId : undefined,
         chaburah_id: managedChaburahId,
         title: categoryTitle,
+        chunk_heading_options: chunkHeadingOptions,
         week,
         siman: selectedCategoryChunks[0]?.workbookTitle ?? selectedProgram.topic,
         status: "draft" as const,
@@ -1153,6 +1164,16 @@ export default function ShiurBuilderScreen() {
               </View>
             ) : null}
             <View style={localStyles.publishActions}>
+              {activeCategory !== "source" ? <Pressable accessibilityRole="checkbox"
+                accessibilityLabel="Include chunk titles and summaries"
+                aria-checked={chunkHeadingOptions[activeCategory] !== false}
+                accessibilityState={{ checked: chunkHeadingOptions[activeCategory] !== false, disabled: !canEditPacket || saving }}
+                disabled={!canEditPacket || saving}
+                onPress={() => setChunkHeadingOptions((current) => ({ ...current, [activeCategory]: current[activeCategory] === false }))}
+                style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44 }}>
+                <Ionicons name={chunkHeadingOptions[activeCategory] !== false ? "checkbox" : "square-outline"} size={22} color={theme.colors.primary} />
+                <Text style={{ flexShrink: 1 }}>Include chunk titles and summaries</Text>
+              </Pressable> : null}
               {activeCategoryPublishedPacket ? (
                 <View style={localStyles.publishedNotice}>
                   <Pill
@@ -1218,7 +1239,7 @@ export default function ShiurBuilderScreen() {
               <PacketDocumentHeader title={buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}
                 meta={`${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`} />
               {selectedCategoryChunks.map((chunk, index) => (
-                <DocumentChunk key={chunk.id} chunk={chunk} coverage={coverageByChunkId.get(chunk.id) ?? []} index={index} showCoverageState />
+                <DocumentChunk key={chunk.id} chunk={chunk} coverage={coverageByChunkId.get(chunk.id) ?? []} index={index} showCoverageState showHeading={includesChunkHeading(chunk, chunkHeadingOptions)} />
               ))}
             </View>
           </View>
@@ -1289,6 +1310,7 @@ export default function ShiurBuilderScreen() {
                         index={index}
                         showCoverageState
                         showNumber={previewingPacket}
+                        showHeading={!(previewingPacket || packetPreviewChunk) || includesChunkHeading(chunk, chunkHeadingOptions)}
                       />
                     ))}
                   </View>
@@ -1359,13 +1381,15 @@ function DocumentChunk({
   coverage = [],
   index,
   showCoverageState = false,
-  showNumber = true
+  showNumber = true,
+  showHeading = true
 }: {
   chunk: ContentChunk;
   coverage?: ReviewPacketCoverage[];
   index: number;
   showCoverageState?: boolean;
   showNumber?: boolean;
+  showHeading?: boolean;
 }) {
   const blocks = buildDocumentBlocks(chunk);
   const isQa = chunk.sourceType === "qa" || /^95-Q\d+/i.test(chunk.chunkCode);
@@ -1373,7 +1397,7 @@ function DocumentChunk({
   return (
     <View style={[localStyles.documentChunk, index === 0 && localStyles.documentChunkFirst]}>
       <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunkDisplayCode(chunk.chunkCode)}</MetaText>
-      <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text>
+      {showHeading ? <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text> : null}
       {showCoverageState ? <CoverageLine coverage={coverage} showEmpty /> : null}
       {chunk.contentDocument ? <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} /> : blocks.map((block, blockIndex) => {
         if (block.kind === "question") {
@@ -1847,6 +1871,7 @@ function mapContentChunkLink(row: any): ContentChunkLink {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    chunkHeadingOptions: row.chunk_heading_options ?? {},
     programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
     chaburahId: row.chaburah_id,

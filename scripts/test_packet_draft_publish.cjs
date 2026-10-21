@@ -70,6 +70,7 @@ function setup(failure = "") {
     }
   };
   const context = {
+    chunkHeadingOptions: { notes: false, qa: true },
     supabase, profile: { id: "rabbi" }, managedChaburahId: "chaburah", programsReady: true,
     selectedProgramId: "winter-5787", selectedProgram: { topic: "Challah" }, week: 1, title: "Packet",
     buildPublishedCategoryTitle: (title, label) => `${title} - ${label}`,
@@ -96,6 +97,8 @@ function setup(failure = "") {
 async function main() {
   const flow = setup();
   await flow.publish("notes");
+  assert.equal(flow.packets.get("published-1").chunk_heading_options.notes, false);
+  assert.equal(flow.packets.get("published-1").chunk_heading_options.qa, true);
   assert.deepEqual(flow.draftItems(), ["qa", "source"]);
   assert.deepEqual(flow.selected(), ["qa", "source"]);
   assert.equal(flow.activeId(), "draft");

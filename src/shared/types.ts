@@ -132,6 +132,7 @@ export interface ContentChunkLink {
 }
 
 export interface ReviewPacket {
+  chunkHeadingOptions?: import("./packetHeadings").PacketHeadingOptions;
   programId?: string;
   id: string;
   chaburahId: string;
