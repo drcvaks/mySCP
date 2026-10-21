@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { isSidebarRoute, navigationItems } from "./SidebarNavigation";
 
 export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefresh, refreshing = false, accessory, stackAccessory = false }: {
@@ -8,19 +8,21 @@ export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefr
   onRefresh?: () => void | Promise<void>; refreshing?: boolean;
   accessory?: ReactNode; stackAccessory?: boolean;
 }) {
+  const { width } = useWindowDimensions();
+  const compact = width < 768;
   const route = pathname.split("/").filter(Boolean).pop() ?? "dashboard";
   const visual = isSidebarRoute(route) ? navigationItems[route]
     : /shiur|source-sheets/.test(route) ? navigationItems["rabbi-hub"]
     : { icon: "book" as const, color: "#2563EB", tint: "#EAF1FF" };
   return <View style={s.header}>
-    <View style={s.mainRow}>
+    <View style={[s.mainRow, compact && s.compactRow]}>
       {navigationButton}
-      <View style={[s.icon, { backgroundColor: visual.tint }]}>
-        <Ionicons name={visual.icon} size={23} color={visual.color} />
+      <View style={[s.icon, compact && s.compactIcon, { backgroundColor: visual.tint }]}>
+        <Ionicons name={visual.icon} size={compact ? 20 : 23} color={visual.color} />
       </View>
       <View style={s.titleBlock}>
-        {eyebrow ? <Text style={s.eyebrow}>{eyebrow}</Text> : null}
-        <Text accessibilityRole="header" style={s.title}>{title}</Text>
+        {eyebrow ? <Text numberOfLines={compact ? 1 : undefined} style={s.eyebrow}>{eyebrow}</Text> : null}
+        <Text accessibilityRole="header" style={[s.title, compact && s.compactTitle]}>{title}</Text>
       </View>
       {accessory && !stackAccessory ? <View style={s.accessory}>{accessory}</View> : null}
       {onRefresh ? <Pressable accessibilityLabel="Refresh" accessibilityRole="button" disabled={refreshing}
@@ -35,6 +37,9 @@ export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefr
 const s = StyleSheet.create({
   header: { width: "100%", gap: 8 },
   mainRow: { width: "100%", flexDirection: "row", alignItems: "center", gap: 12 },
+  compactRow: { gap: 8 },
+  compactIcon: { width: 32, height: 36 },
+  compactTitle: { fontSize: 21, lineHeight: 27 },
   accessory: { maxWidth: 420, minWidth: 0, flexShrink: 1 },
   stackedAccessory: { width: "100%", minWidth: 0 },
   icon: { width: 40, height: 40, borderRadius: 8, alignItems: "center", justifyContent: "center", flexShrink: 0 },

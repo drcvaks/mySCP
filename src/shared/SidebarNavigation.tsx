@@ -25,15 +25,19 @@ export type SidebarRoute = keyof typeof navigationItems;
 export type SidebarItem = { name: SidebarRoute; label: string; href?: Href; onSelect: () => boolean | void };
 export function isSidebarRoute(name: string): name is SidebarRoute { return name in navigationItems; }
 
-export function SidebarNavigation({ items, selected, chaburah, width = 248 }: {
-  items: SidebarItem[]; selected: string; chaburah?: string; width?: number;
+export function SidebarNavigation({ items, selected, chaburah, width = 248, onClose }: {
+  items: SidebarItem[]; selected: string; chaburah?: string; width?: number; onClose?: () => void;
 }) {
-  return <View style={[s.sidebar, { width }]}>
+  return <View style={[s.sidebar, { width }]} accessibilityLabel="Main navigation">
     <View style={s.brand}>
       <View style={s.brandIcon}><Ionicons name="book" size={23} color="#FFFFFF" /></View>
       <View style={s.brandText}><Text style={s.brandName}>mySCP</Text>
         {chaburah ? <Text style={s.chaburah} numberOfLines={2}>{chaburah}</Text> : null}
       </View>
+      {onClose ? <Pressable accessibilityRole="button" accessibilityLabel="Close navigation menu"
+        onPress={onClose} hitSlop={4} style={({ pressed }) => [s.close, pressed && s.hovered]}>
+        <Ionicons name="close" size={23} color="#42516B" />
+      </Pressable> : null}
     </View>
     <ScrollView style={s.scroll} contentContainerStyle={s.content}>
       {items.map((item, index) => {
@@ -41,14 +45,14 @@ export function SidebarNavigation({ items, selected, chaburah, width = 248 }: {
         return <View key={item.name}>
           {index === 0 || group !== navigationItems[items[index - 1].name].group
             ? <Text style={[s.group, index > 0 && s.laterGroup]}>{group}</Text> : null}
-          <SidebarButton item={item} selected={selected === item.name} />
+          <SidebarButton item={item} selected={selected === item.name} mobile={!!onClose} />
         </View>;
       })}
     </ScrollView>
   </View>;
 }
 
-function SidebarButton({ item, selected }: { item: SidebarItem; selected: boolean }) {
+function SidebarButton({ item, selected, mobile }: { item: SidebarItem; selected: boolean; mobile: boolean }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [pressed, setPressed] = useState(false);
@@ -61,11 +65,11 @@ function SidebarButton({ item, selected }: { item: SidebarItem; selected: boolea
     onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
     onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)}
     onPress={(event) => { if (item.onSelect() === false) event.preventDefault(); }}
-    style={StyleSheet.flatten([s.item, (hovered || pressed) && s.hovered, selected && s.selected, focused && s.focused])}>
+    style={StyleSheet.flatten([s.item, mobile && s.mobileItem, (hovered || pressed) && s.hovered, selected && s.selected, focused && s.focused])}>
     <View style={[s.iconTile, { backgroundColor: selected ? "#FFFFFF26" : visual.tint }]}>
       <Ionicons name={visual.icon} color={selected ? "#FFFFFF" : visual.color} size={21} />
     </View>
-    <Text style={[s.label, selected && s.selectedLabel]}>{item.label}</Text>
+    <Text style={[s.label, mobile && s.mobileLabel, selected && s.selectedLabel]}>{item.label}</Text>
     {badge ? <View style={[s.badge, selected && s.selectedBadge]}>
       <Text style={[s.badgeText, selected && s.selectedLabel]}>{badge}</Text>
     </View> : null}
@@ -78,6 +82,7 @@ const s = StyleSheet.create({
   brand: { flexDirection: "row", alignItems: "center", gap: 11, padding: 18, borderBottomWidth: 1, borderBottomColor: "#EDF1F6" },
   brandIcon: { width: 40, height: 40, borderRadius: 8, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center" },
   brandText: { flex: 1, minWidth: 0 },
+  close: { width: 44, height: 44, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   brandName: { color: "#172033", fontSize: 21, lineHeight: 27, fontWeight: "800", letterSpacing: 0 },
   chaburah: { color: "#68788F", fontSize: 11, lineHeight: 16, marginTop: 2 },
   scroll: { flex: 1, minHeight: 0 },
@@ -87,6 +92,8 @@ const s = StyleSheet.create({
   item: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 46, paddingHorizontal: 9, paddingVertical: 6,
     borderRadius: 8, borderWidth: 2, borderColor: "#E8EDF4", backgroundColor: "#F8FAFC", marginBottom: 4 },
   hovered: { backgroundColor: "#F1F5FA" },
+  mobileItem: { minHeight: 50, paddingVertical: 7 },
+  mobileLabel: { fontSize: 14, lineHeight: 20 },
   selected: { backgroundColor: "#2874ED", borderColor: "#2874ED" },
   focused: { borderColor: "#133E8A" },
   iconTile: { width: 32, height: 32, borderRadius: 7, alignItems: "center", justifyContent: "center", flexShrink: 0 },

@@ -39,7 +39,7 @@ assert.equal(result.props.items[0].onSelect(), false);
 assert.ok(source.includes(": <BottomTabBar {...props} />"), "Keep native phone navigation unchanged");
 const sidebar = fs.readFileSync("src/shared/SidebarNavigation.tsx", "utf8");
 assert.ok(sidebar.includes("style={StyleSheet.flatten([s.item"), "Expo Link asChild must receive a concrete style object, not a Pressable callback");
-assert.ok(!sidebar.includes("style={({ pressed })"));
+assert.ok(!sidebar.includes("style={({ pressed }) => [s.item"), "Linked navigation rows keep concrete styles");
 const preview = fs.readFileSync("app/navigation-preview.tsx", "utf8");
 assert.ok(preview.includes('href: "/navigation-preview"'), "Visual tests must exercise the same Link wrapper as production");
 console.log("PASS: hidden/role-based menus, Rabbi Hub nested selection, navigation events, and phone navigation.");

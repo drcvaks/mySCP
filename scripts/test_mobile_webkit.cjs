@@ -97,13 +97,14 @@ async function main() {
     browser=await webkit.launch({headless:true});
     console.log(`WebKit launched: ${browser.version()}`);
     for(const role of ["participant","local_rabbi","global_admin"]) {
-      const context=await browser.newContext({...devices["iPhone 13"],serviceWorkers:"block"});
+      const context=await browser.newContext({...devices["iPhone 13"],viewport:{width:390,height:844},serviceWorkers:"block"});
       const requests=await fixture(context,role);
       const page=await context.newPage();
       activePage=page;
       const errors=[];page.on("pageerror",error=>errors.push(error.message));
       await signIn(page);
       for(const width of role==="participant"?[320,375,390,430]:[390]) {
+        console.log(`Checking ${role} at ${width}px`);
         await page.setViewportSize({width,height:844});
         await page.getByRole("button",{name:"Open navigation menu",exact:true}).waitFor();
         const dimensions=await geometry(page);
@@ -124,8 +125,34 @@ async function main() {
         await page.screenshot({path:path.join(output,`${role}-${width}.png`),scale:"css"});
         await page.getByRole("button",{name:"Open navigation menu",exact:true}).click();
         await page.getByRole("button",{name:"Close navigation menu",exact:true}).waitFor();
+        // Wait for RN Web's modal to enter its fixed-position animation container
+        // before scrolling it; its first render is an invisible static portal.
+        await page.waitForFunction(()=>{
+          let parent=document.querySelector('[aria-label="Close navigation menu"]');
+          while(parent) {
+            const style=getComputedStyle(parent);
+            if(style.position==="fixed"&&style.zIndex==="9999")return true;
+            parent=parent.parentElement;
+          }
+          return false;
+        });
+        await page.getByRole("button",{name:"Close navigation menu",exact:true}).evaluate(async element=>{
+          for(let parent=element;parent;parent=parent.parentElement) {
+            await Promise.all(parent.getAnimations().map(animation=>animation.finished.catch(()=>{})));
+          }
+        });
         assert.equal(await page.getByText("Admin",{exact:true}).isVisible(),role!=="participant");
-        let settingsBox=await page.getByRole("button",{name:"Settings",exact:true}).boundingBox();
+        for(const group of ["Learning","Support"]) {
+          assert.ok(await page.getByText(group,{exact:true}).isVisible(),`Grouped mobile menu: ${group}`);
+        }
+        assert.equal(await page.getByText("Management",{exact:true}).isVisible(),role!=="participant");
+        const activeMenuItem=page.getByRole("button",{name:"Dashboard",exact:true});
+        assert.equal(await activeMenuItem.getAttribute("aria-current"),"page");
+        assert.equal(await activeMenuItem.evaluate(element=>getComputedStyle(element).backgroundColor),"rgb(40, 116, 237)");
+        await page.screenshot({path:path.join(output,`${role}-${width}-menu.png`),scale:"css"});
+        const settings=page.getByRole("button",{name:"Settings",exact:true});
+        await settings.evaluate(element=>element.scrollIntoView({block:"center",behavior:"instant"}));
+        let settingsBox=await settings.boundingBox();
         const visibleHeight=await page.evaluate(()=>innerHeight);
         if(settingsBox.y+settingsBox.height>visibleHeight) {
           // Mobile WebKit does not reliably synthesize desktop wheel events.
@@ -143,6 +170,18 @@ async function main() {
         await page.getByRole("heading",{name:"This Week in SCP",exact:true}).waitFor();
         results.push({role,width,...dimensions});
       }
+      // Shared screen chrome must stay compact on the primary phone pages too.
+      for(const [tab,heading] of [["My Chaburah","My Chaburah"],["Files","Files"],
+        role==="participant"?["Review","Review Questions"]:["Rabbi Hub","Rabbi Hub"]]) {
+        await page.getByRole("tab",{name:new RegExp(tab)}).click();
+        await page.getByRole("heading",{name:heading,exact:true}).waitFor();
+        console.log(`Checking ${role}: ${heading}`);
+        const dimensions=await geometry(page);
+        assert.ok(dimensions.documentWidth<=dimensions.viewport+1,`${heading}: ${JSON.stringify(dimensions)}`);
+        assert.deepEqual(dimensions.outside,[],`${heading}: ${JSON.stringify(dimensions)}`);
+        await page.screenshot({path:path.join(output,`${role}-${tab.replace(/ /g,"-").toLowerCase()}.png`),scale:"css"});
+      }
+      await page.getByRole("tab",{name:/Dashboard/}).click();
       if(role==="global_admin") {
         await page.getByRole("button",{name:"Summer 5787",exact:true}).click();
         await page.getByText("Summer 5787 - Week 3",{exact:true}).waitFor();

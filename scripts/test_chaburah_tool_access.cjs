@@ -14,14 +14,21 @@ let memberships = [
 const profile = () => ({id: "viewer", role});
 const jsx = (type, props) => ({type, props});
 const tabs = Object.assign("Tabs", {Screen: "TabScreen"});
+const navSource = fs.readFileSync("src/shared/SidebarNavigation.tsx", "utf8");
+const navAst = ts.createSourceFile("navigation.tsx", navSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const navDeclaration = navAst.statements.find(node => ts.isVariableStatement(node) &&
+  node.declarationList.declarations[0].name.getText(navAst) === "navigationItems");
+const navigationItems = vm.runInNewContext(compile("(" + navDeclaration.declarationList.declarations[0].initializer.getText(navAst) + ")"));
+let bottomInset = 0;
 const layout = {};
 const stubs = {
   "react/jsx-runtime": {jsx, jsxs: jsx},
   "@expo/vector-icons": {Ionicons: "Icon"},
   "@react-navigation/bottom-tabs": {BottomTabBar: "BottomTabBar"},
   "expo-router": {Redirect: "Redirect", Tabs: tabs, useSegments: () => ["(tabs)", route]},
-  "react-native": {Platform: {get OS() {return platform;}}, StyleSheet: {}, useWindowDimensions: () => ({width, height: 900}), View: "View", Text: "Text", ActivityIndicator: "Loading"},
-  "../../src/shared/SidebarNavigation": {},
+  "react-native": {Platform: {get OS() {return platform;}}, StyleSheet: {create: value => value}, useWindowDimensions: () => ({width, height: 900}), View: "View", Text: "Text", ActivityIndicator: "Loading"},
+  "react-native-safe-area-context": {useSafeAreaInsets: () => ({bottom: bottomInset})},
+  "../../src/shared/SidebarNavigation": {navigationItems},
   "../../src/shared/permissions": permissions,
   "../../src/shared/components": {Button: "Button"},
   "../../src/shared/theme": {theme: {colors: {}}},
@@ -37,6 +44,20 @@ for (const [os, viewportWidth] of [["web",1440],["web",320],["web",390],["web",4
   assert.equal(screen(tree, "rabbi-hub").props.options.href, undefined);
   assert.equal(screen(tree, "review").props.options.href, width >= 768 ? undefined : null);
   assert.equal(tree.props.screenOptions.tabBarPosition, width >= 768 ? "left" : "bottom");
+  if (width < 768) {
+    const icon = screen(tree, "files").props.options.tabBarIcon;
+    const idle = icon({ focused: false }), active = icon({ focused: true });
+    assert.equal(idle.props.children.props.name, navigationItems.files.icon);
+    assert.equal(idle.props.children.props.color, navigationItems.files.color);
+    assert.equal(active.props.children.props.color, "#FFFFFF");
+    assert.equal(active.props.style[1].backgroundColor, "#2563EB");
+    assert.equal(tree.props.screenOptions.tabBarHideOnKeyboard, true);
+    bottomInset = 24;
+    const insetOptions = layout.default().props.screenOptions;
+    assert.equal(insetOptions.tabBarStyle.paddingBottom, 24);
+    assert.equal(insetOptions.tabBarStyle.height, 92);
+    bottomInset = 0;
+  }
   for (const name of ["directory", "profile", "settings", "beta-feedback"]) {
     assert.equal(screen(tree,name).props.options.href, width >= 768 ? undefined : null);
   }

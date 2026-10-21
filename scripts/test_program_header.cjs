@@ -10,11 +10,12 @@ const jsx=(type,props)=>({type,props});
 const exportsObject={};
 vm.runInNewContext(ts.transpileModule(screen,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{
   exports:exportsObject,require:name=>{assert.equal(name,"react/jsx-runtime");return{jsx,jsxs:jsx};},
-  useRouter:()=>({push:()=>{}}),usePathname:()=>"/rabbi-hub",useAuthState:()=>({profile:{role:"local_rabbi"}}),
+  useRouter:()=>({navigate:()=>{}}),usePathname:()=>"/rabbi-hub",useAuthState:()=>({profile:{role:"local_rabbi"}}),
   useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width}),
   chaburahToolAccess:()=>({rabbiHub:true,admin:true}),
   useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{},spacing:{xs:6}},
   SafeAreaView:"SafeAreaView",View:"View",ScrollView:"ScrollView",Pressable:"Pressable",Modal:"Modal",Text:"Text",PageHeading:"Heading",Ionicons:"Icon",
+  SidebarNavigation:"Sidebar",StyleSheet:{absoluteFill:{}},
   cloneElement:(element,props)=>({type:element.type,props:{...element.props,...props}})
 });
 function all(tree,type){

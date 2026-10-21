@@ -7,13 +7,15 @@ const ast = ts.createSourceFile("sidebar.tsx", navSource, ts.ScriptTarget.Latest
 const declaration = ast.statements.find((node) => ts.isVariableStatement(node) && node.declarationList.declarations[0].name.getText(ast) === "navigationItems");
 const navigationItems = vm.runInNewContext(ts.transpileModule("(" + declaration.declarationList.declarations[0].initializer.getText(ast) + ")", {}).outputText);
 const navigation = { navigationItems, isSidebarRoute: (route) => Object.hasOwn(navigationItems, route) };
+let viewportWidth = 1280;
 function load(file) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, "utf8"), {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 }
   }).outputText, { exports, require: (name) => {
     if (name === "react/jsx-runtime") return { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) };
-    if (name === "react-native") return { View: "View", Text: "Text", Pressable: "Pressable", StyleSheet: { create: (value) => value } };
+    if (name === "react-native") return { View: "View", Text: "Text", Pressable: "Pressable", StyleSheet: { create: (value) => value },
+      useWindowDimensions: () => ({ width: viewportWidth }) };
     if (name === "@expo/vector-icons") return { Ionicons: "Icon" };
     if (name === "./SidebarNavigation") return navigation;
     if (name === "./components") return { Button: "Button", Pill: "Pill" };
@@ -36,6 +38,10 @@ assert.equal(refreshed, 1);
 const loading = PageHeading({ title: "Files", pathname: "/files", onRefresh: () => refreshed++, refreshing: true });
 assert.equal(all(loading, "Pressable")[0].props.disabled, true);
 assert.equal(all(PageHeading({ title: "Shiur Builder", pathname: "/shiur-builder" }), "Icon")[0].props.name, "library");
+viewportWidth = 360;
+const phoneHeader = PageHeading({ title: "This Week in SCP", eyebrow: "A long congregation name", pathname: "/dashboard" });
+assert.equal(all(phoneHeader, "Text")[0].props.numberOfLines, 1, "Phone eyebrow cannot consume multiple header lines");
+assert.equal(all(phoneHeader, "Text")[1].props.style[1].fontSize, 21);
 const { WorkflowCard } = load("src/shared/WorkflowCard.tsx");
 const card = WorkflowCard({ label: "Shiur Builder", meta: "Official SCP material", onPress: () => opened++ });
 assert.equal(all(card, "Icon")[0].props.name, "library");

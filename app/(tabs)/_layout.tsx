@@ -2,36 +2,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Redirect, Tabs, useSegments } from "expo-router";
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { SidebarItem, SidebarNavigation, isSidebarRoute } from "../../src/shared/SidebarNavigation";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SidebarItem, SidebarNavigation, SidebarRoute, isSidebarRoute, navigationItems } from "../../src/shared/SidebarNavigation";
 import { chaburahToolAccess, isGlobalAdmin } from "../../src/shared/permissions";
 import { Button } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 
-const iconMap = {
-  dashboard: "speedometer-outline",
-  chaburah: "people-outline",
-  files: "folder-open-outline",
-  review: "checkmark-circle-outline",
-  directory: "map-outline",
-  "ask-rav": "chatbox-ellipses-outline",
-  "rabbi-hub": "library-outline",
-  admin: "settings-outline",
-  "global-admin": "globe-outline",
-  notifications: "notifications-outline",
-  "beta-feedback": "chatbubbles-outline",
-  help: "help-circle-outline",
-  "testing-checklist": "checkbox-outline",
-  profile: "person-outline",
-  settings: "options-outline"
-} as const;
-
-type TabName = keyof typeof iconMap;
-
-function tabIcon(name: TabName) {
-  return ({ color, size }: { color: string; size: number }) => (
-    <Ionicons name={iconMap[name]} color={color} size={size} />
+function tabIcon(name: SidebarRoute) {
+  const visual = navigationItems[name];
+  return ({ focused }: { color: string; size: number; focused: boolean }) => (
+    <View style={[mobileTabStyles.icon, { backgroundColor: focused ? "#2563EB" : visual.tint }]}>
+      <Ionicons name={visual.icon} color={focused ? "#FFFFFF" : visual.color} size={22} />
+    </View>
   );
 }
 
@@ -72,6 +56,7 @@ export default function TabLayout() {
   const { chaburos, error: dataError, hydrated, loading: dataLoading, memberships, refresh, selectedChaburahId } = useAppState();
   const segments = useSegments();
   const { height, width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const compactPhoneNav = width < 768;
   if (loading || (session && !hydrated)) {
     return (
@@ -117,19 +102,22 @@ export default function TabLayout() {
         : <BottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveBackgroundColor: leftRailNav ? undefined : theme.colors.primarySoft,
-        tabBarActiveTintColor: theme.colors.primary,
+        tabBarActiveBackgroundColor: leftRailNav ? undefined : "#EDF4FF",
+        tabBarActiveTintColor: "#1D56BE",
         tabBarInactiveTintColor: theme.colors.muted,
-        tabBarIconStyle: { marginTop: denseLeftRail ? 0 : 2 },
+        tabBarIconStyle: leftRailNav ? undefined : { width: 36, height: 32, marginBottom: 2, flexShrink: 0 },
+        tabBarHideOnKeyboard: true,
         tabBarItemStyle: leftRailNav
           ? {
               minHeight: denseLeftRail ? 34 : compactLeftRail ? 40 : 46,
               paddingVertical: denseLeftRail ? 0 : 2
             }
           : {
-              borderRadius: 12,
-              marginHorizontal: 4,
-              marginVertical: 2
+              borderRadius: 8,
+              marginHorizontal: 3,
+              marginVertical: 2,
+              paddingVertical: 0,
+              minWidth: 0
             },
         tabBarLabelStyle: {
           fontSize: denseLeftRail ? 10 : compactLeftRail ? 11 : 12,
@@ -141,11 +129,12 @@ export default function TabLayout() {
         tabBarStyle: {
           borderTopColor: theme.colors.border,
           borderRightColor: leftRailNav ? theme.colors.border : undefined,
-          height: leftRailNav ? "100%" : 80,
+          backgroundColor: "#FFFFFF",
+          height: leftRailNav ? "100%" : 68 + Math.max(insets.bottom, 12),
           minHeight: leftRailNav ? undefined : 80,
           overflow: leftRailNav ? "scroll" : "visible",
-          paddingBottom: leftRailNav ? 0 : 10,
-          paddingTop: denseLeftRail ? 2 : compactLeftRail ? 4 : 8,
+          paddingBottom: leftRailNav ? 0 : Math.max(insets.bottom, 12),
+          paddingTop: leftRailNav ? (denseLeftRail ? 2 : compactLeftRail ? 4 : 8) : 4,
           width: leftRailNav ? 220 : undefined
         }
       }}
@@ -218,6 +207,10 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const mobileTabStyles = StyleSheet.create({
+  icon: { width: 36, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" }
+});
 
 function SidebarTabBar({ state, descriptors, navigation, chaburah, width }: BottomTabBarProps & { chaburah?: string; width: number }) {
   const items: SidebarItem[] = state.routes.flatMap((route) => {

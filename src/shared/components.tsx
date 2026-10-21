@@ -8,6 +8,7 @@ import { useAuthState } from "../state/AuthState";
 import { useAppState } from "../state/AppState";
 import { PageHeading } from "./PageHeading";
 import { chaburahToolAccess } from "./permissions";
+import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
 
 interface ScreenProps {
   title: string;
@@ -31,49 +32,33 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const [menuOpen, setMenuOpen] = useState(false);
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
-  const drawerItems = [
-    { label: "Beta Feedback", href: "/(tabs)/beta-feedback", icon: "chatbubbles-outline" as const, show: true, beta: true },
-    { label: "Help / How to Use", href: "/(tabs)/help", icon: "help-circle-outline" as const, show: true, beta: true },
-    { label: "Tester Checklist", href: "/(tabs)/testing-checklist", icon: "checkbox-outline" as const, show: true, beta: true },
-    {
-      label: "Review",
-      href: "/(tabs)/review",
-      icon: "checkmark-circle-outline" as const,
-      show: toolAccess.rabbiHub
-    },
-    { label: "Directory", href: "/(tabs)/directory", icon: "map-outline" as const, show: true },
-    { label: "Ask Rav", href: "/(tabs)/ask-rav", icon: "chatbubble-ellipses-outline" as const, show: askRavEnabled },
-    {
-      label: "Rabbi Hub",
-      href: "/(tabs)/rabbi-hub",
-      icon: "library-outline" as const,
-      show: false
-    },
-    {
-      label: "Admin",
-      href: "/(tabs)/admin",
-      icon: "settings-outline" as const,
-      show: toolAccess.admin
-    },
-    {
-      label: "Global Admin",
-      href: "/(tabs)/global-admin",
-      icon: "globe-outline" as const,
-      show: profile?.role === "global_admin"
-    },
-    { label: "Notifications", href: "/(tabs)/notifications", icon: "notifications-outline" as const, show: true },
-    { label: "Profile", href: "/(tabs)/profile", icon: "person-outline" as const, show: true },
-    { label: "Settings", href: "/(tabs)/settings", icon: "options-outline" as const, show: true }
-  ].filter((item) => item.show);
+  const drawerRoutes: { name: SidebarItem["name"]; label: string; show?: boolean }[] = [
+    { name: "dashboard", label: "Dashboard" },
+    { name: "chaburah", label: "My Chaburah" },
+    { name: "review", label: "Review" },
+    { name: "files", label: "Files" },
+    { name: "rabbi-hub", label: "Rabbi Hub", show: toolAccess.rabbiHub },
+    { name: "admin", label: "Admin", show: toolAccess.admin },
+    { name: "global-admin", label: "Global Admin", show: profile?.role === "global_admin" },
+    { name: "beta-feedback", label: "Beta Feedback" },
+    { name: "help", label: "Help / How to Use" },
+    { name: "testing-checklist", label: "Tester Checklist" },
+    { name: "directory", label: "Directory" },
+    { name: "ask-rav", label: "Ask Rav", show: askRavEnabled },
+    { name: "profile", label: "Profile" },
+    { name: "notifications", label: "Notifications" },
+    { name: "settings", label: "Settings" }
+  ];
+  const drawerItems: SidebarItem[] = drawerRoutes.filter((item) => item.show !== false).map((item) => ({
+    name: item.name, label: item.label, onSelect: () => navigateTo(item.name)
+  }));
+  const currentRoute = pathname.split("/").filter(Boolean).pop() ?? "dashboard";
+  const selectedRoute = ["shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(currentRoute)
+    ? "rabbi-hub" : currentRoute;
 
-  function navigateTo(href: (typeof drawerItems)[number]["href"]) {
+  function navigateTo(name: SidebarItem["name"]) {
     setMenuOpen(false);
-    router.push(href as never);
-  }
-
-  function isActiveDrawerItem(href: (typeof drawerItems)[number]["href"]) {
-    const normalizedHref = href.replace("/(tabs)", "");
-    return pathname === href || pathname === normalizedHref;
+    router.navigate(`/(tabs)/${name}` as never);
   }
 
   // One controller owns both slots, keeping switches and management saves in sync.
@@ -97,7 +82,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
       </View>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[globalStyles.content, width >= 768 && styles.wideContent]}
+        contentContainerStyle={[globalStyles.content, showDrawerButton && styles.phoneContent, width >= 768 && styles.wideContent]}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         onScroll={onScroll}
@@ -113,44 +98,14 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
         {children}
       </ScrollView>
       <Modal animationType="fade" transparent visible={menuOpen} onRequestClose={() => setMenuOpen(false)}>
-        <Pressable style={styles.drawerBackdrop} onPress={() => setMenuOpen(false)}>
-          <Pressable style={styles.drawerPanel}>
-            <View style={styles.drawerHeader}>
-              <Text style={styles.drawerTitle}>Menu</Text>
-              <Pressable
-                accessibilityLabel="Close navigation menu"
-                accessibilityRole="button"
-                onPress={() => setMenuOpen(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" color={theme.colors.ink} size={24} />
-              </Pressable>
-            </View>
-            <ScrollView contentContainerStyle={{ gap: theme.spacing.xs }}>
-            {drawerItems.map((item) => {
-              const active = isActiveDrawerItem(item.href);
-              return (
-                <Pressable
-                  key={item.href}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                  onPress={() => navigateTo(item.href)}
-                  style={[styles.drawerItem, item.beta && styles.drawerItemBeta, active && styles.drawerItemActive]}
-                >
-                  <Ionicons
-                    name={item.icon}
-                    color={active || item.beta ? theme.colors.primary : theme.colors.muted}
-                    size={22}
-                  />
-                  <Text style={[styles.drawerItemText, item.beta && styles.drawerItemBetaText, active && styles.drawerItemTextActive]}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
+        <View style={styles.drawerBackdrop}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss navigation menu"
+            style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} />
+          <SafeAreaView edges={["top", "bottom"]} style={[styles.drawerPanel, { width: Math.min(width - 24, 344) }]}>
+            <SidebarNavigation items={drawerItems} selected={selectedRoute} chaburah={selectedChaburah?.name}
+              width={Math.min(width - 24, 344)} onClose={() => setMenuOpen(false)} />
+          </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -396,6 +351,7 @@ export const styles = StyleSheet.create({
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.xl
   },
+  phoneContent: { padding: 12, gap: 12, paddingBottom: 24 },
   headerShell: {
     alignItems: "center",
     backgroundColor: theme.colors.surface,
@@ -445,56 +401,7 @@ export const styles = StyleSheet.create({
     borderRightColor: theme.colors.border,
     borderRightWidth: 1,
     flex: 1,
-    gap: theme.spacing.xs,
-    padding: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    width: 288
-  },
-  drawerHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: theme.spacing.sm
-  },
-  drawerTitle: {
-    color: theme.colors.ink,
-    fontSize: 22,
-    fontWeight: "800"
-  },
-  closeButton: {
-    alignItems: "center",
-    height: 44,
-    justifyContent: "center",
-    width: 44
-  },
-  drawerItem: {
-    alignItems: "center",
-    borderColor: "transparent",
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: theme.spacing.md,
-    minHeight: 44,
-    paddingHorizontal: theme.spacing.md
-  },
-  drawerItemActive: {
-    backgroundColor: theme.colors.primarySoft,
-    borderColor: theme.colors.border
-  },
-  drawerItemBeta: {
-    backgroundColor: theme.colors.accentSoft,
-    borderColor: "#F2D37A"
-  },
-  drawerItemBetaText: {
-    color: theme.colors.primary
-  },
-  drawerItemText: {
-    color: theme.colors.ink,
-    fontSize: 17,
-    fontWeight: "700"
-  },
-  drawerItemTextActive: {
-    color: theme.colors.primary
+    maxWidth: "100%"
   },
   card: {
     backgroundColor: theme.colors.surface,
@@ -506,7 +413,8 @@ export const styles = StyleSheet.create({
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.025,
-    shadowRadius: 3
+    shadowRadius: 3,
+    ...Platform.select({ android: { elevation: 1, padding: 14 } })
   },
   compactCard: {
     backgroundColor: theme.colors.surface,
@@ -518,7 +426,8 @@ export const styles = StyleSheet.create({
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
-    shadowRadius: 3
+    shadowRadius: 3,
+    ...Platform.select({ android: { elevation: 1, padding: 14 } })
   },
   row: {
     alignItems: "center",
