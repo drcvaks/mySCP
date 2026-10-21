@@ -2,6 +2,7 @@ import { ContentChunk } from "./types";
 import { renderRichDocument } from "./richDocumentHtml";
 import { resolveDocumentAssets } from "./documentAssets";
 import { compactSourceDocument, compactSourceImage } from "./sourceSheetLayout";
+import { uri as logoUri } from "../data/scpLogo.json";
 
 export interface PrintablePacket {
   chunks: ContentChunk[];
@@ -96,10 +97,17 @@ export function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacke
       background: #ffffff;
     }
     header {
+      display: flex;
+      align-items: flex-start;
+      direction: ltr;
+      gap: 16px;
+      break-inside: avoid;
       border-bottom: 1px solid #cbd5e1;
       margin-bottom: 22px;
       padding-bottom: 12px;
     }
+    .packet-heading { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    header .packet-logo { width: 96px; height: 96px; flex: 0 0 96px; margin: 0; object-fit: contain; }
     h1 {
       font-family: Arial, Helvetica, sans-serif;
       font-size: 22pt;
@@ -200,8 +208,11 @@ export function buildPrintablePacketHtml({ chunks, meta, title }: PrintablePacke
 <body>
   <div class="screen-only">Use your browser print dialog to print or save as PDF.</div>
   <header>
+    <div class="packet-heading">
     <h1>${escapeHtml(title)}</h1>
     ${meta ? `<div class="meta">${escapeHtml(meta)}</div>` : ""}
+    </div>
+    <img class="packet-logo" alt="SCP logo" src="${logoUri}" width="96" height="96" />
   </header>
   ${chunks.map((chunk, index) => renderChunk(chunk, index)).join("\n")}
 </body>

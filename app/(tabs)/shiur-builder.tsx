@@ -33,6 +33,7 @@ import { WorkflowCard as BuilderToolCard } from "../../src/shared/WorkflowCard";
 import { shiurBuilderLayout } from "../../src/shared/responsiveLayout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
+import { PacketDocumentHeader } from "../../src/shared/PacketDocumentHeader";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -1214,10 +1215,8 @@ export default function ShiurBuilderScreen() {
         {selectedCategoryChunks.length > 0 ? (
           <View style={localStyles.documentPreviewShell}>
             <View style={localStyles.documentPage}>
-              <Text style={localStyles.documentPacketTitle}>{buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}</Text>
-              <Text style={localStyles.documentPacketMeta}>
-                {managedChaburah?.name ?? "My Chaburah"} - Week {week}
-              </Text>
+              <PacketDocumentHeader title={buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}
+                meta={`${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`} />
               {selectedCategoryChunks.map((chunk, index) => (
                 <DocumentChunk key={chunk.id} chunk={chunk} coverage={coverageByChunkId.get(chunk.id) ?? []} index={index} showCoverageState />
               ))}
@@ -1279,12 +1278,8 @@ export default function ShiurBuilderScreen() {
                 <ScrollView contentContainerStyle={[localStyles.previewPageContent, !desktopPreview && { padding: 6 }]} style={[localStyles.previewPage, previewPageStyle]}>
                   <View style={[localStyles.modalDocumentPage, !desktopPreview && { padding: 12 }]}>
                     {previewingPacket ? (
-                      <>
-                        <Text style={localStyles.documentPacketTitle}>{buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}</Text>
-                        <Text style={localStyles.documentPacketMeta}>
-                          {managedChaburah?.name ?? "My Chaburah"} - Week {week}
-                        </Text>
-                      </>
+                      <PacketDocumentHeader title={buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}
+                        meta={`${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`} />
                     ) : null}
                     {modalPreviewChunks.map((chunk, index) => (
                       <DocumentChunk
@@ -2250,23 +2245,6 @@ const localStyles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 18,
     width: "100%"
-  },
-  documentPacketTitle: {
-    color: theme.colors.ink,
-    fontSize: 25,
-    fontWeight: "900",
-    lineHeight: 32,
-    textAlign: "center"
-  },
-  documentPacketMeta: {
-    borderBottomColor: theme.colors.border,
-    borderBottomWidth: 1,
-    color: theme.colors.muted,
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    textAlign: "center"
   },
   documentChunk: {
     borderTopColor: theme.colors.border,

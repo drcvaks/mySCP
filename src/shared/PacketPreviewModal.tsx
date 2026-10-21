@@ -11,6 +11,7 @@ import { programName, SUMMER_PROGRAM } from "./learningPrograms";
 import { readRichContent } from "./documentContent";
 import { ImportDocument } from "./ImportDocument";
 import { chunkDisplayCode } from "./chunkLabels";
+import { PacketDocumentHeader } from "./PacketDocumentHeader";
 
 export function PacketPreviewModal({
   packetId,
@@ -102,6 +103,10 @@ export function PacketPreviewModal({
             <Text style={styles.muted}>This packet does not have any official material attached yet.</Text>
           ) : null}
           <ScrollView contentContainerStyle={modalStyles.pageContent} style={modalStyles.pageShell}>
+            {packet && chunks.length > 0 ? <View style={modalStyles.chunk}>
+              <PacketDocumentHeader title={packet.title}
+                meta={`${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`} />
+            </View> : null}
             {chunks.map((chunk, index) => (
               <View key={chunk.id} style={modalStyles.chunk}>
                 <MetaText>{index + 1}. {chunkDisplayCode(chunk.chunkCode)}</MetaText>

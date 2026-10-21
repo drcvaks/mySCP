@@ -12,6 +12,7 @@ import { programName, SUMMER_PROGRAM } from "../../src/shared/learningPrograms";
 import { readRichContent } from "../../src/shared/documentContent";
 import { ImportDocument } from "../../src/shared/ImportDocument";
 import { chunkDisplayCode } from "../../src/shared/chunkLabels";
+import { PacketDocumentHeader } from "../../src/shared/PacketDocumentHeader";
 
 export default function ShiurPacketScreen() {
   const router = useRouter();
@@ -79,11 +80,8 @@ export default function ShiurPacketScreen() {
       </View>
       {packet ? (
         <Card>
+          <PacketDocumentHeader title={packet.title} meta={packet.siman} />
           <Row>
-            <View style={{ flex: 1, minWidth: 260 }}>
-              <SectionTitle>{packet.title}</SectionTitle>
-              <Text style={styles.muted}>{packet.siman}</Text>
-            </View>
             <Pill label={`Week ${packet.week}`} tone="primary" />
             <Pill label={programName(packet.programId, programs)} />
             <Pill label={packet.status === "published" ? "Published" : "Draft"} tone={packet.status === "published" ? "success" : "accent"} />

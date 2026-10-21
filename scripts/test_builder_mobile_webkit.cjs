@@ -70,6 +70,18 @@ async function main() {
     await page.getByRole("button", { name: "Close", exact: true }).click();
     assert.ok(await packet.getByRole("button", { name: "Save Draft", exact: true }).isEnabled());
     assert.ok(await packet.getByRole("button", { name: "Publish Source Sheets", exact: true }).isEnabled());
+    await packet.getByRole("button", { name: "Preview Source Sheets", exact: true }).click();
+    const packetLogo=page.getByRole("img",{name:"SCP logo",exact:true});
+    await packetLogo.waitFor();
+    const logoBox=await packetLogo.boundingBox();
+    assert.ok(logoBox.width===96&&logoBox.x>190&&logoBox.x+logoBox.width<=390,"SCP logo fits the top-right of the packet preview");
+    await packetLogo.evaluate(async element=>{
+      for(let parent=element;parent;parent=parent.parentElement) {
+        await Promise.all(parent.getAnimations().map(animation=>animation.finished.catch(()=>{})));
+      }
+    });
+    await page.screenshot({path:path.join(output,"source-packet-logo.png"),scale:"css"});
+    await page.getByRole("button", { name: "Close", exact: true }).click();
     // Switch to both other tools and back without losing the current packet.
     await page.getByRole("tab", { name: "Ask Rav Inbox", exact: true }).click();
     await page.getByRole("heading", { name: "Rabbi Hub", exact: true }).waitFor();

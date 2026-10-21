@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
+const { createHash } = require("node:crypto");
 
 const cache = new Map(), calls = [];
 const signedStorage = { storage: { from: (bucket) => ({
@@ -19,6 +20,7 @@ function load(file) {
   cache.set(absolute, module.exports);
   const context = { exports: module.exports, module, ...contextGlobals, require: (name) => {
     if (name.endsWith("/lib/supabase")) return { supabase: signedStorage };
+    if (name.endsWith(".json")) return JSON.parse(fs.readFileSync(path.resolve(path.dirname(absolute), name), "utf8"));
     if (name.startsWith(".")) return load(path.resolve(path.dirname(absolute), name + ".ts"));
     throw new Error("Unexpected import: " + name);
   } };
@@ -80,7 +82,11 @@ async function main() {
   const packet = { title: "Winter 5787 Test", meta: "Week 1", chunks };
   assert.equal(await print.printPacket(packet), null);
   assert.equal(printed, 1);
-  assert.equal((written.match(/<img /g) ?? []).length, 61);
+  assert.equal((written.match(/<img /g) ?? []).length, 62);
+  assert.ok(written.includes('class="packet-logo" alt="SCP logo"'), "All printed packets include the SCP logo");
+  const bundledLogo = JSON.parse(fs.readFileSync("src/data/scpLogo.json", "utf8"));
+  assert.equal(createHash("sha256").update(Buffer.from(bundledLogo.uri.split(",")[1], "base64")).digest("hex"),
+    "1887ee4950615a712af17f8de9dffef50f13bf1e6a7fadd8322104b860b3ce6b", "Use the supplied PNG unchanged");
   assert.ok(written.includes("<strong>") && written.includes("<em>") && written.includes("<u>") && written.includes("Source Notes"));
   assert.ok(written.includes("?token=test&amp;version=1"));
   badImage = true;
@@ -97,6 +103,16 @@ async function main() {
   assert.ok(!sourcePrint.includes("HC1-S11") && !sourcePrint.includes("<h2>Source 11</h2>"));
   assert.ok(sourcePrint.includes("Original source image content"));
   assert.ok(legacy.includes("95-B1") && legacy.includes("<h2>Summer</h2>"), "Keep headings for notes and Q&A");
+  fs.mkdirSync("tmp/print-logo-preview", { recursive: true });
+  for (const [category, label] of [["notes", "Review Notes"], ["qa", "Q&A"], ["sources", "Source Sheets"]]) {
+    const preview = print.buildPrintablePacketHtml({ title: `Challah - Week 1 - ${label}`, meta: "Winter 5787", chunks:
+      source.chunks.filter(c => c.sourceType === category).slice(0, 2).map(c => ({
+        chunkCode: c.code, chunkTitle: c.title, sourceType: category === "sources" ? "source" : category,
+        contentMarkdown: c.contentMarkdown, contentDocument: { version: 1, blocks: c.blocks, footnotes: c.footnotes }
+      })) });
+    assert.equal((preview.match(/class="packet-logo"/g) ?? []).length, 1);
+    fs.writeFileSync(`tmp/print-logo-preview/${category}.html`, preview);
+  }
   fs.writeFileSync("tmp/shiur-import-preview/challah-part1/import/print-preview.html",
     print.buildPrintablePacketHtml({ title: "Challah Part 1 print review", chunks: source.chunks.map((c, i) => ({
       chunkCode: c.code, chunkTitle: c.title, sourceType: c.sourceType === "sources" ? "source" : c.sourceType,
