@@ -39,7 +39,7 @@ async function main() {
     page.on("pageerror", e => errors.push(e.message));
     await signIn(page);
     await page.getByRole("tab", { name: /Rabbi Hub/ }).click();
-    await page.getByText("Shiur Builder", { exact: true }).locator("..").locator("..").getByRole("button", { name: "Open", exact: true }).click();
+    await page.getByRole("tab", { name: "Shiur Builder", exact: true }).click();
     const official = page.getByTestId("builder-official-pane"), packet = page.getByTestId("builder-packet-pane");
     await official.getByRole("button", { name: "Expand Section A - Test Section", exact: true }).waitFor();
     assert.ok(await official.isVisible());
@@ -70,6 +70,17 @@ async function main() {
     await page.getByRole("button", { name: "Close", exact: true }).click();
     assert.ok(await packet.getByRole("button", { name: "Save Draft", exact: true }).isEnabled());
     assert.ok(await packet.getByRole("button", { name: "Publish Source Sheets", exact: true }).isEnabled());
+    // Switch to both other tools and back without losing the current packet.
+    await page.getByRole("tab", { name: "Ask Rav Inbox", exact: true }).click();
+    await page.getByRole("heading", { name: "Rabbi Hub", exact: true }).waitFor();
+    assert.equal(await page.getByRole("tab", { name: "Ask Rav Inbox", exact: true }).getAttribute("aria-selected"), "true");
+    await page.getByRole("tab", { name: "Quick Review Questions", exact: true }).click();
+    assert.equal(await page.getByRole("tab", { name: "Quick Review Questions", exact: true }).getAttribute("aria-selected"), "true");
+    await page.getByRole("tab", { name: "Shiur Builder", exact: true }).click();
+    await packet.getByText("First Source", { exact: true }).waitFor();
+    await page.getByRole("tab", { name: "Ask Rav Inbox", exact: true }).click();
+    assert.equal(await page.getByRole("tab", { name: "Ask Rav Inbox", exact: true }).getAttribute("aria-selected"), "true", "Returning to Ask Rav works even after an earlier question-tool switch");
+    await page.getByRole("tab", { name: "Shiur Builder", exact: true }).click();
     await packet.scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(output, "portrait-packet.png"), scale: "css" });
     for (const [width, height] of [[844, 390], [667, 375], [1024, 768], [1440, 900]]) {
@@ -80,7 +91,13 @@ async function main() {
       assert.ok(b.x >= a.x + a.width, `Two columns at ${width}px: ${JSON.stringify({a,b})}`);
       assert.ok(Math.abs(a.y - b.y) < 2);
       assert.equal(await page.getByRole("tab", { name: "Official Material", exact: true }).count(), 0);
-      if (height < 600) await page.getByRole("button", { name: "Open navigation menu", exact: true }).waitFor();
+      if (height < 600) {
+        await page.getByRole("button", { name: "Open navigation menu", exact: true }).waitFor();
+        const rail=page.locator('[aria-label="Main navigation"]');
+        const box=await rail.boundingBox();
+        assert.ok(box.width<=65&&box.height>=height-1,"Landscape navigation is a narrow full-height left rail");
+        assert.equal(await rail.getByRole("link", { name: "Rabbi Hub", exact:true }).getAttribute("aria-current"),"page");
+      }
       await official.scrollIntoViewIfNeeded();
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await page.screenshot({ path: path.join(output, `landscape-${width}.png`), scale: "css" });

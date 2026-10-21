@@ -25,34 +25,34 @@ export type SidebarRoute = keyof typeof navigationItems;
 export type SidebarItem = { name: SidebarRoute; label: string; href?: Href; onSelect: () => boolean | void };
 export function isSidebarRoute(name: string): name is SidebarRoute { return name in navigationItems; }
 
-export function SidebarNavigation({ items, selected, chaburah, width = 248, onClose }: {
-  items: SidebarItem[]; selected: string; chaburah?: string; width?: number; onClose?: () => void;
+export function SidebarNavigation({ items, selected, chaburah, width = 248, onClose, iconsOnly = false }: {
+  items: SidebarItem[]; selected: string; chaburah?: string; width?: number; onClose?: () => void; iconsOnly?: boolean;
 }) {
   return <View style={[s.sidebar, { width }]} accessibilityLabel="Main navigation">
-    <View style={s.brand}>
+    <View style={[s.brand, iconsOnly && s.railBrand]}>
       <View style={s.brandIcon}><Ionicons name="book" size={23} color="#FFFFFF" /></View>
-      <View style={s.brandText}><Text style={s.brandName}>mySCP</Text>
+      {!iconsOnly ? <View style={s.brandText}><Text style={s.brandName}>mySCP</Text>
         {chaburah ? <Text style={s.chaburah} numberOfLines={2}>{chaburah}</Text> : null}
-      </View>
+      </View> : null}
       {onClose ? <Pressable accessibilityRole="button" accessibilityLabel="Close navigation menu"
         onPress={onClose} hitSlop={4} style={({ pressed }) => [s.close, pressed && s.hovered]}>
         <Ionicons name="close" size={23} color="#42516B" />
       </Pressable> : null}
     </View>
-    <ScrollView style={s.scroll} contentContainerStyle={s.content}>
+    <ScrollView style={s.scroll} contentContainerStyle={[s.content, iconsOnly && s.railContent]}>
       {items.map((item, index) => {
         const group = navigationItems[item.name].group;
         return <View key={item.name}>
-          {index === 0 || group !== navigationItems[items[index - 1].name].group
+          {!iconsOnly && (index === 0 || group !== navigationItems[items[index - 1].name].group)
             ? <Text style={[s.group, index > 0 && s.laterGroup]}>{group}</Text> : null}
-          <SidebarButton item={item} selected={selected === item.name} mobile={!!onClose} />
+          <SidebarButton item={item} selected={selected === item.name} mobile={!!onClose} iconsOnly={iconsOnly} />
         </View>;
       })}
     </ScrollView>
   </View>;
 }
 
-function SidebarButton({ item, selected, mobile }: { item: SidebarItem; selected: boolean; mobile: boolean }) {
+function SidebarButton({ item, selected, mobile, iconsOnly }: { item: SidebarItem; selected: boolean; mobile: boolean; iconsOnly: boolean }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [pressed, setPressed] = useState(false);
@@ -60,17 +60,17 @@ function SidebarButton({ item, selected, mobile }: { item: SidebarItem; selected
   const badge = "badge" in visual ? visual.badge : undefined;
   const button = <Pressable accessibilityRole={item.href ? "link" : "button"}
     accessibilityLabel={item.label} accessibilityState={{ selected }}
-    {...(Platform.OS === "web" ? { "aria-current": selected ? "page" : undefined } : {})}
+    {...(Platform.OS === "web" ? { "aria-current": selected ? "page" : undefined, title: item.label } : {})}
     onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)}
     onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
     onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)}
     onPress={(event) => { if (item.onSelect() === false) event.preventDefault(); }}
-    style={StyleSheet.flatten([s.item, mobile && s.mobileItem, (hovered || pressed) && s.hovered, selected && s.selected, focused && s.focused])}>
+    style={StyleSheet.flatten([s.item, mobile && s.mobileItem, iconsOnly && s.railItem, (hovered || pressed) && s.hovered, selected && s.selected, focused && s.focused])}>
     <View style={[s.iconTile, { backgroundColor: selected ? "#FFFFFF26" : visual.tint }]}>
       <Ionicons name={visual.icon} color={selected ? "#FFFFFF" : visual.color} size={21} />
     </View>
-    <Text style={[s.label, mobile && s.mobileLabel, selected && s.selectedLabel]}>{item.label}</Text>
-    {badge ? <View style={[s.badge, selected && s.selectedBadge]}>
+    {!iconsOnly ? <Text style={[s.label, mobile && s.mobileLabel, selected && s.selectedLabel]}>{item.label}</Text> : null}
+    {badge && !iconsOnly ? <View style={[s.badge, selected && s.selectedBadge]}>
       <Text style={[s.badgeText, selected && s.selectedLabel]}>{badge}</Text>
     </View> : null}
   </Pressable>;
@@ -80,6 +80,9 @@ function SidebarButton({ item, selected, mobile }: { item: SidebarItem; selected
 const s = StyleSheet.create({
   sidebar: { height: "100%", flexShrink: 0, backgroundColor: "#FFFFFF", borderRightWidth: 1, borderRightColor: "#DEE6F0" },
   brand: { flexDirection: "row", alignItems: "center", gap: 11, padding: 18, borderBottomWidth: 1, borderBottomColor: "#EDF1F6" },
+  railBrand: { paddingHorizontal: 12, paddingVertical: 8 },
+  railContent: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 8 },
+  railItem: { width: 44, height: 44, minHeight: 44, paddingHorizontal: 0, paddingVertical: 0, justifyContent: "center" },
   brandIcon: { width: 40, height: 40, borderRadius: 8, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center" },
   brandText: { flex: 1, minWidth: 0 },
   close: { width: 44, height: 44, borderRadius: 8, alignItems: "center", justifyContent: "center" },

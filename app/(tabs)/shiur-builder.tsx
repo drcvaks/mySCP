@@ -32,6 +32,7 @@ import { ImportDocument } from "../../src/shared/ImportDocument";
 import { WorkflowCard as BuilderToolCard } from "../../src/shared/WorkflowCard";
 import { shiurBuilderLayout } from "../../src/shared/responsiveLayout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -869,7 +870,11 @@ export default function ShiurBuilderScreen() {
 
   return (
     <Screen title="Shiur Builder" eyebrow="Rabbi Hub" onRefresh={loadBuilderData} refreshing={loading}
-      toolbar={!layout.twoColumns ? <View style={{ gap: 4 }}>{categoryControls}{paneControls}</View> : undefined}
+      toolbar={layout.compact ? <View style={{ gap: 4 }}>
+        <RabbiToolSwitcher active="shiur-builder" askRavEnabled={askRavEnabled}
+          onSelect={(tool) => router.navigate({ pathname: "/(tabs)/rabbi-hub", params: { tool } })} />
+        {!layout.twoColumns ? <>{categoryControls}{paneControls}</> : null}
+      </View> : undefined}
       programSelector={<ProgramSelector manage={!layout.compact} disabled={saving || loading} unsaved={selectedIds.length > 0} />}>
       <StatusBanner message={message} tone={message.toLowerCase().includes("error") || message.toLowerCase().includes("unable") ? "error" : "info"} />
       {!layout.compact ? <Card>
@@ -1039,7 +1044,7 @@ export default function ShiurBuilderScreen() {
           <Card>
             <View style={layout.compact ? localStyles.compactPacketHeading : { gap: 10 }}>
             <View style={{ flex: 1, minWidth: 0 }}><SectionTitle>{activeCategoryConfig.packetLabel}</SectionTitle></View>
-            <View style={localStyles.packetTopAction}>
+            <View style={[localStyles.packetTopAction, layout.compact && { minWidth: 0 }]}>
               <Button label="New Draft" onPress={startNewDraft} variant="secondary" />
             </View>
             </View>
@@ -1079,12 +1084,13 @@ export default function ShiurBuilderScreen() {
                           onPress={() => movePacketSection(section.key, 1)}
                           disabled={sectionIndex === packetSections.length - 1 || !canEditPacket}
                         />
-                        <Button
+                        {layout.compact ? <BuilderIconButton label="Remove section" icon="trash-outline"
+                          onPress={() => removePacketSection(section.key)} disabled={!canEditPacket} /> : <Button
                           label="Remove Section"
                           onPress={() => removePacketSection(section.key)}
                           disabled={!canEditPacket}
                           variant="ghost"
-                        />
+                        />}
                       </View>
                     </View>
                     {expanded ? (

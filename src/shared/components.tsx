@@ -9,7 +9,7 @@ import { useAppState } from "../state/AppState";
 import { PageHeading } from "./PageHeading";
 import { chaburahToolAccess } from "./permissions";
 import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
-import { usesCompactNavigation } from "./responsiveLayout";
+import { usesCompactNavigation, usesLandscapeRail } from "./responsiveLayout";
 
 interface ScreenProps {
   title: string;
@@ -31,7 +31,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
   const { width, height } = useWindowDimensions();
   const showDrawerButton = usesCompactNavigation(width, height);
-  const landscapePhone = showDrawerButton && width >= 700;
+  const landscapePhone = usesLandscapeRail(width, height);
   const [menuOpen, setMenuOpen] = useState(false);
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
@@ -62,7 +62,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
 
   // One controller owns both slots, keeping switches and management saves in sync.
   const renderScreen = ({ header = null, management = null }: { header?: ReactNode; management?: ReactNode } = {}) => (
-    <SafeAreaView style={globalStyles.screen} edges={["top"]}>
+    <SafeAreaView style={globalStyles.screen} edges={landscapePhone ? ["top", "right"] : ["top"]}>
       <View style={[styles.headerShell, !showDrawerButton && styles.wideHeaderShell]}>
         <View style={[styles.screenHeader, !showDrawerButton && styles.wideHeaderContent]}>
           <PageHeading title={title} eyebrow={eyebrow} pathname={pathname} onRefresh={onRefresh} refreshing={refreshing}

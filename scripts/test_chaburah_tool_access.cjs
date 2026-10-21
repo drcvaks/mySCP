@@ -30,7 +30,7 @@ const stubs = {
   "@react-navigation/bottom-tabs": {BottomTabBar: "BottomTabBar"},
   "expo-router": {Redirect: "Redirect", Tabs: tabs, useSegments: () => ["(tabs)", route]},
   "react-native": {Platform: {get OS() {return platform;}}, StyleSheet: {create: value => value}, useWindowDimensions: () => ({width, height}), View: "View", Text: "Text", ActivityIndicator: "Loading"},
-  "react-native-safe-area-context": {useSafeAreaInsets: () => ({bottom: bottomInset})},
+  "react-native-safe-area-context": {SafeAreaView: "SafeAreaView", useSafeAreaInsets: () => ({bottom: bottomInset, left: 0, right: 0, top: 0})},
   "../../src/shared/SidebarNavigation": {navigationItems},
   "../../src/shared/permissions": permissions,
   "../../src/shared/responsiveLayout": responsive,
@@ -44,12 +44,16 @@ function screen(tree, name) {return tree.props.children.find(child => child.prop
 for (const [os, viewportWidth, viewportHeight = 900] of [["web",1440],["web",320],["web",390],["web",430],["web",768],["android",390],["ios",390],["android",844,390],["ios",667,375],["web",844,390]]) {
   platform = os; width = viewportWidth; height = viewportHeight;
   const compact = responsive.usesCompactNavigation(width,height);
+  const landscapeRail = responsive.usesLandscapeRail(width,height);
   chaburah = "own"; role = "local_rabbi"; route = "dashboard";
   let tree = layout.default();
   assert.equal(screen(tree, "rabbi-hub").props.options.href, undefined);
   assert.equal(screen(tree, "review").props.options.href, compact ? null : undefined);
-  assert.equal(tree.props.screenOptions.tabBarPosition, compact ? "bottom" : "left");
-  if (compact) {
+  assert.equal(tree.props.screenOptions.tabBarPosition, compact && !landscapeRail ? "bottom" : "left");
+  if (landscapeRail) {
+    assert.equal(tree.props.screenOptions.tabBarStyle.width,64,"Landscape uses a narrow rail rather than a bottom bar");
+  }
+  if (compact && !landscapeRail) {
     const icon = screen(tree, "files").props.options.tabBarIcon;
     const idle = icon({ focused: false }), active = icon({ focused: true });
     assert.equal(idle.props.children.props.name, navigationItems.files.icon);

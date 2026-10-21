@@ -17,6 +17,7 @@ vm.runInNewContext(ts.transpileModule(screen,{compilerOptions:{jsx:ts.JsxEmit.Re
   useRouter:()=>({navigate:()=>{}}),usePathname:()=>"/rabbi-hub",useAuthState:()=>({profile:{role:"local_rabbi"}}),
   useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width,height}),
   usesCompactNavigation:responsive.usesCompactNavigation,
+  usesLandscapeRail:responsive.usesLandscapeRail,
   chaburahToolAccess:()=>({rabbiHub,admin:rabbiHub}),
   useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{},spacing:{xs:6}},
   SafeAreaView:"SafeAreaView",View:"View",ScrollView:"ScrollView",Pressable:"Pressable",Modal:"Modal",Text:"Text",PageHeading:"Heading",Ionicons:"Icon",

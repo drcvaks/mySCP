@@ -2,12 +2,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Redirect, Tabs, useSegments } from "expo-router";
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { SidebarItem, SidebarNavigation, SidebarRoute, isSidebarRoute, navigationItems } from "../../src/shared/SidebarNavigation";
 import { chaburahToolAccess, isGlobalAdmin } from "../../src/shared/permissions";
 import { Button } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
-import { usesCompactNavigation } from "../../src/shared/responsiveLayout";
+import { navigationRailWidth, usesCompactNavigation, usesLandscapeRail } from "../../src/shared/responsiveLayout";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 
@@ -59,6 +59,8 @@ export default function TabLayout() {
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const compactPhoneNav = usesCompactNavigation(width, height);
+  const landscapeRail = usesLandscapeRail(width, height);
+  const railWidth = navigationRailWidth(width, height);
   if (loading || (session && !hydrated)) {
     return (
       <View style={{ alignItems: "center", flex: 1, justifyContent: "center" }}>
@@ -92,15 +94,19 @@ export default function TabLayout() {
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
   const showAskRav = askRavEnabled;
-  const leftRailNav = !compactPhoneNav;
+  const leftRailNav = !compactPhoneNav || landscapeRail;
   const compactLeftRail = leftRailNav && height < 760;
   const denseLeftRail = leftRailNav && height < 640;
 
   return (
     <Tabs
-      tabBar={(props) => leftRailNav
-        ? <SidebarTabBar {...props} chaburah={selectedChaburah?.name} width={width < 1100 ? 224 : 248} />
-        : <MobileTabBar {...props} />}
+      tabBar={(props) => landscapeRail
+        ? <SafeAreaView edges={["top", "bottom", "left"]} style={{ width: railWidth + insets.left, height: "100%", backgroundColor: "#FFFFFF" }}>
+            <SidebarTabBar {...props} chaburah={selectedChaburah?.name} width={railWidth} iconsOnly />
+          </SafeAreaView>
+        : leftRailNav
+          ? <SidebarTabBar {...props} chaburah={selectedChaburah?.name} width={railWidth} />
+          : <MobileTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveBackgroundColor: leftRailNav ? undefined : "#EDF4FF",
@@ -136,7 +142,7 @@ export default function TabLayout() {
           overflow: leftRailNav ? "scroll" : "visible",
           paddingBottom: leftRailNav ? 0 : Math.max(insets.bottom, 12),
           paddingTop: leftRailNav ? (denseLeftRail ? 2 : compactLeftRail ? 4 : 8) : 4,
-          width: leftRailNav ? 220 : undefined
+          width: leftRailNav ? railWidth + (landscapeRail ? insets.left : 0) : undefined
         }
       }}
     >
@@ -221,7 +227,7 @@ function MobileTabBar(props: BottomTabBarProps) {
   return <BottomTabBar {...props} state={state} />;
 }
 
-function SidebarTabBar({ state, descriptors, navigation, chaburah, width }: BottomTabBarProps & { chaburah?: string; width: number }) {
+function SidebarTabBar({ state, descriptors, navigation, chaburah, width, iconsOnly = false }: BottomTabBarProps & { chaburah?: string; width: number; iconsOnly?: boolean }) {
   const items: SidebarItem[] = state.routes.flatMap((route) => {
     const options = descriptors[route.key].options;
     if (!isSidebarRoute(route.name) || StyleSheet.flatten(options.tabBarItemStyle)?.display === "none") return [];
@@ -230,5 +236,5 @@ function SidebarTabBar({ state, descriptors, navigation, chaburah, width }: Bott
   });
   const active = state.routes[state.index].name;
   const selected = ["shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(active) ? "rabbi-hub" : active;
-  return <SidebarNavigation items={items} selected={selected} chaburah={chaburah} width={width} />;
+  return <SidebarNavigation items={items} selected={selected} chaburah={chaburah} width={width} iconsOnly={iconsOnly} />;
 }

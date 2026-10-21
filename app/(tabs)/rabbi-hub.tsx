@@ -23,6 +23,8 @@ import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/r
 import { theme } from "../../src/shared/theme";
 import { ReviewQuestion, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
+import { RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
+import { availableContentWidth, usesLandscapeRail } from "../../src/shared/responsiveLayout";
 
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
@@ -37,7 +39,8 @@ export default function RabbiHubScreen() {
   const params = useLocalSearchParams();
   const { profile } = useAuthState();
   const scrollRef = useRef<ScrollView | null>(null);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const compactTools = availableContentWidth(width, height) < 900 || usesLandscapeRail(width, height);
   const { askRavQuestions, chaburos, currentReviewWeek, loading, memberships, refresh, reviewQuestions, selectedChaburahId, selectedProgramId, programsReady, registerProgramEdits } = useAppState();
   useRefreshOnFocus(refresh);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
@@ -506,10 +509,20 @@ export default function RabbiHubScreen() {
     await refresh();
   }
 
+  function selectTool(tool: RabbiHubTool) {
+    if (tool === "shiur-builder") {
+      router.navigate("/(tabs)/shiur-builder");
+      return;
+    }
+    setActiveTool(tool);
+    router.setParams({ tool });
+  }
+
   return (
     <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}
+      toolbar={compactTools ? <RabbiToolSwitcher active={activeTool} askRavEnabled={askRavEnabled} onSelect={selectTool} /> : undefined}
       programSelector={<ProgramSelector manage disabled={saving} unsaved={!!prompt.trim() || !!editingQuestionId} />}>
-      <Card>
+      {!compactTools ? <Card>
         <SectionTitle icon="library-outline">Rabbi Tools</SectionTitle>
         <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
         <View style={localStyles.toolCards}>
@@ -519,24 +532,24 @@ export default function RabbiHubScreen() {
               count={submittedQuestions.length}
               label="Ask Rav Inbox"
               meta="Participant questions waiting for a Rav response."
-              onPress={() => setActiveTool("ask-rav")}
+              onPress={() => selectTool("ask-rav")}
             />
           ) : null}
           <RabbiToolCard
             active={activeTool === "shiur-builder"}
             label="Shiur Builder"
             meta="Longer packets and table-talk review from official SCP material."
-            onPress={() => router.push("/(tabs)/shiur-builder")}
+            onPress={() => selectTool("shiur-builder")}
           />
           <RabbiToolCard
             active={activeTool === "quick-review"}
             count={stagedQuestions.length}
             label="Quick Review Questions"
             meta="Short weekly quiz questions for participants to answer in Review."
-            onPress={() => setActiveTool("quick-review")}
+            onPress={() => selectTool("quick-review")}
           />
         </View>
-      </Card>
+      </Card> : null}
 
       <StatusBanner
         message={message}
