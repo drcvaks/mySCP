@@ -36,7 +36,13 @@ assert.equal(result.props.items[0].onSelect(), true);
 assert.equal(event.type, "tabPress");
 prevented = true;
 assert.equal(result.props.items[0].onSelect(), false);
-assert.ok(source.includes(": <BottomTabBar {...props} />"), "Keep native phone navigation unchanged");
+const mobile = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "MobileTabBar");
+const mobileContext = { ...context, BottomTabBar: "bottom-tabs" };
+vm.runInNewContext(ts.transpileModule(mobile.getText(ast), {
+  compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 }
+}).outputText, mobileContext);
+const phoneTabs = mobileContext.MobileTabBar({ state: { routes, index: routes.length - 1 } });
+assert.equal(phoneTabs.props.state.routes[phoneTabs.props.state.index].name, "rabbi-hub", "Builder keeps its parent bottom tab highlighted");
 const sidebar = fs.readFileSync("src/shared/SidebarNavigation.tsx", "utf8");
 assert.ok(sidebar.includes("style={StyleSheet.flatten([s.item"), "Expo Link asChild must receive a concrete style object, not a Pressable callback");
 assert.ok(!sidebar.includes("style={({ pressed }) => [s.item"), "Linked navigation rows keep concrete styles");

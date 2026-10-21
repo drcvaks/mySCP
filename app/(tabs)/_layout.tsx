@@ -7,6 +7,7 @@ import { SidebarItem, SidebarNavigation, SidebarRoute, isSidebarRoute, navigatio
 import { chaburahToolAccess, isGlobalAdmin } from "../../src/shared/permissions";
 import { Button } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
+import { usesCompactNavigation } from "../../src/shared/responsiveLayout";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 
@@ -57,7 +58,7 @@ export default function TabLayout() {
   const segments = useSegments();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const compactPhoneNav = width < 768;
+  const compactPhoneNav = usesCompactNavigation(width, height);
   if (loading || (session && !hydrated)) {
     return (
       <View style={{ alignItems: "center", flex: 1, justifyContent: "center" }}>
@@ -99,7 +100,7 @@ export default function TabLayout() {
     <Tabs
       tabBar={(props) => leftRailNav
         ? <SidebarTabBar {...props} chaburah={selectedChaburah?.name} width={width < 1100 ? 224 : 248} />
-        : <BottomTabBar {...props} />}
+        : <MobileTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveBackgroundColor: leftRailNav ? undefined : "#EDF4FF",
@@ -211,6 +212,14 @@ export default function TabLayout() {
 const mobileTabStyles = StyleSheet.create({
   icon: { width: 36, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" }
 });
+
+function MobileTabBar(props: BottomTabBarProps) {
+  const activeRoute = props.state.routes[props.state.index].name;
+  const hubIndex = props.state.routes.findIndex((route) => route.name === "rabbi-hub");
+  const builderActive = ["shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(activeRoute);
+  const state = builderActive && hubIndex >= 0 ? { ...props.state, index: hubIndex } : props.state;
+  return <BottomTabBar {...props} state={state} />;
+}
 
 function SidebarTabBar({ state, descriptors, navigation, chaburah, width }: BottomTabBarProps & { chaburah?: string; width: number }) {
   const items: SidebarItem[] = state.routes.flatMap((route) => {

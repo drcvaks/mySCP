@@ -30,7 +30,7 @@ async function ensureServer() {
   }
   throw new Error("Local Expo server did not become ready within four minutes.");
 }
-async function fixture(context, role) {
+async function fixture(context, role, extraTables = {}) {
   const now=Math.floor(Date.now()/1000);
   const jwtPart=value=>Buffer.from(JSON.stringify(value)).toString("base64url");
   const user={id:userId,aud:"authenticated",role:"authenticated",email:"webkit-test@example.invalid",app_metadata:{provider:"email",providers:["email"]},user_metadata:{},created_at:new Date().toISOString()};
@@ -42,7 +42,7 @@ async function fixture(context, role) {
     chaburah_members:[{id:"test-membership",user_id:userId,chaburah_id:chaburahId,member_role:role==="local_rabbi"?"rabbi":"participant",status:"active",joined_at:new Date().toISOString(),updated_at:new Date().toISOString()}],
     learning_programs:role==="global_admin"?programs:programs.slice(0,1),
     chaburah_programs:[{chaburah_id:chaburahId,program_id:"winter-5787",current_week:1},{chaburah_id:chaburahId,program_id:"summer-5787",current_week:3}],
-    learning_program_chaburos:[],app_settings:[{id:true,current_review_week:1}]
+    learning_program_chaburos:[],app_settings:[{id:true,current_review_week:1}],...extraTables
   };
   let intercepted=0;
   await context.route("**/*",async route=>{

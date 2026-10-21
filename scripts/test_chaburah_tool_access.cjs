@@ -20,16 +20,20 @@ const navDeclaration = navAst.statements.find(node => ts.isVariableStatement(nod
   node.declarationList.declarations[0].name.getText(navAst) === "navigationItems");
 const navigationItems = vm.runInNewContext(compile("(" + navDeclaration.declarationList.declarations[0].initializer.getText(navAst) + ")"));
 let bottomInset = 0;
+let height = 900;
+const responsive = {};
+vm.runInNewContext(compile(fs.readFileSync("src/shared/responsiveLayout.ts", "utf8")), { exports: responsive });
 const layout = {};
 const stubs = {
   "react/jsx-runtime": {jsx, jsxs: jsx},
   "@expo/vector-icons": {Ionicons: "Icon"},
   "@react-navigation/bottom-tabs": {BottomTabBar: "BottomTabBar"},
   "expo-router": {Redirect: "Redirect", Tabs: tabs, useSegments: () => ["(tabs)", route]},
-  "react-native": {Platform: {get OS() {return platform;}}, StyleSheet: {create: value => value}, useWindowDimensions: () => ({width, height: 900}), View: "View", Text: "Text", ActivityIndicator: "Loading"},
+  "react-native": {Platform: {get OS() {return platform;}}, StyleSheet: {create: value => value}, useWindowDimensions: () => ({width, height}), View: "View", Text: "Text", ActivityIndicator: "Loading"},
   "react-native-safe-area-context": {useSafeAreaInsets: () => ({bottom: bottomInset})},
   "../../src/shared/SidebarNavigation": {navigationItems},
   "../../src/shared/permissions": permissions,
+  "../../src/shared/responsiveLayout": responsive,
   "../../src/shared/components": {Button: "Button"},
   "../../src/shared/theme": {theme: {colors: {}}},
   "../../src/state/AuthState": {useAuthState: () => ({profile: profile(), session: {}, loading: false})},
@@ -37,14 +41,15 @@ const stubs = {
 };
 vm.runInNewContext(compile(fs.readFileSync("app/(tabs)/_layout.tsx", "utf8")), {exports: layout, require: name => stubs[name]});
 function screen(tree, name) {return tree.props.children.find(child => child.props.name === name);}
-for (const [os, viewportWidth] of [["web",1440],["web",320],["web",390],["web",430],["web",768],["android",390],["ios",390]]) {
-  platform = os; width = viewportWidth;
+for (const [os, viewportWidth, viewportHeight = 900] of [["web",1440],["web",320],["web",390],["web",430],["web",768],["android",390],["ios",390],["android",844,390],["ios",667,375],["web",844,390]]) {
+  platform = os; width = viewportWidth; height = viewportHeight;
+  const compact = responsive.usesCompactNavigation(width,height);
   chaburah = "own"; role = "local_rabbi"; route = "dashboard";
   let tree = layout.default();
   assert.equal(screen(tree, "rabbi-hub").props.options.href, undefined);
-  assert.equal(screen(tree, "review").props.options.href, width >= 768 ? undefined : null);
-  assert.equal(tree.props.screenOptions.tabBarPosition, width >= 768 ? "left" : "bottom");
-  if (width < 768) {
+  assert.equal(screen(tree, "review").props.options.href, compact ? null : undefined);
+  assert.equal(tree.props.screenOptions.tabBarPosition, compact ? "bottom" : "left");
+  if (compact) {
     const icon = screen(tree, "files").props.options.tabBarIcon;
     const idle = icon({ focused: false }), active = icon({ focused: true });
     assert.equal(idle.props.children.props.name, navigationItems.files.icon);
@@ -59,7 +64,7 @@ for (const [os, viewportWidth] of [["web",1440],["web",320],["web",390],["web",4
     bottomInset = 0;
   }
   for (const name of ["directory", "profile", "settings", "beta-feedback"]) {
-    assert.equal(screen(tree,name).props.options.href, width >= 768 ? undefined : null);
+    assert.equal(screen(tree,name).props.options.href, compact ? null : undefined);
   }
   chaburah = "other";
   tree = layout.default();

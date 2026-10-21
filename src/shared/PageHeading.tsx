@@ -2,14 +2,15 @@ import { ReactNode } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { isSidebarRoute, navigationItems } from "./SidebarNavigation";
+import { usesCompactNavigation } from "./responsiveLayout";
 
 export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefresh, refreshing = false, accessory, stackAccessory = false }: {
   title: string; eyebrow?: string; pathname: string; navigationButton?: ReactNode;
   onRefresh?: () => void | Promise<void>; refreshing?: boolean;
   accessory?: ReactNode; stackAccessory?: boolean;
 }) {
-  const { width } = useWindowDimensions();
-  const compact = width < 768;
+  const { width, height } = useWindowDimensions();
+  const compact = usesCompactNavigation(width, height);
   const route = pathname.split("/").filter(Boolean).pop() ?? "dashboard";
   const visual = isSidebarRoute(route) ? navigationItems[route]
     : /shiur|source-sheets/.test(route) ? navigationItems["rabbi-hub"]

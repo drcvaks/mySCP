@@ -30,6 +30,8 @@ import { chunkDisplayCode } from "../../src/shared/chunkLabels";
 import { readRichContent } from "../../src/shared/documentContent";
 import { ImportDocument } from "../../src/shared/ImportDocument";
 import { WorkflowCard as BuilderToolCard } from "../../src/shared/WorkflowCard";
+import { shiurBuilderLayout } from "../../src/shared/responsiveLayout";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -44,6 +46,10 @@ const builderCategories: { key: BuilderCategory; label: string; packetLabel: str
 export default function ShiurBuilderScreen() {
   const router = useRouter();
   const { height, width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const layout = shiurBuilderLayout(width, height);
+  const [activePane, setActivePane] = useState<"official" | "packet">("official");
+  const [showSavedPackets, setShowSavedPackets] = useState(false);
   const { askRavQuestions, chaburos, currentReviewWeek, refresh, reviewQuestions, selectedChaburahId, selectedProgramId, selectedProgram, programsReady, registerProgramEdits } = useAppState();
   const loadSequence = useRef(0);
   const { profile } = useAuthState();
@@ -75,7 +81,7 @@ export default function ShiurBuilderScreen() {
     registerProgramEdits("shiur-builder", selectedIds.length > 0);
     return () => registerProgramEdits("shiur-builder", false);
   }, [selectedIds, registerProgramEdits]);
-  const isWebPilot = Platform.OS === "web" && width >= 980;
+  const desktopPreview = Platform.OS === "web" && width >= 980 && height >= 600;
   const canUseBuilder = profile?.role === "local_rabbi" || profile?.role === "global_admin";
   const managedChaburahId = profile?.role === "global_admin" ? selectedChaburahId : profile?.chaburahId;
   const managedChaburah = chaburos.find((chaburah) => chaburah.id === managedChaburahId);
@@ -144,15 +150,15 @@ export default function ShiurBuilderScreen() {
           : [];
   const previewDimensions = getPreviewDimensions(previewSizeMode, width, height);
   const previewModalStyle =
-    isWebPilot
+    desktopPreview
       ? {
           height: previewDimensions.height,
           maxHeight: previewDimensions.height,
           maxWidth: previewDimensions.width,
           width: previewDimensions.width
         }
-      : null;
-  const previewPageStyle = isWebPilot ? { flex: 1, maxHeight: undefined } : null;
+      : { height: Math.max(180, height - insets.top - insets.bottom - 16), maxHeight: height - insets.top - insets.bottom - 16 };
+  const previewPageStyle = { flex: 1, maxHeight: undefined };
   const draftPackets = packets.filter((packet) => packet.status === "draft" && packet.week === week);
   const publishedPackets = packets.filter((packet) => packet.status === "published" && packet.week === week);
   const activeCategoryPublishedPacket = publishedPackets.find((packet) => packet.categories.includes(activeCategory));
@@ -430,6 +436,7 @@ export default function ShiurBuilderScreen() {
   }
 
   function resetDraftState() {
+    setActivePane("official");
     setActivePacketId(null);
     setActivePacketStatus("draft");
     setEditingPublishedPacket(false);
@@ -457,6 +464,7 @@ export default function ShiurBuilderScreen() {
     setTitle(packet.title);
     setWeek(packet.week);
     setSelectedIds(loadedIds);
+    setActivePane("packet");
     if (!loadedChunks.some((chunk) => chunk.sourceType === activeCategory)) {
       const firstCategoryChunk = loadedChunks.find((chunk) => isBuilderCategory(chunk.sourceType));
       if (isBuilderCategory(firstCategoryChunk?.sourceType)) {
@@ -492,6 +500,7 @@ export default function ShiurBuilderScreen() {
     setActivePacketId(packet.id);
     setActivePacketStatus("published");
     setEditingPublishedPacket(true);
+    setActivePane("packet");
     setTitle(packet.title);
     setWeek(packet.week);
     setSelectedIds(loadedIds);
@@ -824,6 +833,29 @@ export default function ShiurBuilderScreen() {
       : `${activeCategoryConfig.label} published to Files and removed from the draft. Other draft categories are unchanged.`);
   }
 
+  const categoryControls = <View style={localStyles.categorySwitch} accessibilityRole="tablist">
+    {categoryCounts.map((category) => <Pressable accessibilityRole="tab" accessibilityState={{ selected: activeCategory === category.key }}
+      key={category.key} onPress={() => { setActiveCategory(category.key); clearPreview(); }}
+      style={[localStyles.categoryButton, layout.compact && localStyles.compactCategoryButton, activeCategory === category.key && localStyles.categoryButtonActive]}>
+      <Text style={[localStyles.categoryButtonText, layout.compact && { fontSize: 13, lineHeight: 18 }, activeCategory === category.key && localStyles.categoryButtonTextActive]}>{category.label}</Text>
+      <Text style={[localStyles.categoryButtonMeta, activeCategory === category.key && localStyles.categoryButtonMetaActive]}>
+        {layout.compact ? `${category.selected} / ${category.available}` : `${category.selected} selected / ${category.available} available`}
+      </Text>
+    </Pressable>)}
+  </View>;
+  const paneControls = <View style={localStyles.paneSwitch} accessibilityRole="tablist">
+    {(["official", "packet"] as const).map((pane) => <Pressable key={pane} accessibilityRole="tab"
+      accessibilityLabel={pane === "official" ? "Official Material" : "My Packet"}
+      accessibilityState={{ selected: activePane === pane }} onPress={() => setActivePane(pane)}
+      style={[localStyles.paneButton, activePane === pane && localStyles.paneButtonActive]}>
+      <Ionicons name={pane === "official" ? "folder-open" : "documents"} size={19}
+        color={activePane === pane ? "#FFFFFF" : "#3F6F9D"} />
+      <Text style={[localStyles.paneButtonText, activePane === pane && { color: "#FFFFFF" }]}>
+        {pane === "official" ? "Official Material" : `My Packet (${selectedCategoryChunks.length})`}
+      </Text>
+    </Pressable>)}
+  </View>;
+
   if (!canUseBuilder) {
     return (
       <Screen title="Shiur Builder" eyebrow="Rabbi Hub">
@@ -835,26 +867,12 @@ export default function ShiurBuilderScreen() {
     );
   }
 
-  if (!isWebPilot) {
-    return (
-      <Screen title="Shiur Builder" eyebrow="Web pilot" onRefresh={loadBuilderData} refreshing={loading}>
-        <Card>
-          <SectionTitle>Use the Web Version</SectionTitle>
-          <Text style={styles.muted}>
-            This first Shiur Builder pilot is optimized for the web layout, where the official material and packet draft can sit side by side.
-          </Text>
-          <Button label="Back to Rabbi Hub" onPress={() => router.push("/(tabs)/rabbi-hub")} variant="secondary" />
-          {selectedProgramId === WINTER_PROGRAM ? <PaceReference /> : null}
-        </Card>
-      </Screen>
-    );
-  }
-
   return (
     <Screen title="Shiur Builder" eyebrow="Rabbi Hub" onRefresh={loadBuilderData} refreshing={loading}
-      programSelector={<ProgramSelector manage disabled={saving || loading} unsaved={selectedIds.length > 0} />}>
+      toolbar={!layout.twoColumns ? <View style={{ gap: 4 }}>{categoryControls}{paneControls}</View> : undefined}
+      programSelector={<ProgramSelector manage={!layout.compact} disabled={saving || loading} unsaved={selectedIds.length > 0} />}>
       <StatusBanner message={message} tone={message.toLowerCase().includes("error") || message.toLowerCase().includes("unable") ? "error" : "info"} />
-      <Card>
+      {!layout.compact ? <Card>
         <SectionTitle icon="library-outline">Rabbi Tools</SectionTitle>
         <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
         <View style={localStyles.toolCards}>
@@ -879,19 +897,19 @@ export default function ShiurBuilderScreen() {
             onPress={() => router.push({ pathname: "/(tabs)/rabbi-hub", params: { tool: "quick-review" } })}
           />
         </View>
-      </Card>
+      </Card> : null}
 
       <Card>
         <Row>
-          <View style={{ flex: 1, minWidth: 320 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <SectionTitle>Shiur Builder</SectionTitle>
-            <Text style={styles.muted}>
+            {!layout.compact ? <Text style={styles.muted}>
               Use official SCP notes and Q&A to prepare for shiur, track the sections covered, and publish a polished after-shiur review packet for your chaburah.
-            </Text>
+            </Text> : null}
           </View>
           <Pill label={`Week ${week}`} tone="primary" />
         </Row>
-        <MetaText>{managedChaburah?.name ?? "Current Chaburah"} - official text is controlled and cannot be edited in this version.</MetaText>
+        <MetaText>{managedChaburah?.name ?? "Current Chaburah"}{!layout.compact ? " - official text is controlled and cannot be edited in this version." : ""}</MetaText>
         <View style={localStyles.weekRow}>
           {reviewWeeks.map((reviewWeek) => (
             <FilterChip key={reviewWeek} label={`Week ${reviewWeek}`} onPress={() => setWeek(reviewWeek)} selected={week === reviewWeek} />
@@ -905,14 +923,20 @@ export default function ShiurBuilderScreen() {
 
       <Card>
         <Row>
-          <View style={{ flex: 1, minWidth: 260 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <SectionTitle>Existing Packets</SectionTitle>
-            <Text style={styles.muted}>Load a draft or view a published packet before building.</Text>
+            {!layout.compact ? <Text style={styles.muted}>Load a draft or view a published packet before building.</Text> : null}
           </View>
+          {!layout.compact ? <><Pill label={`${draftPackets.length} drafts`} tone={draftPackets.length ? "accent" : "neutral"} />
+            <Pill label={`${publishedPackets.length} published`} tone={publishedPackets.length ? "success" : "neutral"} /></> : null}
+          {layout.compact ? <BuilderIconButton label={showSavedPackets ? "Hide existing packets" : "Show existing packets"}
+            icon={showSavedPackets ? "chevron-up" : "chevron-down"} onPress={() => setShowSavedPackets(!showSavedPackets)} /> : null}
+        </Row>
+        {layout.compact ? <View style={localStyles.weekRow}>
           <Pill label={`${draftPackets.length} drafts`} tone={draftPackets.length ? "accent" : "neutral"} />
           <Pill label={`${publishedPackets.length} published`} tone={publishedPackets.length ? "success" : "neutral"} />
-        </Row>
-        <View style={localStyles.existingPacketBands}>
+        </View> : null}
+        {!layout.compact || showSavedPackets ? <View style={localStyles.existingPacketBands}>
           <PacketGroup
             chaburahName={managedChaburah?.name}
             onDeleteDraft={deleteDraftPacket}
@@ -930,44 +954,23 @@ export default function ShiurBuilderScreen() {
             onLoad={loadPacket}
             compact
           />
-        </View>
+        </View> : null}
       </Card>
 
-      <Card>
-        <View style={localStyles.categorySwitch}>
-          {categoryCounts.map((category) => (
-            <Pressable
-              accessibilityRole="button"
-              key={category.key}
-              onPress={() => {
-                setActiveCategory(category.key);
-                clearPreview();
-              }}
-              style={[localStyles.categoryButton, activeCategory === category.key && localStyles.categoryButtonActive]}
-            >
-              <Text style={[localStyles.categoryButtonText, activeCategory === category.key && localStyles.categoryButtonTextActive]}>
-                {category.label}
-              </Text>
-              <Text style={[localStyles.categoryButtonMeta, activeCategory === category.key && localStyles.categoryButtonMetaActive]}>
-                {category.selected} selected / {category.available} available
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </Card>
+      {layout.twoColumns ? categoryControls : null}
 
-      <View style={localStyles.workspace}>
-        <View style={localStyles.sourceColumn}>
+      <View style={[localStyles.workspace, !layout.twoColumns && { flexDirection: "column" }]}>
+        <View testID="builder-official-pane" style={[localStyles.sourceColumn, !layout.twoColumns && activePane !== "official" && { display: "none" }]}>
           <Card>
             <SectionTitle>Official SCP {activeCategoryConfig.label}</SectionTitle>
-            <Text style={styles.muted}>Open a folder to choose smaller chunks, or add/view the whole section at once.</Text>
+            {!layout.compact ? <Text style={styles.muted}>Open a folder to choose smaller chunks, or add/view the whole section at once.</Text> : null}
             <View style={localStyles.weekRow}>
               <FilterChip label="All Coverage" onPress={() => setCoverageFilter("all")} selected={coverageFilter === "all"} />
               <FilterChip label="Covered" onPress={() => setCoverageFilter("covered")} selected={coverageFilter === "covered"} />
               <FilterChip label="Not Covered" onPress={() => setCoverageFilter("not-covered")} selected={coverageFilter === "not-covered"} />
             </View>
             <MetaText>Covered means already published to Files. Draft packets are not counted.</MetaText>
-            <ScrollView contentContainerStyle={{ gap: 8 }} style={localStyles.columnScroll}>
+            <ScrollView nestedScrollEnabled contentContainerStyle={{ gap: 8 }} style={[localStyles.columnScroll, layout.compact && { maxHeight: layout.columnHeight }]}>
               {materialSections.length === 0 ? (
                 <Text style={styles.muted}>No official material matches these filters.</Text>
               ) : null}
@@ -977,7 +980,9 @@ export default function ShiurBuilderScreen() {
                 const coveredCount = section.chunks.filter((chunk) => coverageByChunkId.has(chunk.id)).length;
                 return (
                   <View key={section.key} style={localStyles.folderShell}>
-                    <Pressable accessibilityRole="button" onPress={() => toggleSection(section.key)} style={localStyles.folderRow}>
+                    <View style={[localStyles.folderRow, layout.compact && localStyles.stackedFileRow]}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`${expanded ? "Collapse" : "Expand"} ${section.title}`}
+                      accessibilityState={{ expanded }} onPress={() => toggleSection(section.key)} style={localStyles.folderHeading}>
                       <Ionicons name={expanded ? "chevron-down" : "chevron-forward"} color={theme.colors.muted} size={18} />
                       <Ionicons name={expanded ? "folder-open-outline" : "folder-outline"} color={theme.colors.accent} size={23} />
                       <View style={localStyles.folderText}>
@@ -986,6 +991,7 @@ export default function ShiurBuilderScreen() {
                           {section.sourceLabel} - {section.chunks.length} chunk{section.chunks.length === 1 ? "" : "s"} - {addedCount} added - {coveredCount} covered
                         </MetaText>
                       </View>
+                    </Pressable>
                       <View style={localStyles.folderActions}>
                         <Button label="View" onPress={() => previewWholeSection(section.key)} variant="ghost" />
                         <Button
@@ -995,17 +1001,19 @@ export default function ShiurBuilderScreen() {
                           variant="secondary"
                         />
                       </View>
-                    </Pressable>
+                    </View>
                     {expanded ? (
                       <View style={localStyles.folderChildren}>
                         {section.chunks.map((chunk) => (
-                          <View key={chunk.id} style={[localStyles.fileRow, selectedIds.includes(chunk.id) && localStyles.selectedFileRow]}>
+                          <View key={chunk.id} style={[localStyles.fileRow, layout.compact && localStyles.stackedFileRow, selectedIds.includes(chunk.id) && localStyles.selectedFileRow]}>
+                            <View style={localStyles.fileMain}>
                             <View style={localStyles.treeLine} />
                             <Ionicons name="document-text-outline" color={theme.colors.muted} size={19} />
                             <View style={localStyles.fileText}>
                               <Text style={localStyles.fileTitle}>{chunk.chunkTitle}</Text>
                               <MetaText>{chunkDisplayCode(chunk.chunkCode)}{chunk.chunkSummary ? ` - ${chunk.chunkSummary}` : ""}</MetaText>
                               <CoverageLine coverage={coverageByChunkId.get(chunk.id) ?? []} />
+                            </View>
                             </View>
                             <View style={localStyles.fileActions}>
                               <Button label={previewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => toggleChunkPreview(chunk.id)} variant="ghost" />
@@ -1027,21 +1035,23 @@ export default function ShiurBuilderScreen() {
           </Card>
         </View>
 
-        <View style={localStyles.packetColumn}>
+        <View testID="builder-packet-pane" style={[localStyles.packetColumn, !layout.twoColumns && activePane !== "packet" && { display: "none" }]}>
           <Card>
-            <SectionTitle>{activeCategoryConfig.packetLabel}</SectionTitle>
+            <View style={layout.compact ? localStyles.compactPacketHeading : { gap: 10 }}>
+            <View style={{ flex: 1, minWidth: 0 }}><SectionTitle>{activeCategoryConfig.packetLabel}</SectionTitle></View>
             <View style={localStyles.packetTopAction}>
               <Button label="New Draft" onPress={startNewDraft} variant="secondary" />
             </View>
-            <Text style={styles.muted}>Selected {activeCategoryConfig.label.toLowerCase()} sections. Move items up/down to control packet order.</Text>
+            </View>
+            {!layout.compact ? <Text style={styles.muted}>Selected {activeCategoryConfig.label.toLowerCase()} sections. Move items up/down to control packet order.</Text> : null}
             <View style={localStyles.titleRow}>
               <Text style={localStyles.titleLabel}>Title:</Text>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <FormInput onChangeText={setTitle} placeholder="Packet title" value={title} />
               </View>
             </View>
-            <Text style={styles.muted}>The official packet text below is controlled and cannot be edited here.</Text>
-            <ScrollView contentContainerStyle={{ gap: 8 }} style={localStyles.packetScroll}>
+            {!layout.compact ? <Text style={styles.muted}>The official packet text below is controlled and cannot be edited here.</Text> : null}
+            <ScrollView nestedScrollEnabled contentContainerStyle={{ gap: 8 }} style={[localStyles.packetScroll, layout.compact && { maxHeight: layout.columnHeight }]}>
               {packetSections.length === 0 ? <Text style={styles.muted}>Add official {activeCategoryConfig.label.toLowerCase()} sections to begin this part of the draft packet.</Text> : null}
               {packetSections.map((section, sectionIndex) => {
                 const expanded = expandedPacketSectionKeys.includes(section.key);
@@ -1059,17 +1069,15 @@ export default function ShiurBuilderScreen() {
                         </View>
                       </Pressable>
                       <View style={localStyles.packetFolderActions}>
-                        <Button
-                          label="Up"
+                        <BuilderIconButton
+                          label="Move section up" icon="arrow-up"
                           onPress={() => movePacketSection(section.key, -1)}
                           disabled={sectionIndex === 0 || !canEditPacket}
-                          variant="ghost"
                         />
-                        <Button
-                          label="Down"
+                        <BuilderIconButton
+                          label="Move section down" icon="arrow-down"
                           onPress={() => movePacketSection(section.key, 1)}
                           disabled={sectionIndex === packetSections.length - 1 || !canEditPacket}
-                          variant="ghost"
                         />
                         <Button
                           label="Remove Section"
@@ -1093,19 +1101,17 @@ export default function ShiurBuilderScreen() {
                             </View>
                             <View style={localStyles.packetFileOrderActions}>
                               <Button label={packetPreviewChunkId === chunk.id ? "Viewing" : "View"} onPress={() => previewPacketChunk(chunk.id)} variant="ghost" />
-                              <Button
-                                label="Up"
+                              <BuilderIconButton
+                                label="Move item up" icon="arrow-up"
                                 onPress={() => movePacketChunk(chunk.id, -1)}
                                 disabled={chunkIndex === 0 || !canEditPacket}
-                                variant="ghost"
                               />
-                              <Button
-                                label="Down"
+                              <BuilderIconButton
+                                label="Move item down" icon="arrow-down"
                                 onPress={() => movePacketChunk(chunk.id, 1)}
                                 disabled={chunkIndex === section.chunks.length - 1 || !canEditPacket}
-                                variant="ghost"
                               />
-                              <Button label="Remove" onPress={() => removeChunk(chunk.id)} disabled={!canEditPacket} variant="ghost" />
+                              <BuilderIconButton label="Remove item" icon="trash-outline" onPress={() => removeChunk(chunk.id)} disabled={!canEditPacket} />
                             </View>
                           </View>
                         ))}
@@ -1188,7 +1194,7 @@ export default function ShiurBuilderScreen() {
 
       </View>
 
-      <Card>
+      {!layout.compact ? <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
             <SectionTitle>{activeCategoryConfig.label} Preview</SectionTitle>
@@ -1212,7 +1218,7 @@ export default function ShiurBuilderScreen() {
             </View>
           </View>
         ) : null}
-      </Card>
+      </Card> : null}
 
       <Modal
         animationType="fade"
@@ -1221,14 +1227,14 @@ export default function ShiurBuilderScreen() {
         onRequestClose={clearPreview}
       >
         <Pressable
-          style={localStyles.previewBackdrop}
+          style={[localStyles.previewBackdrop, !desktopPreview && { paddingHorizontal: Math.max(8, insets.left, insets.right), paddingVertical: Math.max(8, insets.top, insets.bottom) }]}
           onPress={clearPreview}
         >
-          <Pressable style={[localStyles.previewModal, previewModalStyle]}>
+          <Pressable style={[localStyles.previewModal, !desktopPreview && { padding: 10, gap: 8 }, previewModalStyle]}>
             {previewChunk || previewSection || packetPreviewChunk || previewingPacket ? (
               <>
                 <View style={localStyles.previewTitleBar}>
-                  <View style={{ flex: 1, minWidth: 260 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <MetaText>
                       {previewingPacket
                         ? `Week ${week} ${activeCategoryConfig.label}`
@@ -1238,7 +1244,7 @@ export default function ShiurBuilderScreen() {
                             ? activeCategoryConfig.packetLabel
                             : `${previewChunk ? chunkDisplayCode(previewChunk.chunkCode) : ""} - ${previewChunk?.sectionTitle}`}
                     </MetaText>
-                    <Text style={localStyles.modalTitle}>
+                    <Text style={[localStyles.modalTitle, !desktopPreview && { fontSize: 18, lineHeight: 24 }]}>
                       {previewingPacket
                         ? buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)
                         : previewSection
@@ -1249,11 +1255,11 @@ export default function ShiurBuilderScreen() {
                     </Text>
                   </View>
                   <View style={localStyles.previewTitleActions}>
-                    {previewingPacket ? <Button label="Print" onPress={printPreviewPacket} variant="primary" /> : null}
+                    {previewingPacket && Platform.OS === "web" ? <Button label="Print" onPress={printPreviewPacket} variant="primary" /> : null}
                     <Button label="Close" onPress={clearPreview} variant="secondary" />
                   </View>
                 </View>
-                {isWebPilot ? (
+                {desktopPreview ? (
                   <View style={localStyles.previewSizeControls}>
                     <MetaText>Preview size</MetaText>
                     <View style={localStyles.previewTitleActions}>
@@ -1264,8 +1270,8 @@ export default function ShiurBuilderScreen() {
                     </View>
                   </View>
                 ) : null}
-                <ScrollView contentContainerStyle={localStyles.previewPageContent} style={[localStyles.previewPage, previewPageStyle]}>
-                  <View style={localStyles.modalDocumentPage}>
+                <ScrollView contentContainerStyle={[localStyles.previewPageContent, !desktopPreview && { padding: 6 }]} style={[localStyles.previewPage, previewPageStyle]}>
+                  <View style={[localStyles.modalDocumentPage, !desktopPreview && { padding: 12 }]}>
                     {previewingPacket ? (
                       <>
                         <Text style={localStyles.documentPacketTitle}>{buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}</Text>
@@ -1335,6 +1341,16 @@ export default function ShiurBuilderScreen() {
       </Modal>
     </Screen>
   );
+}
+
+function BuilderIconButton({ label, icon, onPress, disabled = false }: {
+  label: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void; disabled?: boolean;
+}) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled}
+    {...(Platform.OS === "web" ? { title: label } : {})}
+    onPress={onPress} style={({ pressed }) => [localStyles.iconButton, pressed && { backgroundColor: "#E4EDFB" }, disabled && { opacity: 0.35 }]}>
+    <Ionicons name={icon} size={20} color={icon === "trash-outline" ? theme.colors.danger : "#365C91"} />
+  </Pressable>;
 }
 
 function DocumentChunk({
@@ -1872,6 +1888,18 @@ const localStyles = StyleSheet.create({
     gap: theme.spacing.sm,
     width: "100%"
   },
+  paneSwitch: { flexDirection: "row", gap: 6, padding: 4, borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: 8, backgroundColor: "#FFFFFF" },
+  paneButton: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 6 },
+  paneButtonActive: { backgroundColor: "#2563EB" },
+  paneButtonText: { fontSize: 13, lineHeight: 19, fontWeight: "700", color: theme.colors.ink, flexShrink: 1, textAlign: "center" },
+  iconButton: { width: 44, height: 44, borderRadius: 8, backgroundColor: "#F0F4FA", alignItems: "center", justifyContent: "center" },
+  folderHeading: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44 },
+  fileMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 },
+  stackedFileRow: { flexDirection: "column", alignItems: "stretch" },
+  compactCategoryButton: { paddingHorizontal: 6, paddingVertical: 8, minWidth: 0, minHeight: 54 },
+  compactPacketHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
   sourceColumn: {
     flex: 1.15,
     minWidth: 0
@@ -2135,7 +2163,8 @@ const localStyles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: 16,
     fontWeight: "900",
-    lineHeight: 21
+    lineHeight: 21,
+    textAlign: "center"
   },
   categoryButtonTextActive: {
     color: "#FFFFFF"
@@ -2151,7 +2180,10 @@ const localStyles = StyleSheet.create({
   },
   existingPacketGroup: {
     flexBasis: 360,
-    flexGrow: 1
+    flexGrow: 1,
+    flexShrink: 1,
+    maxWidth: "100%",
+    minWidth: 0
   },
   existingPacketList: {
     flexDirection: "row",
@@ -2169,6 +2201,7 @@ const localStyles = StyleSheet.create({
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: theme.spacing.sm,
     padding: theme.spacing.sm
   },

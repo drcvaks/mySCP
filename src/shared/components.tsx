@@ -9,6 +9,7 @@ import { useAppState } from "../state/AppState";
 import { PageHeading } from "./PageHeading";
 import { chaburahToolAccess } from "./permissions";
 import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
+import { usesCompactNavigation } from "./responsiveLayout";
 
 interface ScreenProps {
   title: string;
@@ -19,16 +20,18 @@ interface ScreenProps {
   scrollRef?: RefObject<ScrollView | null>;
   onScroll?: ScrollViewProps["onScroll"];
   programSelector?: ReactElement<{ render?: (slots: { header: ReactNode; management: ReactNode }) => ReactNode }>;
+  toolbar?: ReactNode;
 }
 
-export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef, onScroll, programSelector }: ScreenProps) {
+export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef, onScroll, programSelector, toolbar }: ScreenProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { profile } = useAuthState();
   const { chaburos, memberships, selectedChaburahId } = useAppState();
   const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
-  const { width } = useWindowDimensions();
-  const showDrawerButton = width < 768;
+  const { width, height } = useWindowDimensions();
+  const showDrawerButton = usesCompactNavigation(width, height);
+  const landscapePhone = showDrawerButton && width >= 700;
   const [menuOpen, setMenuOpen] = useState(false);
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
@@ -60,10 +63,10 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   // One controller owns both slots, keeping switches and management saves in sync.
   const renderScreen = ({ header = null, management = null }: { header?: ReactNode; management?: ReactNode } = {}) => (
     <SafeAreaView style={globalStyles.screen} edges={["top"]}>
-      <View style={[styles.headerShell, width >= 768 && styles.wideHeaderShell]}>
-        <View style={[styles.screenHeader, width >= 768 && styles.wideHeaderContent]}>
+      <View style={[styles.headerShell, !showDrawerButton && styles.wideHeaderShell]}>
+        <View style={[styles.screenHeader, !showDrawerButton && styles.wideHeaderContent]}>
           <PageHeading title={title} eyebrow={eyebrow} pathname={pathname} onRefresh={onRefresh} refreshing={refreshing}
-            accessory={header} stackAccessory={width < 1100}
+            accessory={header} stackAccessory={width < 1100 && !landscapePhone}
             navigationButton={showDrawerButton ? (
             <Pressable
               accessibilityLabel="Open navigation menu"
@@ -76,9 +79,10 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
           ) : null} />
         </View>
       </View>
+      {toolbar ? <View style={styles.screenToolbar}>{toolbar}</View> : null}
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[globalStyles.content, showDrawerButton && styles.phoneContent, width >= 768 && styles.wideContent]}
+        contentContainerStyle={[globalStyles.content, showDrawerButton && styles.phoneContent, !showDrawerButton && styles.wideContent]}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         onScroll={onScroll}
@@ -348,6 +352,7 @@ export const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl
   },
   phoneContent: { padding: 12, gap: 12, paddingBottom: 24 },
+  screenToolbar: { backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingHorizontal: 12, paddingVertical: 6 },
   headerShell: {
     alignItems: "center",
     backgroundColor: theme.colors.surface,

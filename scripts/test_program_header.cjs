@@ -6,13 +6,17 @@ const source=fs.readFileSync("src/shared/components.tsx","utf8");
 const ast=ts.createSourceFile("components.tsx",source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 const screen=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==="Screen").getText(ast);
 let width=1440;
+let height=900;
+const responsive={};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync("src/shared/responsiveLayout.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:responsive});
 let rabbiHub=true;
 const jsx=(type,props)=>({type,props});
 const exportsObject={};
 vm.runInNewContext(ts.transpileModule(screen,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{
   exports:exportsObject,require:name=>{assert.equal(name,"react/jsx-runtime");return{jsx,jsxs:jsx};},
   useRouter:()=>({navigate:()=>{}}),usePathname:()=>"/rabbi-hub",useAuthState:()=>({profile:{role:"local_rabbi"}}),
-  useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width}),
+  useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width,height}),
+  usesCompactNavigation:responsive.usesCompactNavigation,
   chaburahToolAccess:()=>({rabbiHub,admin:rabbiHub}),
   useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{},spacing:{xs:6}},
   SafeAreaView:"SafeAreaView",View:"View",ScrollView:"ScrollView",Pressable:"Pressable",Modal:"Modal",Text:"Text",PageHeading:"Heading",Ionicons:"Icon",
@@ -24,6 +28,12 @@ function all(tree,type){
   const children=tree.props?.children;
   return(tree.type===type?[tree]:[]).concat((Array.isArray(children)?children:[children]).flat(Infinity).flatMap(child=>all(child,type)));
 }
+width=844;height=390;
+const landscape=exportsObject.Screen({title:"Shiur Builder",children:"CONTENT",programSelector:{type:"Controller",props:{}}});
+const landscapeHeading=all(landscape.props.render({header:jsx("Programs",{})}),"Heading")[0];
+assert.ok(landscapeHeading.props.navigationButton,"Landscape phones retain the hamburger menu");
+assert.equal(landscapeHeading.props.stackAccessory,false,"Landscape program controls share the title row");
+height=900;
 for(rabbiHub of [true,false]){
   const frame=exportsObject.Screen({title:"Dashboard",children:"CONTENT"});
   const items=all(frame,"Sidebar")[0].props.items.map(item=>item.name);

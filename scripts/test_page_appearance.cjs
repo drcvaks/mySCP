@@ -7,6 +7,10 @@ const ast = ts.createSourceFile("sidebar.tsx", navSource, ts.ScriptTarget.Latest
 const declaration = ast.statements.find((node) => ts.isVariableStatement(node) && node.declarationList.declarations[0].name.getText(ast) === "navigationItems");
 const navigationItems = vm.runInNewContext(ts.transpileModule("(" + declaration.declarationList.declarations[0].initializer.getText(ast) + ")", {}).outputText);
 const navigation = { navigationItems, isSidebarRoute: (route) => Object.hasOwn(navigationItems, route) };
+const responsive = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync("src/shared/responsiveLayout.ts", "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS }
+}).outputText, { exports: responsive });
 let viewportWidth = 1280;
 function load(file) {
   const exports = {};
@@ -18,6 +22,7 @@ function load(file) {
       useWindowDimensions: () => ({ width: viewportWidth }) };
     if (name === "@expo/vector-icons") return { Ionicons: "Icon" };
     if (name === "./SidebarNavigation") return navigation;
+    if (name === "./responsiveLayout") return responsive;
     if (name === "./components") return { Button: "Button", Pill: "Pill" };
     throw new Error(name);
   } });
