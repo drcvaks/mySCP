@@ -25,6 +25,8 @@ import { ReviewQuestion, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
 import { availableContentWidth, usesLandscapeMenu } from "../../src/shared/responsiveLayout";
+import { ChaburahReviewResults } from "../../src/shared/ChaburahReviewResults";
+import { chaburahToolAccess } from "../../src/shared/permissions";
 
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
@@ -1310,6 +1312,9 @@ export default function RabbiHubScreen() {
       </Card>
         </>
       ) : null}
+      {activeTool === "quick-review" && managedChaburahId && chaburahToolAccess(profile, memberships, selectedChaburahId).rabbiHub ?
+        <ChaburahReviewResults key={`${managedChaburahId}/${selectedProgramId}`} chaburahId={managedChaburahId}
+          programId={selectedProgramId} weeks={reviewWeeks} refreshing={loading} /> : null}
     </Screen>
   );
 }

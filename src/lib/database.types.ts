@@ -381,6 +381,11 @@ export interface Database {
       };
     };
     Functions: {
+      get_chaburah_review_results: {
+        Args: { target_chaburah_id: string; target_program_id: string; target_week?: number | null };
+        Returns: { user_id: string; display_name: string; score_rank: number | null; correct_answers: number;
+          answered_questions: number; available_questions: number; weeks_attempted: number }[];
+      };
       import_public_review_library: {
         Args: { target_program_id: string; questions: Json; apply_import?: boolean };
         Returns: Json;
