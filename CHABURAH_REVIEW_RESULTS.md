@@ -3,6 +3,8 @@
 Apply `supabase/migrations/202610210002_chaburah_review_results.sql` in Supabase
 before using the results table. This migration does not require the packet-heading
 migration and does not change published questions or existing review sessions.
+Then apply `supabase/migrations/202610210003_exclude_rabbis_review_results.sql`
+to exclude chaburah Rabbis from results and participation counts.
 
 The table is at the bottom of Rabbi Hub > Quick Review Questions, for the selected
 zeman and current managed chaburah. Only authorized chaburah managers or Global
@@ -22,7 +24,9 @@ Admins can retrieve results. Participants cannot retrieve other members' results
   excluded from both scoring and the available count. Unanswered questions do not
   count as incorrect.
 - Weeks tried counts weeks with at least one answer, not weeks completed.
-- All active members are included, including members with no answers. Equal exact
+- Active members other than that chaburah's Rabbis are included, including members
+  with no answers. Exclusion uses the chaburah membership role, so someone who is a
+  Rabbi elsewhere can still participate here as a regular member. Equal exact
   percentages share a rank; participation breaks display order, not rank. Prize
   eligibility or minimum participation is not automated.
 - Each published question ID is distinct. Deleting and recreating a question creates

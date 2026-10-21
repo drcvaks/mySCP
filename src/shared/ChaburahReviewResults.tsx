@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Database } from "../lib/database.types";
@@ -17,6 +17,8 @@ export function ChaburahReviewResults({ chaburahId, programId, weeks, refreshing
   const [week, setWeek] = useState<number | "all">("all");
   const [search, setSearch] = useState("");
   const [revision, setRevision] = useState(0);
+  const listRef = useRef<ScrollView>(null);
+  useEffect(() => { listRef.current?.scrollTo({ y: 0, animated: false }); }, [search, week]);
   const [state, setState] = useState<{ rows: Result[]; loading: boolean; error: string; scope: string }>({
     rows: [], loading: true, error: "", scope: ""
   });
@@ -76,7 +78,9 @@ export function ChaburahReviewResults({ chaburahId, programId, weeks, refreshing
       <MetaText>{attempted} of {rows.length} members participated - {available} published questions</MetaText>
       {rows.length === 0 ? <Text style={styles.muted}>No active members found.</Text> :
         filtered.length === 0 ? <Text style={styles.muted}>No matching participants.</Text> :
-        compact ? <View>
+        compact ? <ScrollView ref={listRef} testID="review-results-list" nestedScrollEnabled
+          showsVerticalScrollIndicator keyboardShouldPersistTaps="handled" style={{ maxHeight: 320 }}
+          accessibilityLabel="Chaburah first-answer results">
           {filtered.map(row => <View key={row.user_id} style={s.compactRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Text style={[s.cell, { width: 24 }, row.score_rank !== null && row.score_rank <= 3 && s.topRank]}>{row.score_rank ?? "-"}</Text>
@@ -88,8 +92,10 @@ export function ChaburahReviewResults({ chaburahId, programId, weeks, refreshing
               <MetaText>Participation: {row.answered_questions}/{row.available_questions} ({row.available_questions ? Math.round(100 * row.answered_questions / row.available_questions) : 0}%)</MetaText>
             </View>
           </View>)}
-        </View> : <ScrollView horizontal contentContainerStyle={{ minWidth: "100%" }}>
-          <View style={{ flex: 1, minWidth: 640 }} accessibilityLabel="Chaburah first-answer results">
+        </ScrollView> : <ScrollView horizontal contentContainerStyle={{ minWidth: "100%" }}>
+          <ScrollView ref={listRef} testID="review-results-list" nestedScrollEnabled showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled" stickyHeaderIndices={[0]}
+            style={{ flex: 1, minWidth: 640, maxHeight: 400 }} accessibilityLabel="Chaburah first-answer results">
             <View style={[s.row, s.header]}>
               <Text style={[s.label, s.rank]}>Rank</Text>
               <Text style={[s.label, s.name]}>Participant</Text>
@@ -106,7 +112,7 @@ export function ChaburahReviewResults({ chaburahId, programId, weeks, refreshing
               <Text style={[s.cell, s.participation]}>{row.answered_questions}/{row.available_questions} ({row.available_questions ? Math.round(100 * row.answered_questions / row.available_questions) : 0}%)</Text>
               <Text style={[s.cell, s.weeks]}>{row.weeks_attempted}</Text>
             </View>)}
-          </View>
+          </ScrollView>
         </ScrollView>}
     </> : null}
   </Card></View>;

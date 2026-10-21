@@ -22,10 +22,13 @@ async function main() {
     await fixture(context, "global_admin");
     const calls = [];
     let fail = false;
+    let manyMembers = false;
+    const longRows = [...rows, ...Array.from({ length: 40 }, (_, index) => ({ ...rows[2],
+      user_id: `extra-${index}`, display_name: `Participant ${String(index + 1).padStart(2, "0")}` }))];
     await context.route("**/rest/v1/rpc/get_chaburah_review_results", async route => {
       if (route.request().method() === "OPTIONS") return route.fallback();
       const args = route.request().postDataJSON(); calls.push(args);
-      const data = args.target_program_id === "summer-5787" ? [] : args.target_week === 2 ? [rows[0]] : rows;
+      const data = args.target_program_id === "summer-5787" ? [] : args.target_week === 2 ? [rows[0]] : manyMembers ? longRows : rows;
       await route.fulfill({ status: fail ? 404 : 200,
         headers: { "access-control-allow-origin": "*", "content-type": "application/json" },
         body: JSON.stringify(fail ? { code: "PGRST202", message: "Function missing" } : data) });
@@ -51,6 +54,7 @@ async function main() {
     await table.getByPlaceholder("Search participants").fill("Nobody matches");
     await table.getByText("No matching participants.", { exact: true }).waitFor();
     await table.getByPlaceholder("Search participants").fill("");
+    await table.getByText("Ben Review", { exact: true }).waitFor();
     await table.getByRole("button", { name: "Week 2", exact: true }).click();
     await table.getByText("Aaron Review", { exact: true }).waitFor();
     assert.equal(calls.at(-1).target_week, 2);
@@ -64,6 +68,35 @@ async function main() {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await table.scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(output, "desktop.png"), scale: "css" });
+    manyMembers = true;
+    await table.getByRole("button", { name: "Refresh review results", exact: true }).click();
+    await table.getByText("Participant 40", { exact: true }).waitFor({ state: "attached" });
+    const list = table.getByTestId("review-results-list");
+    const desktopBounds = await list.evaluate(el => ({ height: el.clientHeight, total: el.scrollHeight }));
+    assert.ok(desktopBounds.height <= 400 && desktopBounds.total > desktopBounds.height, "Long desktop results scroll within a 400px limit");
+    const headingTop = (await list.getByText("Participant", { exact: true }).boundingBox()).y - (await list.boundingBox()).y;
+    await table.getByText("Participant 40", { exact: true }).scrollIntoViewIfNeeded();
+    assert.ok(await list.evaluate(el => el.scrollTop > 0), "Last member is reachable inside the list");
+    assert.ok(Math.abs((await list.getByText("Participant", { exact: true }).boundingBox()).y - (await list.boundingBox()).y - headingTop) < 2, "Column headings stay visible while scrolling");
+    await page.screenshot({ path: path.join(output, "desktop-long-list.png"), scale: "css" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await table.getByText("Participant 40", { exact: true }).waitFor({ state: "attached" });
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="review-results-list"]');
+      return el && el.clientHeight <= 320 && el.scrollHeight > el.clientHeight;
+    });
+    const phoneBounds = await list.evaluate(el => ({ height: el.clientHeight, total: el.scrollHeight }));
+    assert.ok(phoneBounds.height <= 320 && phoneBounds.total > phoneBounds.height, "Phone results stay within 320px");
+    await table.getByText("Participant 40", { exact: true }).scrollIntoViewIfNeeded();
+    assert.ok(await list.evaluate(el => el.scrollTop > 0));
+    await table.getByPlaceholder("Search participants").fill("Aaron");
+    await table.getByText("Aaron Review", { exact: true }).waitFor();
+    assert.equal(await list.evaluate(el => el.scrollTop), 0, "Searching returns to the top of the list");
+    await table.getByPlaceholder("Search participants").fill("");
+    await table.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(output, "portrait-long-list.png"), scale: "css" });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.setViewportSize({ width: 1440, height: 1000 });
     await page.getByRole("button", { name: "Summer 5787", exact: true }).click();
     await table.getByText("No active members found.", { exact: true }).waitFor();
     assert.equal(calls.at(-1).target_program_id, "summer-5787");

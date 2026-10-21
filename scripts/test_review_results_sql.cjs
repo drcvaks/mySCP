@@ -65,6 +65,7 @@ async function main() {
         ('${id(42)}','${id(32)}','${id(20)}',0,true,'2026-10-01');
     `);
     await db.exec(fs.readFileSync("supabase/migrations/202610210002_chaburah_review_results.sql", "utf8"));
+    await db.exec(fs.readFileSync("supabase/migrations/202610210003_exclude_rabbis_review_results.sql", "utf8"));
     const asUser = async n => db.query("select set_config('request.jwt.claim.sub', $1, false)", [n ? id(n) : ""]);
     const check = (q, choice) => db.query("select * from public.check_review_answer($1::uuid,$2::integer)", [id(q),choice]);
     const results = (cid=10,pid="winter-5787",week=null) => db.query("select * from public.get_chaburah_review_results($1::uuid,$2::text,$3::smallint)",[id(cid),pid,week]);
@@ -91,7 +92,8 @@ async function main() {
     await assert.rejects(()=>results(),/manager access/);
     await asUser(4);
     let rows=(await results()).rows;
-    assert.equal(rows.length,4,"Include active members with no answers");
+    assert.equal(rows.length,3,"Include active members with no answers, excluding their Rabbi");
+    assert.ok(!rows.some(r=>r.user_id===id(4)),"The chaburah Rabbi is excluded from totals");
     assert.equal(rows[0].display_name,"Ben");
     const aaron=rows.find(r=>r.user_id===id(1));
     assert.equal(Number(aaron.correct_answers),1);
@@ -117,7 +119,16 @@ async function main() {
     rows=(await results()).rows;
     assert.equal(Number(rows[0].available_questions),2,"Disabled questions leave denominator and score");
     assert.equal(Number(rows.find(r=>r.user_id===id(1)).answered_questions),2);
-    await asUser(6); assert.equal((await results(11)).rows.length,1,"Global Admin can query a selected chaburah");
+    await asUser(4); await check(20,0);
+    rows=(await results()).rows;
+    assert.equal(rows.length,3);
+    assert.ok(!rows.some(r=>r.user_id===id(4)),"Even a Rabbi with answers is excluded before ranking");
+    assert.equal(Number(rows[0].score_rank),1,"Excluded Rabbi cannot displace the first participant");
+    await db.exec(`insert into public.chaburah_members values ('${id(5)}','${id(10)}','participant','active')`);
+    assert.ok((await results()).rows.some(r=>r.user_id===id(5)),"A Rabbi elsewhere can participate here as a regular member");
+    await db.exec(`update public.chaburah_members set member_role='rabbi' where user_id='${id(3)}' and chaburah_id='${id(10)}'`);
+    assert.ok(!(await results()).rows.some(r=>r.user_id===id(3)),"Membership role, not profile role, determines exclusion");
+    await asUser(6); assert.equal((await results(11)).rows.length,0,"Global Admin can query a chaburah containing only its Rabbi");
     await asUser(null); await assert.rejects(()=>results(),/Authentication required/);
     await assert.rejects(()=>check(20,0),/Authentication required/);
     console.log("PASS: real PostgreSQL migration, historical first answers, immediate recording, immutable retries, validation, weighted scores, ties, participation, week/program/chaburah isolation, manager authorization and denied direct access.");
