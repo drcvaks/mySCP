@@ -142,13 +142,15 @@ async function main() {
           }
         });
         assert.equal(await page.getByText("Admin",{exact:true}).isVisible(),role!=="participant");
-        for(const group of ["Learning","Support"]) {
+        for(const group of ["Support"]) {
           assert.ok(await page.getByText(group,{exact:true}).isVisible(),`Grouped mobile menu: ${group}`);
         }
         assert.equal(await page.getByText("Management",{exact:true}).isVisible(),role!=="participant");
-        const activeMenuItem=page.getByRole("button",{name:"Dashboard",exact:true});
-        assert.equal(await activeMenuItem.getAttribute("aria-current"),"page");
-        assert.equal(await activeMenuItem.evaluate(element=>getComputedStyle(element).backgroundColor),"rgb(40, 116, 237)");
+        const menu=page.locator('[aria-label="Main navigation"]');
+        for(const label of ["Dashboard","My Chaburah","Files","Rabbi Hub"]){
+          assert.equal(await menu.getByRole("button",{name:label,exact:true}).count(),0,`${label} must not duplicate a bottom tab`);
+        }
+        assert.equal(await menu.getByRole("button",{name:"Review",exact:true}).count(),role==="participant"?0:1);
         await page.screenshot({path:path.join(output,`${role}-${width}-menu.png`),scale:"css"});
         const settings=page.getByRole("button",{name:"Settings",exact:true});
         await settings.evaluate(element=>element.scrollIntoView({block:"center",behavior:"instant"}));

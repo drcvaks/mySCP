@@ -6,13 +6,14 @@ const source=fs.readFileSync("src/shared/components.tsx","utf8");
 const ast=ts.createSourceFile("components.tsx",source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 const screen=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==="Screen").getText(ast);
 let width=1440;
+let rabbiHub=true;
 const jsx=(type,props)=>({type,props});
 const exportsObject={};
 vm.runInNewContext(ts.transpileModule(screen,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{
   exports:exportsObject,require:name=>{assert.equal(name,"react/jsx-runtime");return{jsx,jsxs:jsx};},
   useRouter:()=>({navigate:()=>{}}),usePathname:()=>"/rabbi-hub",useAuthState:()=>({profile:{role:"local_rabbi"}}),
   useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width}),
-  chaburahToolAccess:()=>({rabbiHub:true,admin:true}),
+  chaburahToolAccess:()=>({rabbiHub,admin:rabbiHub}),
   useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{},spacing:{xs:6}},
   SafeAreaView:"SafeAreaView",View:"View",ScrollView:"ScrollView",Pressable:"Pressable",Modal:"Modal",Text:"Text",PageHeading:"Heading",Ionicons:"Icon",
   SidebarNavigation:"Sidebar",StyleSheet:{absoluteFill:{}},
@@ -22,6 +23,16 @@ function all(tree,type){
   if(!tree||typeof tree!=="object")return[];
   const children=tree.props?.children;
   return(tree.type===type?[tree]:[]).concat((Array.isArray(children)?children:[children]).flat(Infinity).flatMap(child=>all(child,type)));
+}
+for(rabbiHub of [true,false]){
+  const frame=exportsObject.Screen({title:"Dashboard",children:"CONTENT"});
+  const items=all(frame,"Sidebar")[0].props.items.map(item=>item.name);
+  for(const name of ["dashboard","chaburah","files","rabbi-hub"]){
+    assert.equal(items.includes(name),false,`${name} must not duplicate the bottom tabs`);
+  }
+  assert.equal(items.includes("review"),rabbiHub,"Review belongs in the menu only when Rabbi Hub replaces its bottom tab");
+  assert.equal(items.includes("admin"),rabbiHub);
+  assert.ok(items.includes("settings")&&items.includes("beta-feedback"));
 }
 for(width of [1440,390]){
   const controller=exportsObject.Screen({title:"Rabbi Hub",children:"CONTENT",programSelector:{type:"Controller",props:{disabled:true}}});

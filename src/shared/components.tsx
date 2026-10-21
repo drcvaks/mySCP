@@ -33,11 +33,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
   const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
   const drawerRoutes: { name: SidebarItem["name"]; label: string; show?: boolean }[] = [
-    { name: "dashboard", label: "Dashboard" },
-    { name: "chaburah", label: "My Chaburah" },
-    { name: "review", label: "Review" },
-    { name: "files", label: "Files" },
-    { name: "rabbi-hub", label: "Rabbi Hub", show: toolAccess.rabbiHub },
+    { name: "review", label: "Review", show: toolAccess.rabbiHub },
     { name: "admin", label: "Admin", show: toolAccess.admin },
     { name: "global-admin", label: "Global Admin", show: profile?.role === "global_admin" },
     { name: "beta-feedback", label: "Beta Feedback" },
