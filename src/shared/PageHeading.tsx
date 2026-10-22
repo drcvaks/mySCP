@@ -4,10 +4,11 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-na
 import { isSidebarRoute, navigationItems } from "./SidebarNavigation";
 import { usesCompactNavigation } from "./responsiveLayout";
 
-export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefresh, refreshing = false, accessory, stackAccessory = false }: {
+export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefresh, refreshing = false, accessory, stackAccessory = false, accountButton }: {
   title: string; eyebrow?: string; pathname: string; navigationButton?: ReactNode;
   onRefresh?: () => void | Promise<void>; refreshing?: boolean;
   accessory?: ReactNode; stackAccessory?: boolean;
+  accountButton?: ReactNode;
 }) {
   const { width, height } = useWindowDimensions();
   const compact = usesCompactNavigation(width, height);
@@ -26,10 +27,12 @@ export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefr
         <Text accessibilityRole="header" style={[s.title, compact && s.compactTitle]}>{title}</Text>
       </View>
       {accessory && !stackAccessory ? <View style={s.accessory}>{accessory}</View> : null}
-      {onRefresh ? <Pressable accessibilityLabel="Refresh" accessibilityRole="button" disabled={refreshing}
+      {accountButton ? <View style={accessory && !stackAccessory ? [s.accountSpacing, compact && s.compactAccountSpacing] : undefined}>
+        {accountButton}
+      </View> : (onRefresh ? <Pressable accessibilityLabel="Refresh" accessibilityRole="button" disabled={refreshing}
         onPress={onRefresh} style={({ pressed }) => [s.refresh, pressed && { backgroundColor: "#EDF3FC" }, refreshing && { opacity: 0.5 }]}>
         <Ionicons name="refresh" size={20} color="#365C91" />
-      </Pressable> : null}
+      </Pressable> : null)}
     </View>
     {accessory && stackAccessory ? <View style={s.stackedAccessory}>{accessory}</View> : null}
   </View>;
@@ -42,6 +45,8 @@ const s = StyleSheet.create({
   compactIcon: { width: 32, height: 36 },
   compactTitle: { fontSize: 21, lineHeight: 27 },
   accessory: { maxWidth: 420, minWidth: 0, flexShrink: 1 },
+  accountSpacing: { marginLeft: 12, flexShrink: 0 },
+  compactAccountSpacing: { marginLeft: 8 },
   stackedAccessory: { width: "100%", minWidth: 0 },
   icon: { width: 40, height: 40, borderRadius: 8, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   titleBlock: { flex: 1, minWidth: 0, gap: 2 },

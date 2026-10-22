@@ -218,7 +218,8 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         setPasswordRecovery(false);
-        await supabase.auth.signOut();
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) throw signOutError;
       },
       refreshProfile
     }),

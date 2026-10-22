@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Href, Link } from "expo-router";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -25,8 +25,9 @@ export type SidebarRoute = keyof typeof navigationItems;
 export type SidebarItem = { name: SidebarRoute; label: string; href?: Href; onSelect: () => boolean | void };
 export function isSidebarRoute(name: string): name is SidebarRoute { return name in navigationItems; }
 
-export function SidebarNavigation({ items, selected, chaburah, width = 248, onClose, iconsOnly = false }: {
+export function SidebarNavigation({ items, selected, chaburah, width = 248, onClose, iconsOnly = false, footer }: {
   items: SidebarItem[]; selected: string; chaburah?: string; width?: number; onClose?: () => void; iconsOnly?: boolean;
+  footer?: ReactNode;
 }) {
   return <View style={[s.sidebar, { width }]} accessibilityLabel="Main navigation">
     <View style={[s.brand, iconsOnly && s.railBrand]}>
@@ -49,6 +50,7 @@ export function SidebarNavigation({ items, selected, chaburah, width = 248, onCl
         </View>;
       })}
     </ScrollView>
+    {footer ? <View style={{ flexShrink: 0, borderTopWidth: 1, borderColor: "#DEE6F0" }}>{footer}</View> : null}
   </View>;
 }
 

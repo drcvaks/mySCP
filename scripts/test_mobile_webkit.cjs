@@ -9,7 +9,7 @@ process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(root,"tmp/webkit-browsers");
 const {webkit, devices} = require(path.join(root,"tmp/webkit-tests/node_modules/playwright"));
 const output = path.join(root,"tmp/mobile-webkit-results");
 fs.mkdirSync(output,{recursive:true});
-const base = "http://localhost:8081";
+const base = process.env.MYSCP_TEST_URL || "http://localhost:8081";
 const userId = "00000000-0000-4000-8000-000000000010";
 const chaburahId = "00000000-0000-4000-8000-000000000020";
 const programs = [
@@ -18,8 +18,8 @@ const programs = [
 ];
 let server;
 async function ensureServer() {
-  try {const response=await fetch(base,{signal:AbortSignal.timeout(2000)});if(response.ok)return;} catch {}
-  server=spawn(process.execPath,["node_modules/expo/bin/cli","start","--offline","--port","8081"],{
+  try {const response=await fetch(base,{signal:AbortSignal.timeout(15000)});if(response.ok)return;} catch {}
+  server=spawn(process.execPath,["node_modules/expo/bin/cli","start","--offline","--port",new URL(base).port || "8081"],{
     cwd:root,windowsHide:true,stdio:["ignore",fs.openSync(path.join(output,"expo.stdout.log"),"w"),fs.openSync(path.join(output,"expo.stderr.log"),"w")]
   });
   const deadline=Date.now()+240000;
@@ -215,5 +215,5 @@ async function main() {
     if(server&&!server.killed)server.kill();
   }
 }
-module.exports={fixture,geometry,ensureServer,signIn};
+module.exports={fixture,geometry,ensureServer,signIn,stopServer:()=>{if(server&&!server.killed)server.kill();}};
 if(require.main===module)main().catch(error=>{console.error(error);process.exitCode=1;});

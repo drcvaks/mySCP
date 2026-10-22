@@ -42,6 +42,13 @@ all(header, "Pressable")[0].props.onPress();
 assert.equal(refreshed, 1);
 const loading = PageHeading({ title: "Files", pathname: "/files", onRefresh: () => refreshed++, refreshing: true });
 assert.equal(all(loading, "Pressable")[0].props.disabled, true);
+const account = { type: "Account", props: {} };
+const spacedHeader = PageHeading({ title: "Dashboard", pathname: "/dashboard", accountButton: account, accessory: "Programs" });
+assert.ok(all(spacedHeader, "View").some(view => Array.isArray(view.props.style) && view.props.style.some(style => style?.marginLeft === 12)),
+  "Inline program buttons get extra space before the account icon");
+const stackedHeader = PageHeading({ title: "Dashboard", pathname: "/dashboard", accountButton: account, accessory: "Programs", stackAccessory: true });
+assert.ok(!all(stackedHeader, "View").some(view => Array.isArray(view.props.style) && view.props.style.some(style => style?.marginLeft === 12)),
+  "Stacked phone headers do not waste space beside the account icon");
 assert.equal(all(PageHeading({ title: "Shiur Builder", pathname: "/shiur-builder" }), "Icon")[0].props.name, "library");
 viewportWidth = 360;
 const phoneHeader = PageHeading({ title: "This Week in SCP", eyebrow: "A long congregation name", pathname: "/dashboard" });

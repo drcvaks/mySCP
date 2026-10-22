@@ -5,10 +5,11 @@ import { roleLabel } from "../../src/shared/format";
 import { supabase } from "../../src/lib/supabase";
 import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
+import { SignOutButton } from "../../src/shared/AccountMenu";
 
 export default function ProfileScreen() {
   const { chaburos } = useAppState();
-  const { loading, profile, refreshProfile, signOut } = useAuthState();
+  const { loading, profile, refreshProfile } = useAuthState();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [city, setCity] = useState("");
@@ -89,7 +90,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <Button label="Sign Out" onPress={signOut} />
+        <SignOutButton />
       </Card>
     </Screen>
   );

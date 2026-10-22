@@ -10,6 +10,7 @@ import { PageHeading } from "./PageHeading";
 import { chaburahToolAccess } from "./permissions";
 import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
 import { usesCompactNavigation, usesLandscapeMenu } from "./responsiveLayout";
+import { AccountMenu, SignOutButton } from "./AccountMenu";
 
 interface ScreenProps {
   title: string;
@@ -71,7 +72,8 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
     <SafeAreaView style={globalStyles.screen} edges={landscapePhone ? ["top", "left", "right", "bottom"] : ["top"]}>
       <View style={[styles.headerShell, !showDrawerButton && styles.wideHeaderShell]}>
         <View style={[styles.screenHeader, !showDrawerButton && styles.wideHeaderContent]}>
-          <PageHeading title={title} eyebrow={eyebrow} pathname={pathname} onRefresh={onRefresh} refreshing={refreshing}
+          <PageHeading title={title} eyebrow={eyebrow} pathname={pathname}
+            accountButton={<AccountMenu onRefresh={onRefresh} refreshing={refreshing} />}
             accessory={header} stackAccessory={width < 1100 && !landscapePhone}
             navigationButton={showDrawerButton ? (
             <Pressable
@@ -110,7 +112,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
           <SafeAreaView edges={landscapePhone ? ["top", "bottom", "left"] : ["top", "bottom"]}
             style={[styles.drawerPanel, { width: drawerWidth + (landscapePhone ? insets.left : 0) }]}>
             <SidebarNavigation items={drawerItems} selected={selectedRoute} chaburah={selectedChaburah?.name}
-              width={drawerWidth} onClose={() => setMenuOpen(false)} />
+              width={drawerWidth} onClose={() => setMenuOpen(false)} footer={<SignOutButton />} />
           </SafeAreaView>
         </View>
       </Modal>
