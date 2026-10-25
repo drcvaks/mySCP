@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Redirect, Tabs, useSegments } from "expo-router";
+import { Redirect, Tabs, useGlobalSearchParams, useSegments } from "expo-router";
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SidebarItem, SidebarNavigation, SidebarRoute, isSidebarRoute, navigationItems } from "../../src/shared/SidebarNavigation";
-import { chaburahToolAccess, isGlobalAdmin } from "../../src/shared/permissions";
+import { canAccessBeisMidrash, chaburahToolAccess, isGlobalAdmin } from "../../src/shared/permissions";
 import { Button } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
 import { navigationRailWidth, usesCompactNavigation, usesLandscapeMenu } from "../../src/shared/responsiveLayout";
@@ -56,6 +56,7 @@ export default function TabLayout() {
   const { loading, profile, session } = useAuthState();
   const { chaburos, error: dataError, hydrated, loading: dataLoading, memberships, refresh, selectedChaburahId } = useAppState();
   const segments = useSegments();
+  const params = useGlobalSearchParams<{ thread?: string }>();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const compactPhoneNav = usesCompactNavigation(width, height);
@@ -68,7 +69,8 @@ export default function TabLayout() {
       </View>
     );
   }
-  if (!session || !profile) return <Redirect href="/auth" />;
+  if (!session || !profile) return <Redirect href={segments[segments.length - 1] === "beis-midrash" && typeof params.thread === "string" && /^[0-9a-f-]{36}$/i.test(params.thread)
+    ? { pathname: "/auth", params: { bmThread: params.thread } } : "/auth"} />;
   if (dataError) {
     return (
       <View style={{ alignItems: "center", flex: 1, gap: 16, justifyContent: "center", padding: 24 }}>
@@ -81,11 +83,13 @@ export default function TabLayout() {
   }
 
   const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
-  const showRabbiHub = toolAccess.rabbiHub;
+  const bmAccess = canAccessBeisMidrash(profile, memberships);
+  const showRabbiHub = toolAccess.rabbiHub || bmAccess;
   const showAdmin = toolAccess.admin;
   const currentRoute = segments[segments.length - 1];
   if ((currentRoute === "admin" && !showAdmin) ||
-    (["rabbi-hub", "shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(currentRoute) && !showRabbiHub)) {
+    (currentRoute === "rabbi-hub" && !showRabbiHub) || (currentRoute === "beis-midrash" && !bmAccess) ||
+    (["shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(currentRoute) && !toolAccess.rabbiHub)) {
     return <Redirect href="/(tabs)/dashboard" />;
   }
   const showGlobalAdmin = isGlobalAdmin(profile);
@@ -207,6 +211,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: tabIcon("settings"), href: compactPhoneNav ? null : undefined }} />
       <Tabs.Screen name="shiur-builder" options={{ title: "Shiur Builder", href: null }} />
+      <Tabs.Screen name="beis-midrash" options={{ title: "Beis Midrash", href: null }} />
       <Tabs.Screen name="shiur-import-preview" options={{ title: "Shiur Import Preview", href: null }} />
       <Tabs.Screen name="source-sheets-import-preview" options={{ title: "Source Sheets Import Preview", href: null }} />
       <Tabs.Screen name="shiur-packet" options={{ title: "Review Packet", href: null }} />
@@ -221,7 +226,7 @@ const mobileTabStyles = StyleSheet.create({
 function MobileTabBar(props: BottomTabBarProps) {
   const activeRoute = props.state.routes[props.state.index].name;
   const hubIndex = props.state.routes.findIndex((route) => route.name === "rabbi-hub");
-  const builderActive = ["shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(activeRoute);
+  const builderActive = ["beis-midrash", "shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(activeRoute);
   const state = builderActive && hubIndex >= 0 ? { ...props.state, index: hubIndex } : props.state;
   return <BottomTabBar {...props} state={state} />;
 }
@@ -234,6 +239,6 @@ function SidebarTabBar({ state, descriptors, navigation, chaburah, width, iconsO
       onSelect: () => !navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true }).defaultPrevented }];
   });
   const active = state.routes[state.index].name;
-  const selected = ["shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(active) ? "rabbi-hub" : active;
+  const selected = ["beis-midrash", "shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(active) ? "rabbi-hub" : active;
   return <SidebarNavigation items={items} selected={selected} chaburah={chaburah} width={width} iconsOnly={iconsOnly} />;
 }

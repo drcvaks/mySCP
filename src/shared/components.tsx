@@ -7,7 +7,7 @@ import { globalStyles, theme } from "./theme";
 import { useAuthState } from "../state/AuthState";
 import { useAppState } from "../state/AppState";
 import { PageHeading } from "./PageHeading";
-import { chaburahToolAccess } from "./permissions";
+import { canAccessBeisMidrash, chaburahToolAccess } from "./permissions";
 import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
 import { usesCompactNavigation, usesLandscapeMenu } from "./responsiveLayout";
 import { AccountMenu, SignOutButton } from "./AccountMenu";
@@ -41,9 +41,9 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
   const drawerRoutes: { name: SidebarItem["name"]; label: string; show?: boolean }[] = [
     { name: "dashboard", label: "Dashboard", show: landscapePhone },
     { name: "chaburah", label: "My Chaburah", show: landscapePhone },
-    { name: "review", label: "Review", show: landscapePhone || toolAccess.rabbiHub },
+    { name: "review", label: "Review", show: landscapePhone || toolAccess.rabbiHub || canAccessBeisMidrash(profile, memberships) },
     { name: "files", label: "Files", show: landscapePhone },
-    { name: "rabbi-hub", label: "Rabbi Hub", show: landscapePhone && toolAccess.rabbiHub },
+    { name: "rabbi-hub", label: "Rabbi Hub", show: landscapePhone && (toolAccess.rabbiHub || canAccessBeisMidrash(profile, memberships)) },
     { name: "admin", label: "Admin", show: toolAccess.admin },
     { name: "global-admin", label: "Global Admin", show: profile?.role === "global_admin" },
     { name: "beta-feedback", label: "Beta Feedback" },
@@ -59,7 +59,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
     name: item.name, label: item.label, onSelect: () => navigateTo(item.name)
   }));
   const currentRoute = pathname.split("/").filter(Boolean).pop() ?? "dashboard";
-  const selectedRoute = ["shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(currentRoute)
+  const selectedRoute = ["beis-midrash", "shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(currentRoute)
     ? "rabbi-hub" : currentRoute;
 
   function navigateTo(name: SidebarItem["name"]) {

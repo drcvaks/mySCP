@@ -17,6 +17,11 @@ export function isGlobalAdmin(user: UserProfile) {
   return user.role === "global_admin";
 }
 
+export function canAccessBeisMidrash(user: Pick<UserProfile, "id" | "role"> | null | undefined, memberships: ChaburahMembership[]) {
+  return user?.role === "global_admin" || (user?.role === "local_rabbi" && memberships.some(member =>
+    member.userId === user.id && member.memberRole === "rabbi" && member.status === "active"));
+}
+
 export function isRabbi(user: UserProfile) {
   return user.role === "local_rabbi";
 }

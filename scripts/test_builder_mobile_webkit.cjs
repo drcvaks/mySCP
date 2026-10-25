@@ -2,7 +2,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { fixture, signIn, ensureServer } = require("./test_mobile_webkit.cjs");
+const { fixture, signIn, ensureServer, stopServer } = require("./test_mobile_webkit.cjs");
 const root = path.resolve(__dirname, "..");
 process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(root, "tmp/webkit-browsers");
 const { webkit, devices } = require(path.join(root, "tmp/webkit-tests/node_modules/playwright"));
@@ -155,6 +155,6 @@ async function main() {
   } catch (error) {
     await page?.screenshot({ path: path.join(output, "failure.png"), scale: "css" });
     throw error;
-  } finally { await browser.close(); }
+  } finally { await browser.close(); stopServer(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

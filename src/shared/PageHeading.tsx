@@ -14,7 +14,7 @@ export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefr
   const compact = usesCompactNavigation(width, height);
   const route = pathname.split("/").filter(Boolean).pop() ?? "dashboard";
   const visual = isSidebarRoute(route) ? navigationItems[route]
-    : /shiur|source-sheets/.test(route) ? navigationItems["rabbi-hub"]
+    : /shiur|source-sheets|beis-midrash/.test(route) ? navigationItems["rabbi-hub"]
     : { icon: "book" as const, color: "#2563EB", tint: "#EAF1FF" };
   return <View style={s.header}>
     <View style={[s.mainRow, compact && s.compactRow]}>

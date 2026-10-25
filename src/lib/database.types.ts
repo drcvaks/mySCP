@@ -381,6 +381,14 @@ export interface Database {
       };
     };
     Functions: {
+      bm_list_threads: { Args: { filters?: Json }; Returns: Json };
+      bm_get_thread: { Args: { target_thread_id: string; reply_offset?: number }; Returns: Json };
+      bm_list_reports: { Args: Record<string, never>; Returns: Json };
+      bm_find_chunks: { Args: { search_text?: string; target_program?: string | null }; Returns: Json };
+      bm_find_material: { Args: { search_text?: string; target_program?: string | null; material_type?: string }; Returns: Json };
+      bm_mutate: { Args: { action: string; target_id?: string | null; payload?: Json }; Returns: Json };
+        bm_prepare_resource: { Args: { file_name: string; mime_type: string; byte_size: number }; Returns: Json };
+        bm_discard_resource: { Args: { resource_id: string }; Returns: undefined };
       get_chaburah_review_results: {
         Args: { target_chaburah_id: string; target_program_id: string; target_week?: number | null };
         Returns: { user_id: string; display_name: string; score_rank: number | null; correct_answers: number;

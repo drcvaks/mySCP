@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { formatSupabaseError } from "../lib/errors";
 import { supabase } from "../lib/supabase";
 import {
@@ -92,6 +92,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [currentReviewWeek, setCurrentReviewWeek] = useState(fallbackCurrentReviewWeek);
   const [loading, setLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [hydratedUserId, setHydratedUserId] = useState<string | null>(null);
+  const refreshSequence = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [programs, setPrograms] = useState<LearningProgram[]>([legacySummerProgram]);
   const [programsReady, setProgramsReady] = useState(false);
@@ -111,7 +113,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     ?? (selectedProgramId === SUMMER_PROGRAM ? currentReviewWeek : selectedProgram.defaultWeek);
 
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
     if (!session) {
+      setHydratedUserId(null);
+      setLoading(false);
+      setError(null);
       setChaburos([]);
       setMemberships([]);
       setChaburahMemberDirectory([]);
@@ -181,6 +187,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         supabase.from("chaburah_programs").select("*"),
         supabase.from("learning_program_chaburos").select("program_id,chaburah_id")
       ]);
+
+      if (sequence !== refreshSequence.current) return;
 
       const firstError = [
         chaburosResult.error,
@@ -402,10 +410,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         })
       );
     } catch (refreshError) {
-      setError(formatSupabaseError(refreshError));
+      if (sequence === refreshSequence.current) setError(formatSupabaseError(refreshError));
     } finally {
-      setLoading(false);
-      setHydrated(true);
+      if (sequence === refreshSequence.current) {
+        setLoading(false);
+        setHydratedUserId(session.user.id);
+        setHydrated(true);
+      }
     }
   }, [profile?.chaburahId, profile?.role, session]);
 
@@ -415,7 +426,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppStateValue>(
     () => ({
-      hydrated,
+      hydrated: hydrated && (!session || hydratedUserId === session.user.id),
       loading,
       error,
       selectedChaburahId: profile?.chaburahId,
@@ -658,6 +669,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       discussionUnreadCount,
       error,
       hydrated,
+      hydratedUserId,
       learningFiles,
       loading,
       memberships,

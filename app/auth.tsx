@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Linking from "expo-linking";
-import { Redirect } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import { Button, Card, Screen, SectionTitle, StatusBanner, styles } from "../src/shared/components";
 import { theme } from "../src/shared/theme";
 import { useAuthState } from "../src/state/AuthState";
 
 export default function AuthScreen() {
+  const { bmThread } = useLocalSearchParams<{ bmThread?: string }>();
   const {
     cancelPasswordRecovery,
     loading: authLoading,
@@ -27,7 +28,8 @@ export default function AuthScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
 
-  if (session && !passwordRecovery) return <Redirect href="/dashboard" />;
+  if (session && !passwordRecovery) return <Redirect href={typeof bmThread === "string" && /^[0-9a-f-]{36}$/i.test(bmThread)
+    ? { pathname: "/(tabs)/beis-midrash", params: { thread: bmThread } } : "/dashboard"} />;
 
   async function submit() {
     setSubmitting(true);

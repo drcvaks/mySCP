@@ -9,12 +9,16 @@ const sidebar = ts.createSourceFile("sidebar.tsx", fs.readFileSync("src/shared/S
 const declaration = sidebar.statements.find(node => ts.isVariableStatement(node) && node.declarationList.declarations[0].name.getText(sidebar) === "navigationItems");
 const navigationItems = vm.runInNewContext(compile("(" + declaration.declarationList.declarations[0].initializer.getText(sidebar) + ")"));
 const exportsObject = {};
+const responsive = {};
+vm.runInNewContext(compile(fs.readFileSync("src/shared/responsiveLayout.ts", "utf8")), { exports: responsive });
+let viewport = { width: 1440, height: 1000 };
 const jsx = (type, props) => ({ type, props });
 vm.runInNewContext(compile(fs.readFileSync("src/shared/RabbiToolSwitcher.tsx", "utf8")), { exports: exportsObject, require: name => {
   if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
-  if (name === "react-native") return { Pressable: "Pressable", Text: "Text", View: "View", StyleSheet: { create: value => value } };
+  if (name === "react-native") return { Pressable: "Pressable", Text: "Text", View: "View", useWindowDimensions: () => viewport, StyleSheet: { create: value => value } };
   if (name === "@expo/vector-icons") return { Ionicons: "Icon" };
   if (name === "./SidebarNavigation") return { navigationItems };
+  if (name === "./responsiveLayout") return responsive;
   throw new Error(name);
 } });
 let selected;
@@ -32,3 +36,16 @@ for (const askRavEnabled of [true, false]) {
   selected = undefined;
 }
 console.log("PASS: shared tool switcher, active state, navigation actions and disabled Ask Rav visibility.");
+const worldwide = exportsObject.RabbiToolSwitcher({ active: "beis-midrash", askRavEnabled: true, beisMidrashEnabled: true, onSelect: () => {} });
+assert.equal(worldwide.type, "View"); assert.equal(worldwide.props.children.length, 4);
+for (const width of [320, 390, 844, 1200, 1440]) {
+  viewport = { width, height: width === 844 ? 390 : 1000 };
+  const row = exportsObject.RabbiToolSwitcher({ active: "beis-midrash", askRavEnabled: true, beisMidrashEnabled: true, onSelect: () => {} });
+  assert.equal(row.props.children.length, 4);
+  for (const button of row.props.children) {
+    const styles = button.props.style({ pressed: false }).filter(Boolean);
+    assert.equal(styles[0].flex, 1); assert.equal(styles[0].minWidth, 0);
+  }
+}
+const visiting = exportsObject.RabbiToolSwitcher({ active: "beis-midrash", askRavEnabled: true, beisMidrashEnabled: true, localTools: false, onSelect: () => {} });
+assert.equal(visiting.props.children.length, 1); assert.equal(visiting.props.children[0].props.accessibilityLabel, "Beis Midrash");

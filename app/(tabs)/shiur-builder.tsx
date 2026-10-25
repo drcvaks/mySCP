@@ -30,11 +30,12 @@ import { PaceReference } from "../../src/shared/PaceReference";
 import { chunkDisplayCode } from "../../src/shared/chunkLabels";
 import { readRichContent } from "../../src/shared/documentContent";
 import { ImportDocument } from "../../src/shared/ImportDocument";
-import { WorkflowCard as BuilderToolCard } from "../../src/shared/WorkflowCard";
 import { shiurBuilderLayout } from "../../src/shared/responsiveLayout";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
+import { RabbiToolCards, useExpandedRabbiTools } from "../../src/shared/RabbiToolCards";
 import { PacketDocumentHeader } from "../../src/shared/PacketDocumentHeader";
+import { canAccessBeisMidrash } from "../../src/shared/permissions";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -51,9 +52,10 @@ export default function ShiurBuilderScreen() {
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const layout = shiurBuilderLayout(width, height);
+  const expandedTools = useExpandedRabbiTools();
   const [activePane, setActivePane] = useState<"official" | "packet">("official");
   const [showSavedPackets, setShowSavedPackets] = useState(false);
-  const { askRavQuestions, chaburos, currentReviewWeek, refresh, reviewQuestions, selectedChaburahId, selectedProgramId, selectedProgram, programsReady, registerProgramEdits } = useAppState();
+  const { chaburos, currentReviewWeek, refresh, selectedChaburahId, selectedProgramId, selectedProgram, programsReady, registerProgramEdits, memberships } = useAppState();
   const loadSequence = useRef(0);
   const { profile } = useAuthState();
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
@@ -124,14 +126,6 @@ export default function ShiurBuilderScreen() {
   const packetSections = groupSelectedChunksBySection(selectedCategoryChunks);
   const selectedCategoryIds = selectedCategoryChunks.map((chunk) => chunk.id);
   const previewSection = previewSectionKey ? materialSections.find((section) => section.key === previewSectionKey) : undefined;
-  const openAskRavCount = askRavQuestions.filter((question) => question.chaburahId === managedChaburahId && question.status === "submitted").length;
-  const quickReviewDraftCount = reviewQuestions.filter(
-    (question) =>
-      question.chaburahId === managedChaburahId &&
-      question.week === currentReviewWeek &&
-      question.publicationStatus === "draft" &&
-      !question.isLibraryQuestion
-  ).length;
   const previewNavigationChunks = previewChunkListIds
     ? previewChunkListIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk))
     : filteredChunks;
@@ -882,39 +876,15 @@ export default function ShiurBuilderScreen() {
 
   return (
     <Screen title="Shiur Builder" eyebrow="Rabbi Hub" onRefresh={loadBuilderData} refreshing={loading}
-      toolbar={layout.compact ? <View style={{ gap: 4 }}>
-        <RabbiToolSwitcher active="shiur-builder" askRavEnabled={askRavEnabled}
-          onSelect={(tool) => router.navigate({ pathname: "/(tabs)/rabbi-hub", params: { tool } })} />
-        {!layout.twoColumns ? <>{categoryControls}{paneControls}</> : null}
+      toolbar={!expandedTools ? <View style={{ gap: 4 }}>
+        <RabbiToolSwitcher active="shiur-builder" askRavEnabled={askRavEnabled} beisMidrashEnabled={canAccessBeisMidrash(profile, memberships)}
+          onSelect={(tool) => tool === "beis-midrash" ? router.navigate("/(tabs)/beis-midrash") : router.navigate({ pathname: "/(tabs)/rabbi-hub", params: { tool } })} />
+        {layout.compact && !layout.twoColumns ? <>{categoryControls}{paneControls}</> : null}
       </View> : undefined}
       programSelector={<ProgramSelector manage={!layout.compact} disabled={saving || loading} unsaved={selectedIds.length > 0} />}>
+      {expandedTools ? <RabbiToolCards active="shiur-builder" askRavEnabled={askRavEnabled} beisMidrashEnabled={canAccessBeisMidrash(profile, memberships)}
+        onSelect={(tool) => tool === "beis-midrash" ? router.navigate("/(tabs)/beis-midrash") : router.navigate({ pathname: "/(tabs)/rabbi-hub", params: { tool } })} /> : null}
       <StatusBanner message={message} tone={message.toLowerCase().includes("error") || message.toLowerCase().includes("unable") ? "error" : "info"} />
-      {!layout.compact ? <Card>
-        <SectionTitle icon="library-outline">Rabbi Tools</SectionTitle>
-        <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
-        <View style={localStyles.toolCards}>
-          {askRavEnabled ? (
-            <BuilderToolCard
-              count={openAskRavCount}
-              label="Ask Rav Inbox"
-              meta="Participant questions waiting for a Rav response."
-              onPress={() => router.push({ pathname: "/(tabs)/rabbi-hub", params: { tool: "ask-rav" } })}
-            />
-          ) : null}
-          <BuilderToolCard
-            active
-            label="Shiur Builder"
-            meta="Prepare for shiur and publish longer packets from official SCP material."
-            onPress={() => undefined}
-          />
-          <BuilderToolCard
-            count={quickReviewDraftCount}
-            label="Quick Review Questions"
-            meta="Short weekly quiz questions for participants to answer in Review."
-            onPress={() => router.push({ pathname: "/(tabs)/rabbi-hub", params: { tool: "quick-review" } })}
-          />
-        </View>
-      </Card> : null}
 
       <Card>
         <Row>
@@ -1902,12 +1872,6 @@ function mapCoverage(row: any): ReviewPacketCoverage {
 }
 
 const localStyles = StyleSheet.create({
-  toolCards: {
-    alignItems: "stretch",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.md
-  },
   workspace: {
     alignItems: "stretch",
     flexDirection: "row",

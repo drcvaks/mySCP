@@ -1,6 +1,6 @@
 import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import {
   Button,
@@ -24,25 +24,24 @@ import { theme } from "../../src/shared/theme";
 import { ReviewQuestion, Visibility } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
-import { availableContentWidth, usesLandscapeMenu } from "../../src/shared/responsiveLayout";
+import { RabbiToolCards, useExpandedRabbiTools } from "../../src/shared/RabbiToolCards";
 import { ChaburahReviewResults } from "../../src/shared/ChaburahReviewResults";
-import { chaburahToolAccess } from "../../src/shared/permissions";
+import { canAccessBeisMidrash, chaburahToolAccess } from "../../src/shared/permissions";
 
 const optionCounts = [1, 2, 3, 4];
 type QuestionKind = "true_false" | "multiple_choice";
 type LibraryWeek = number | "all";
 type LibraryKind = "all" | "model";
-import { WorkflowCard as RabbiToolCard } from "../../src/shared/WorkflowCard";
 
-type RabbiHubTool = "ask-rav" | "shiur-builder" | "quick-review";
+type RabbiHubTool = "ask-rav" | "shiur-builder" | "quick-review" | "beis-midrash";
 
 export default function RabbiHubScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { profile } = useAuthState();
   const scrollRef = useRef<ScrollView | null>(null);
-  const { width, height } = useWindowDimensions();
-  const compactTools = availableContentWidth(width, height) < 900 || usesLandscapeMenu(width, height);
+  const { width } = useWindowDimensions();
+  const expandedTools = useExpandedRabbiTools();
   const { askRavQuestions, chaburos, currentReviewWeek, loading, memberships, refresh, reviewQuestions, selectedChaburahId, selectedProgramId, programsReady, registerProgramEdits } = useAppState();
   useRefreshOnFocus(refresh);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
@@ -512,6 +511,7 @@ export default function RabbiHubScreen() {
   }
 
   function selectTool(tool: RabbiHubTool) {
+    if (tool === "beis-midrash") { router.navigate("/(tabs)/beis-midrash"); return; }
     if (tool === "shiur-builder") {
       router.navigate("/(tabs)/shiur-builder");
       return;
@@ -520,38 +520,16 @@ export default function RabbiHubScreen() {
     router.setParams({ tool });
   }
 
+  if (!chaburahToolAccess(profile, memberships, selectedChaburahId).rabbiHub && canAccessBeisMidrash(profile, memberships)) {
+    return <Redirect href="/(tabs)/beis-midrash" />;
+  }
   return (
     <Screen title="Rabbi Hub" eyebrow="Questions and review library" onRefresh={refresh} refreshing={loading} scrollRef={scrollRef}
-      toolbar={compactTools ? <RabbiToolSwitcher active={activeTool} askRavEnabled={askRavEnabled} onSelect={selectTool} /> : undefined}
+      toolbar={!expandedTools ? <RabbiToolSwitcher active={activeTool} askRavEnabled={askRavEnabled} onSelect={selectTool}
+        beisMidrashEnabled={canAccessBeisMidrash(profile, memberships)} /> : undefined}
       programSelector={<ProgramSelector manage disabled={saving} unsaved={!!prompt.trim() || !!editingQuestionId} />}>
-      {!compactTools ? <Card>
-        <SectionTitle icon="library-outline">Rabbi Tools</SectionTitle>
-        <Text style={styles.muted}>Choose the workflow you want to work on.</Text>
-        <View style={localStyles.toolCards}>
-          {askRavEnabled ? (
-            <RabbiToolCard
-              active={activeTool === "ask-rav"}
-              count={submittedQuestions.length}
-              label="Ask Rav Inbox"
-              meta="Participant questions waiting for a Rav response."
-              onPress={() => selectTool("ask-rav")}
-            />
-          ) : null}
-          <RabbiToolCard
-            active={activeTool === "shiur-builder"}
-            label="Shiur Builder"
-            meta="Longer packets and table-talk review from official SCP material."
-            onPress={() => selectTool("shiur-builder")}
-          />
-          <RabbiToolCard
-            active={activeTool === "quick-review"}
-            count={stagedQuestions.length}
-            label="Quick Review Questions"
-            meta="Short weekly quiz questions for participants to answer in Review."
-            onPress={() => selectTool("quick-review")}
-          />
-        </View>
-      </Card> : null}
+      {expandedTools ? <RabbiToolCards active={activeTool} askRavEnabled={askRavEnabled} onSelect={selectTool}
+        beisMidrashEnabled={canAccessBeisMidrash(profile, memberships)} /> : null}
 
       <StatusBanner
         message={message}
@@ -1375,12 +1353,6 @@ function ReviewQuestionManagerRow({
 }
 
 const localStyles = StyleSheet.create({
-  toolCards: {
-    alignItems: "stretch",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.md
-  },
   compactQuestionRow: {
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
