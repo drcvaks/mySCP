@@ -23,6 +23,16 @@ There is no asset upload step: all 57 Source Sheets keep their original IDs and
 images. Source 57 remains unlinked for Part 2. Shared images are already Hebrew;
 their English library metadata does not mean their image text was translated.
 
+## Personal Language Default
+
+Run `supabase/migrations/202610250004_material_language_preferences.sql` once
+to enable account-specific Shiur Builder language defaults. Select a language
+and press **Make Hebrew Default** or **Make English Default**. The button is
+hidden when the selected language is already the default. This preference
+follows the signed-in account across devices; it does not change saved packets,
+another user's preferences, or the chaburah's learning program. Accounts without
+a preference start in English. No existing content is modified by this migration.
+
 ## Approved scope
 
 - Notes: A-E, displayed as Hebrew section letters; 32 chunks and 27 footnotes.

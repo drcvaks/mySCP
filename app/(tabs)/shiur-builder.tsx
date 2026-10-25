@@ -38,6 +38,7 @@ import { PacketDocumentHeader } from "../../src/shared/PacketDocumentHeader";
 import { canAccessBeisMidrash } from "../../src/shared/permissions";
 import { hebrewSectionLabels, loadMaterialLanguage, MaterialLanguage, materialLanguageName, materialTextStyle } from "../../src/shared/materialLanguages";
 import { buildPublishedCategoryTitle, defaultPacketTitle } from "../../src/shared/packetTitles";
+import { useMaterialLanguagePreference } from "../../src/shared/useMaterialLanguagePreference";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -62,7 +63,8 @@ export default function ShiurBuilderScreen() {
   const previousBuilderContext = useRef("");
   const { profile } = useAuthState();
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
-  const [contentLanguage, setContentLanguage] = useState<MaterialLanguage>("en");
+  const languagePreference = useMaterialLanguagePreference(profile?.id);
+  const { language: contentLanguage, setLanguage: setContentLanguage } = languagePreference;
   const [missingTranslations, setMissingTranslations] = useState({ notes: 0, qa: 0 });
   const [links, setLinks] = useState<ContentChunkLink[]>([]);
   const [packets, setPackets] = useState<PacketListItem[]>([]);
@@ -187,6 +189,7 @@ export default function ShiurBuilderScreen() {
   }, [currentReviewWeek]);
 
   useEffect(() => {
+    ++loadSequence.current;
     const context = `${managedChaburahId}/${selectedProgramId}/${programsReady}`;
     const contextChanged = previousBuilderContext.current !== context;
     previousBuilderContext.current = context;
@@ -198,8 +201,8 @@ export default function ShiurBuilderScreen() {
     setPackets([]);
     setCoverageRows([]);
     setExpandedSectionKeys([]);
-    void loadBuilderData();
-  }, [managedChaburahId, selectedProgramId, programsReady, contentLanguage]);
+    if (languagePreference.ready) void loadBuilderData();
+  }, [managedChaburahId, selectedProgramId, programsReady, contentLanguage, languagePreference.ready]);
 
   useEffect(() => {
     if (managedChaburah?.name && automaticTitle) {
@@ -270,7 +273,7 @@ export default function ShiurBuilderScreen() {
   }
 
   async function chooseMaterialLanguage(language: MaterialLanguage) {
-    if (language === contentLanguage || saving || loading) return;
+    if (language === contentLanguage || saving || loading || !languagePreference.ready || languagePreference.saving) return;
     if (selectedIds.length || editingPublishedPacket) {
       const text = "Switch material language? Unsaved selections will be cleared. Saved drafts and published packets keep their original language.";
       const confirmed = Platform.OS === "web" ? window.confirm(text) : await new Promise<boolean>(resolve => Alert.alert("Switch language?", text, [
@@ -922,6 +925,7 @@ export default function ShiurBuilderScreen() {
       {expandedTools ? <RabbiToolCards active="shiur-builder" askRavEnabled={askRavEnabled} beisMidrashEnabled={canAccessBeisMidrash(profile, memberships)}
         onSelect={(tool) => tool === "beis-midrash" ? router.navigate("/(tabs)/beis-midrash") : router.navigate({ pathname: "/(tabs)/rabbi-hub", params: { tool } })} /> : null}
       <StatusBanner message={message} tone={message.toLowerCase().includes("error") || message.toLowerCase().includes("unable") ? "error" : "info"} />
+      <StatusBanner message={languagePreference.message} tone={languagePreference.message.startsWith("Unable") ? "error" : "info"} />
 
       <Card>
         <Row>
@@ -939,6 +943,14 @@ export default function ShiurBuilderScreen() {
           <MetaText>Material Language</MetaText>
           <FilterChip label="English" selected={contentLanguage === "en"} onPress={() => { void chooseMaterialLanguage("en"); }} />
           <FilterChip label="עברית" selected={contentLanguage === "he"} onPress={() => { void chooseMaterialLanguage("he"); }} />
+          {languagePreference.ready && contentLanguage !== languagePreference.defaultLanguage ? (
+            <Button
+              label={languagePreference.saving ? "Saving Default..." : `Make ${materialLanguageName(contentLanguage)} Default`}
+              variant="secondary"
+              disabled={saving || loading || languagePreference.saving}
+              onPress={() => { void languagePreference.makeDefault(); }}
+            />
+          ) : null}
         </View>
         {contentLanguage === "he" && missingTranslations.notes + missingTranslations.qa > 0 ? <MetaText>Hebrew translations are unavailable for {missingTranslations.notes} Notes chunks and {missingTranslations.qa} Q&A chunks. English is not substituted.</MetaText> : null}
         <View style={localStyles.weekRow}>

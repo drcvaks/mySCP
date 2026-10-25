@@ -308,6 +308,7 @@ type BetaChecklistProgressRow = {
 export interface Database {
   public: {
     Tables: {
+      material_language_preferences: Table<{ user_id: string; language: "en" | "he" }>;
       learning_programs: Table<{ id: string; name: string; topic: string; default_week: number; archived: boolean; early_access: boolean }>;
       learning_program_chaburos: Table<{ program_id: string; chaburah_id: string }>;
       chaburah_programs: Table<{ chaburah_id: string; program_id: string; current_week: number }>;

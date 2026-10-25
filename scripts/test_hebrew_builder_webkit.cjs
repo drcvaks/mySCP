@@ -16,6 +16,8 @@ let items=[{id:id(700),packet_id:id(500),chunk_id:chunks[0].id,sort_order:0}];
 let files=[{id:id(600),chaburah_id:id(20),uploaded_by:id(10),program_id:'winter-5787',week:1,coverage:'week',title:'English archive file',topic:'Challah',visibility:'chaburah',file_type:'custom_review_packet',review_packet_id:id(500),language:'en',created_at:now}];
 const links=english.links.map((l,i)=>({id:id(2000+i),parent_chunk_id:chunks.find(c=>c.chunk_code===l.parent).id,related_chunk_id:chunks.find(c=>c.chunk_code===l.related).id,relation_type:l.relation_type}));
 const mutations=[];let next=800;
+let languagePreferences=[];
+let failPreferenceSave=false;
 async function main(){
   fs.mkdirSync(out,{recursive:true});await ensureServer();const browser=await webkit.launch({headless:true});let page;
   try{
@@ -23,9 +25,18 @@ async function main(){
     await fixture(context,'local_rabbi',{content_chunks:chunks,content_chunk_links:links});
     await context.route('**/rest/v1/**',async route=>{
       const request=route.request(),url=new URL(request.url()),table=url.pathname.split('/').pop();
-      if(!['content_chunks','content_chunk_translations','content_chunk_links','review_packets','review_packet_items','review_packet_content_coverage','learning_files','publish_review_packet'].includes(table))return route.fallback();
+      if(!['material_language_preferences','content_chunks','content_chunk_translations','content_chunk_links','review_packets','review_packet_items','review_packet_content_coverage','learning_files','publish_review_packet'].includes(table))return route.fallback();
       const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*','content-type':'application/json'};
       if(request.method()==='OPTIONS')return route.fulfill({status:204,headers});
+      if(table==='material_language_preferences'){
+        if(request.method()==='POST'){
+          if(failPreferenceSave)return route.fulfill({status:500,headers,body:JSON.stringify({message:'Synthetic save failure'})});
+          const row=request.postDataJSON();assert.equal(row.user_id,id(10));
+          languagePreferences=[row];
+          return route.fulfill({status:201,headers,body:''});
+        }
+        return route.fulfill({status:200,headers,body:JSON.stringify(languagePreferences[0]??null)});
+      }
       function matches(row){return [...url.searchParams].every(([key,value])=>{
         if(value.startsWith('eq.'))return String(row[key])===value.slice(3);
         if(value.startsWith('in.('))return value.slice(4,-1).split(',').includes(String(row[key]));
@@ -64,8 +75,20 @@ async function main(){
     await signIn(page);await page.getByRole('tab',{name:/Rabbi Hub/}).click();await page.getByRole('tab',{name:'Shiur Builder',exact:true}).click();
     const official=page.getByTestId('builder-official-pane'),packet=page.getByTestId('builder-packet-pane');
     await official.getByRole('button',{name:/Expand Section A -/}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Make English Default',exact:true}).count(),0);
     await page.getByRole('button',{name:'עברית',exact:true}).click();
     await official.getByRole('button',{name:'Expand סעיף א',exact:true}).waitFor();
+    failPreferenceSave=true;
+    await page.getByRole('button',{name:'Make Hebrew Default',exact:true}).click();
+    await page.getByText('Unable to save your language default. Please try again. Your packet has not changed.',{exact:true}).waitFor();
+    assert.equal(languagePreferences.length,0);
+    failPreferenceSave=false;
+    await page.getByRole('button',{name:'Make Hebrew Default',exact:true}).click();
+    await page.getByText('Hebrew is now your default for Shiur Builder.',{exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Make Hebrew Default',exact:true}).count(),0);
+    await page.reload();
+    await official.getByRole('button',{name:'Expand סעיף א',exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Make Hebrew Default',exact:true}).count(),0);
     assert.equal(await official.getByRole('button',{name:/סעיף [וז]/}).count(),0,'Unavailable Hebrew F-G notes are not replaced by English');
     await official.getByRole('button',{name:'Add Section ->',exact:true}).first().click();
     await page.getByRole('tab',{name:'My Packet',exact:true}).click();
@@ -78,6 +101,7 @@ async function main(){
     await page.getByRole('tab',{name:/Source Sheets/}).click();
     await page.waitForFunction(()=>document.querySelector('[placeholder="Packet title"]').value==='Preview Chaburah - שבוע 1 - דפי מקורות');
     await page.getByRole('tab',{name:/Review Notes/}).click();
+    await page.waitForFunction(()=>document.querySelector('[placeholder="Packet title"]').value==='Preview Chaburah - שבוע 1 - סיכום השיעור');
     await titleField.fill(customTitle);
     await page.getByRole('button',{name:'Week 2',exact:true}).click();assert.equal(await titleField.inputValue(),customTitle);
     await page.getByRole('button',{name:'Week 1',exact:true}).click();
@@ -98,11 +122,15 @@ async function main(){
     await page.getByText('Draft packet saved.',{exact:true}).waitFor();
     assert.equal(packets.find(p=>p.title===customTitle).language,'he');
     await page.getByRole('button',{name:'English',exact:true}).click();await official.getByRole('button',{name:/Expand Section A -/}).waitFor();
+    await page.getByRole('button',{name:'Make English Default',exact:true}).click();
+    await page.getByText('English is now your default for Shiur Builder.',{exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Make English Default',exact:true}).count(),0);
     assert.equal(packets.find(p=>p.id===id(500)).language,'en','English packet stays English');
     await official.getByRole('button',{name:'Add Section ->',exact:true}).first().click();
     await page.getByRole('tab',{name:'My Packet',exact:true}).click();await packet.getByRole('button',{name:'Preview Review Notes',exact:true}).click();
     await page.locator('.rich-document[lang="en"]').first().waitFor();assert.equal(await page.locator('.rich-document[lang="he"]').count(),0);
     await page.getByRole('button',{name:'Close',exact:true}).click();
+    await page.getByRole('tab',{name:'Official Material',exact:true}).click();
     await page.getByRole('button',{name:'עברית',exact:true}).click();await official.getByRole('button',{name:'Expand סעיף א',exact:true}).waitFor();
     await page.getByRole('button',{name:'Show existing packets',exact:true}).click();await page.getByRole('button',{name:'Open',exact:true}).click();
     await page.getByText('Draft loaded.',{exact:true}).waitFor();
@@ -123,6 +151,9 @@ async function main(){
     await page.locator('.rich-document[lang="en"]').first().waitFor();assert.equal(await page.locator('.rich-document[lang="he"]').count(),0,'Files uses packet language, not last builder selection');
     await page.getByRole('button',{name:'Close',exact:true}).click();
     await page.goto(`${base}/shiur-packet?id=${published.id}`);await page.locator('.rich-document[lang="he"]').first().waitFor();
+    await page.goto(`${base}/shiur-builder`);
+    await official.getByRole('button',{name:/Expand Section A -/}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Make English Default',exact:true}).count(),0,'English default restored on a new visit');
     assert.equal(errors.length,0,errors.join('\n'));
     assert.ok(mutations.filter(m=>m.table==='review_packets'&&m.method==='POST').every(m=>m.body.language==='he'));
     fs.writeFileSync(path.join(out,'mutations.json'),JSON.stringify(mutations,null,2));
