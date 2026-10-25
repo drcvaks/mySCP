@@ -114,6 +114,7 @@ and 20 reports/hour. Soft-removed contributions still count toward these limits.
 - `node scripts/test_beis_midrash_material.cjs`
 - `node scripts/test_beis_midrash_resources.cjs`
 - `node scripts/test_beis_midrash_resource_client.cjs`
+- `node scripts/test_beis_midrash_links.cjs`
 - `node scripts/test_rabbi_tool_cards.cjs`
 - `node scripts/test_beis_midrash_webkit.cjs`
 - Existing sidebar/tool-switcher and builder regression tests.
@@ -144,6 +145,17 @@ publication after 24 hours. Only approved Rabbonim with discussion/program acces
 can download attached resources. Hidden/deleted discussions and detached files
 stop authorizing new downloads, including for the original author. Signed URLs
 last 60 seconds; already downloaded copies cannot be revoked.
+
+Optional external web links are prepared in
+`supabase/migrations/202610250001_beis_midrash_resource_links.sql`, after the
+attachment migration. This task has not applied that migration to live Supabase.
+Resources & Materials posts may include one HTTP(S) link, an optional display name,
+and/or attachments. Creation/editing validates links in the app and database;
+existing discussions and older clients' edits preserve saved links. Links are
+plain data, not embedded HTML or automatically fetched previews. The web opens
+them with `noopener,noreferrer`; native apps use the system URL handler. Private
+discussion access does not make a public destination private: the destination
+retains its own permissions. Participants cannot read the saved resource post/link.
 
 Cancel/removal cleans pending uploads best-effort. Successful edits detach omitted
 attachments transactionally, then try to remove their objects. Closing the browser

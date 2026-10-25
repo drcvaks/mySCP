@@ -49,6 +49,7 @@ async function createDatabase(withBoards = true) {
     await db.exec(fs.readFileSync("supabase/migrations/202610220001_worldwide_beis_midrash.sql", "utf8"));
     if (withBoards) await db.exec(fs.readFileSync("supabase/migrations/202610230001_beis_midrash_boards.sql", "utf8"));
     if (withBoards) await db.exec(fs.readFileSync("supabase/migrations/202610240001_beis_midrash_resources.sql", "utf8"));
+    if (withBoards) await db.exec(fs.readFileSync("supabase/migrations/202610250001_beis_midrash_resource_links.sql", "utf8"));
     await db.exec("set role authenticated");
     return db;
 }

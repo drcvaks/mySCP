@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Button, FilterChip, MetaText, Row, SectionTitle, StatusBanner } from "./components";
-import { bmIsRtl, BmChunk, BmMaterialType, findBmChunks, groupBmMaterial } from "./beisMidrash";
+import { bmIsRtl, BmChunk, BmMaterialType, findBmChunks, groupBmWorkbooks } from "./beisMidrash";
 import { supabase } from "../lib/supabase";
 import { ImportDocument } from "./ImportDocument";
 import { readRichContent, RichContentDocument } from "./documentContent";
@@ -25,11 +25,12 @@ export function BmChoices({ label, value, options, onChange }: {
       }}><FilterChip label={option.label} selected={value === option.id} onPress={() => onChange(option.id)} /></View>)}
     </ScrollView></View>;
 }
-export function BmInput({ label, value, onChange, multiline = false, maxLength }: {
-  label: string; value: string; onChange: (text: string) => void; multiline?: boolean; maxLength: number;
+export function BmInput({ label, value, onChange, multiline = false, maxLength, url = false }: {
+  label: string; value: string; onChange: (text: string) => void; multiline?: boolean; maxLength: number; url?: boolean;
 }) {
   return <View style={{ gap: 6 }}><MetaText>{label}</MetaText><TextInput accessibilityLabel={label} placeholder={label}
     value={value} onChangeText={onChange} multiline={multiline} maxLength={maxLength}
+    {...(url ? { keyboardType: "url" as const, autoCapitalize: "none" as const, autoCorrect: false } : {})}
     style={[s.input, multiline && { minHeight: 150, textAlignVertical: "top" }, {
       writingDirection: bmIsRtl(value) ? "rtl" : "ltr", textAlign: bmIsRtl(value) ? "right" : "left"
     }]} /></View>;
@@ -71,37 +72,43 @@ export function BmChunkPreview({ chunk, close, onToggle, selected = false }: {
 export function BmChunkPicker({ program, selected, onChange, label = "Link Notes (optional)", materialType = "notes" }: {
   program: string | null; selected: BmChunk[]; onChange: (chunks: BmChunk[]) => void; label?: string; materialType?: BmMaterialType;
 }) {
-  const [search, setSearch] = useState(""); const [options, setOptions] = useState<BmChunk[]>([]);
+  const [options, setOptions] = useState<BmChunk[]>([]);
   const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [collapsedBooks, setCollapsedBooks] = useState<Record<string, boolean>>({});
   const [preview, setPreview] = useState<BmChunk | null>(null);
-  const groups = groupBmMaterial(options);
+  const workbooks = groupBmWorkbooks(options);
   function toggle(chunk: BmChunk) {
     onChange(selected.some(item => item.id === chunk.id) ? selected.filter(item => item.id !== chunk.id) : [...selected, chunk]);
   }
-  useEffect(() => { setExpanded({}); setPreview(null); }, [program, materialType]);
+  useEffect(() => { setExpanded({}); setCollapsedBooks({}); setPreview(null); }, [program, materialType]);
   useEffect(() => {
     let cancelled = false;
     setOptions([]); setLoading(true); setError("");
-    const timer = setTimeout(() => {
-      findBmChunks(search, program, materialType).then(data => {
-        if (cancelled) return;
-        setOptions(data);
-        if (search.trim()) setExpanded(Object.fromEntries(groupBmMaterial(data).map(group => [group.key, true])));
-      })
-        .catch(e => { if (!cancelled) setError(e.message); }).finally(() => { if (!cancelled) setLoading(false); });
-    }, 250);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [search, program, materialType]);
+    findBmChunks("", program, materialType).then(data => {
+      if (cancelled) return;
+      setOptions(data);
+    })
+      .catch(e => { if (!cancelled) setError(e.message); }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [program, materialType]);
   return <View style={{ gap: 8 }}>
-    <BmInput label={label} value={search} onChange={setSearch} maxLength={200} />
+    <MetaText>{label}</MetaText>
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>{selected.map(chunk => <FilterChip key={chunk.id}
       label={`${chunkDisplayCode(chunk.code)} - Remove`} selected onPress={() => toggle(chunk)} />)}</View>
     <StatusBanner message={error} tone="error" />
     {loading ? <MetaText>Loading material...</MetaText> : null}
     <ScrollView nestedScrollEnabled style={{ maxHeight: 300 }} keyboardShouldPersistTaps="handled">
-      {groups.map(group => {
-        const title = [!program ? programName(group.program) : "", group.workbook, materialType === "all" ? group.type === "qa" ? "Official Questions" : "Official Notes" : "", group.section ? `Section ${group.section}` : "Material", group.title].filter(Boolean).join(" - ");
+      {workbooks.map(workbook => <View key={workbook.key}>
+        <Pressable accessibilityRole="button" accessibilityLabel={[!program ? programName(workbook.program) : "", workbook.title].filter(Boolean).join(" - ")}
+          accessibilityState={{ expanded: !collapsedBooks[workbook.key] }} aria-expanded={!collapsedBooks[workbook.key]}
+          onPress={() => setCollapsedBooks(current => ({ ...current, [workbook.key]: !current[workbook.key] }))} style={s.workbook}>
+          <Ionicons name={collapsedBooks[workbook.key] ? "chevron-forward" : "chevron-down"} size={16} color={theme.colors.muted} />
+          <Ionicons name="book-outline" size={22} color={theme.colors.info} />
+          <Text style={{ flex: 1, minWidth: 0, color: theme.colors.ink, fontWeight: "700" }}>{[!program ? programName(workbook.program) : "", workbook.title].filter(Boolean).join(" - ")}</Text>
+        </Pressable>
+        {!collapsedBooks[workbook.key] ? <View style={{ paddingLeft: 12 }}>{workbook.sections.map(group => {
+        const title = [materialType === "all" ? group.type === "qa" ? "Official Questions" : "Official Notes" : "", group.section ? `Section ${group.section}` : "Material", group.title].filter(Boolean).join(" - ");
         const linked = group.chunks.filter(chunk => selected.some(item => item.id === chunk.id)).length;
         return <View key={group.key}>
           <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded: !!expanded[group.key] }} aria-expanded={!!expanded[group.key]}
@@ -127,7 +134,8 @@ export function BmChunkPicker({ program, selected, onChange, label = "Link Notes
             </Pressable>
           </View>) : null}
         </View>;
-      })}
+      })}</View> : null}
+      </View>)}
       {!loading && !error && !options.length ? <MetaText>No matching material.</MetaText> : null}
     </ScrollView>
     {preview ? <BmChunkPreview key={preview.id} chunk={preview} close={() => setPreview(null)}
@@ -139,6 +147,7 @@ const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "#17203388", alignItems: "center", justifyContent: "center", padding: 16 },
   dialog: { width: "100%", maxWidth: 850, maxHeight: "90%", backgroundColor: "#FFFFFF", borderRadius: 8, padding: 16, gap: 12 },
   folder: { minHeight: 52, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8, borderBottomWidth: 1, borderColor: theme.colors.border },
+  workbook: { minHeight: 48, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8, borderBottomWidth: 1, borderColor: theme.colors.border, backgroundColor: "#F1F5FB" },
   chunkOption: { minHeight: 52, marginLeft: 12, flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderColor: theme.colors.border },
   linkCheck: { width: 44, minHeight: 48, alignItems: "center", justifyContent: "center" },
   chunkView: { flex: 1, minWidth: 0, minHeight: 48, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 10 }

@@ -30,9 +30,19 @@ export function groupBmMaterial(chunks: BmChunk[]) {
   }
   return [...groups.values()];
 }
+export function groupBmWorkbooks(chunks: BmChunk[]) {
+  const workbooks = new Map<string, { key: string; title: string; program?: string; sections: ReturnType<typeof groupBmMaterial> }>();
+  for (const section of groupBmMaterial(chunks)) {
+    const key = JSON.stringify([section.program, section.workbook ?? ""]);
+    if (!workbooks.has(key)) workbooks.set(key, { key, title: section.workbook || "Official Material", program: section.program, sections: [] });
+    workbooks.get(key)!.sections.push(section);
+  }
+  return [...workbooks.values()];
+}
 export interface BmThread {
   id: string; author_id: string; author_name: string; title: string; body?: string; excerpt?: string;
   category: BmCategory; status: BmStatus; program_id: string | null; language: "en" | "he" | "mixed";
+  resource_url?: string | null; resource_label?: string | null;
   is_hidden: boolean; deleted_at: string | null; created_at: string; updated_at: string; last_activity_at: string;
   chunks?: BmChunk[]; reply_count?: number; following?: boolean; bookmarked?: boolean; unread?: boolean;
 }

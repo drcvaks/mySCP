@@ -6,6 +6,7 @@ import { Button, MetaText, Row, SectionTitle, StatusBanner } from "./components"
 import { BmChoices, BmChunkPicker, BmInput } from "./BeisMidrashControls";
 import { bmAreas, bmAreaForCategory, bmCategories, bmMaterialType, BmArea, BmCategory, BmChunk, BmDetail, BmResource, mutateBm } from "./beisMidrash";
 import { discardBmResource, pickBmResource } from "./beisMidrashResources";
+import { bmResourceLinkError, normalizeBmResourceUrl } from "./beisMidrashLinks";
 
 export interface BmEditorTarget { kind: "thread" | "reply" | "report"; id?: string; parent?: string; initialBody?: string }
 export async function confirmBmDiscard(message: string) {
@@ -29,20 +30,22 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
   const [chunks, setChunks] = useState<BmChunk[]>(editing?.chunks ?? []);
   const [optionalLinks, setOptionalLinks] = useState(!!editing?.chunks.length);
   const [resources, setResources] = useState<BmResource[]>(editing?.resources ?? []);
+  const [resourceUrl, setResourceUrl] = useState(editing?.thread.resource_url ?? "");
+  const [resourceLabel, setResourceLabel] = useState(editing?.thread.resource_label ?? "");
   const pending = useRef(new Set<string>());
   const uploadLock = useRef(false);
   const materialType = bmMaterialType(category);
   function changeCategory(next: BmCategory) {
     if (busy) return;
-    if (resources.length && next !== "resources") { setError("Remove attachments before changing the discussion area."); return; }
+    if ((resources.length || resourceUrl.trim() || resourceLabel.trim()) && next !== "resources") { setError("Remove attachments and the resource link before changing the discussion area."); return; }
     setCategory(next);
     const type = bmMaterialType(next);
     if (type === "all" && chunks.length) setOptionalLinks(true);
     if (type !== "all") setChunks(items => items.filter(item => (item.source_type ?? "notes") === type));
   }
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  const [baseline] = useState(() => JSON.stringify({ title, body, category, program, language, chunks: chunks.map(c => c.id), resources: resources.map(r => r.id) }));
-  const dirty = busy || JSON.stringify({ title, body, category, program, language, chunks: chunks.map(c => c.id), resources: resources.map(r => r.id) }) !== baseline;
+  const [baseline] = useState(() => JSON.stringify({ title, body, category, program, language, resourceUrl, resourceLabel, chunks: chunks.map(c => c.id), resources: resources.map(r => r.id) }));
+  const dirty = busy || JSON.stringify({ title, body, category, program, language, resourceUrl, resourceLabel, chunks: chunks.map(c => c.id), resources: resources.map(r => r.id) }) !== baseline;
   useEffect(() => { registerProgramEdits("bm-editor", dirty); return () => registerProgramEdits("bm-editor", false); }, [dirty, registerProgramEdits]);
   async function cancel() {
     if (busy || (dirty && !await confirmBmDiscard("Discard your unsaved discussion and attachments?"))) return;
@@ -69,15 +72,19 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
     finally { setBusy(false); }
   }
   const missingOfficialLink = target.kind === "thread" && materialType !== "all" && !chunks.length;
+  const linkError = target.kind === "thread" && category === "resources" ? bmResourceLinkError(resourceUrl, resourceLabel) : "";
   async function save() {
     if (busy || !body.trim() || (target.kind === "thread" && !title.trim())) return;
     if (missingOfficialLink) { setError("Select at least one official section or question."); return; }
+    if (linkError) { setError(linkError); return; }
     setBusy(true); setError("");
     try {
       const result = target.kind === "thread"
         ? await mutateBm(target.id ? "edit_thread" : "create_thread", target.id ?? null, {
           title: title.trim(), body: body.trim(), category, program_id: program === "general" ? null : program,
-          language, chunk_ids: chunks.map(c => c.id), resource_ids: resources.map(r => r.id)
+          language, chunk_ids: chunks.map(c => c.id), resource_ids: resources.map(r => r.id),
+          resource_url: category === "resources" ? normalizeBmResourceUrl(resourceUrl) : null,
+          resource_label: category === "resources" ? resourceLabel.trim() || null : null
         }) : target.kind === "reply"
           ? await mutateBm(target.id ? "edit_reply" : "reply", target.id ?? detail!.thread.id, { body: body.trim(), parent_reply_id: target.parent ?? null })
           : await mutateBm("report", detail!.thread.id, { reason: body.trim(), reply_id: target.id ?? null });
@@ -114,6 +121,13 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
         materialType={materialType} label={materialType === "notes" ? "Official Notes (required)" : materialType === "qa" ? "Official Questions (required)" : "Official material (optional)"} /> : null}
       {missingOfficialLink ? <MetaText>{category === "notes" ? "Select at least one official Notes section." : "Select at least one official Question."}</MetaText> : null}
       {category === "resources" ? <View style={{ gap: 8 }}>
+        <BmInput label="Resource Link (optional)" value={resourceUrl} onChange={setResourceUrl} maxLength={2048} url />
+        <BmInput label="Link Display Name (optional)" value={resourceLabel} onChange={setResourceLabel} maxLength={160} />
+        <StatusBanner message={linkError} tone="error" />
+        {resourceUrl || resourceLabel ? <Pressable accessibilityRole="button" accessibilityLabel="Remove Resource Link" disabled={busy}
+          onPress={() => { setResourceUrl(""); setResourceLabel(""); setError(""); }} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Ionicons name="trash-outline" size={21} color="#A33030" /><Text>Remove Resource Link</Text>
+        </Pressable> : null}
         <SectionTitle>Attachments</SectionTitle>
         <MetaText>Rabbonim only - up to 5 files, 10 MB each. PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG, WebP.</MetaText>
         {resources.map(resource => <View key={resource.id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -129,7 +143,7 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
     </> : null}
     <StatusBanner message={error} tone="error" />
     <Row><Button label={busy ? "Saving..." : target.kind === "report" ? "Submit Report" : target.id ? "Save Changes" : "Post"}
-      onPress={save} disabled={busy || missingOfficialLink || !body.trim() || (target.kind === "thread" && !title.trim())} />
+      onPress={save} disabled={busy || missingOfficialLink || !!linkError || !body.trim() || (target.kind === "thread" && !title.trim())} />
       <Button label="Cancel" onPress={cancel} disabled={busy} variant="secondary" /></Row>
     {target.kind === "report" ? <Text>Reports are visible only to you and authorized moderators.</Text> : null}
   </View>;

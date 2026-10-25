@@ -14,7 +14,8 @@ async function main() {
   await ensureServer(); fs.mkdirSync(out,{recursive:true});
   console.log("Expo ready; initializing local PostgreSQL...");
   const db = await createDatabase();
-  await db.exec(`reset role; insert into public.profiles values ('${id(10)}','WebKit Test User','local_rabbi','private-browser@example.invalid');
+  await db.exec(`reset role; update public.content_chunks set workbook_title='Hafrasha Challah Part 1' where program_id='winter-5787';
+    insert into public.profiles values ('${id(10)}','WebKit Test User','local_rabbi','private-browser@example.invalid');
     insert into public.chaburah_members values ('${id(10)}','active','rabbi'); set role authenticated;`);
   console.log("Database ready; launching WebKit...");
   const browser = await webkit.launch({headless:true}); let page, failSave = false;
@@ -27,6 +28,7 @@ async function main() {
   async function setup(context, role="local_rabbi", uid=10, extra={}) {
     await fixture(context,role,{ content_chunks:[{id:id(20),chunk_code:"HC1-B3",chunk_title:"Notes B3",program_id:"winter-5787",source_type:"notes",
       content_markdown:"Original controlled Notes content.",content_document:null}],...extra });
+    await context.route('https://resources.example.invalid/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<h1>Synthetic resource</h1>'}));
     await context.route("**/rest/v1/content_chunks*",async route=>{
       if(route.request().method()==="OPTIONS") return route.fallback();
       const question=new URL(route.request().url()).searchParams.get("id")===`eq.${id(23)}`;
@@ -119,7 +121,15 @@ async function main() {
     await page.getByRole("textbox",{name:"Title",exact:true}).fill(title);
     await page.getByRole("textbox",{name:"Question, sources, or discussion",exact:true}).fill(body);
     assert.equal(await page.getByRole("button",{name:"Post",exact:true}).isDisabled(),true,"Official Notes require a link");
+    assert.equal(await page.getByRole('textbox',{name:'Official Notes (required)',exact:true}).count(),0,'Official selection is not a typing field');
+    const workbook=page.getByRole('button',{name:'Hafrasha Challah Part 1',exact:true});
+    await workbook.waitFor();
+    assert.equal(await workbook.count(),1,'Workbook title is shown once, above its sections');
+    await workbook.click();
+    assert.equal(await page.getByRole('button',{name:'Section B - The Obligation of Challah',exact:true}).count(),0);
+    await workbook.click();
     await page.getByRole("button",{name:"Section B - The Obligation of Challah",exact:true}).click();
+    await page.screenshot({path:path.join(out,'official-picker-workbook.png'),scale:'css'});
     await page.getByRole("button",{name:"View Notes B3",exact:true}).click();
     await page.getByText("Original controlled Notes content.",{exact:true}).waitFor();
     await page.getByRole("button",{name:"Link to Discussion",exact:true}).click();
@@ -218,6 +228,7 @@ async function main() {
     await page.getByRole("button",{name:"Close",exact:true}).click();
     await page.getByRole("button",{name:"Back to Discussions",exact:true}).click();
     await page.getByRole("button",{name:"Resources & Materials",exact:true}).click();
+    await page.setViewportSize({width:390,height:844});
     await page.getByRole("button",{name:"Start Discussion",exact:true}).click();
     assert.equal(await page.getByRole("checkbox",{name:"Link B3",exact:true}).count(),0);
     await page.getByRole("checkbox",{name:"Link official material (optional)",exact:true}).click();
@@ -228,6 +239,10 @@ async function main() {
     await page.getByRole("checkbox",{name:"Link official material (optional)",exact:true}).click();
     await page.getByRole("textbox",{name:"Title",exact:true}).fill("Useful resource discussion");
     await page.getByRole("textbox",{name:"Question, sources, or discussion",exact:true}).fill("A useful text resource without linked material.");
+    await page.getByRole('textbox',{name:'Resource Link (optional)',exact:true}).fill('javascript:alert(1)');
+    assert.equal(await page.getByRole('button',{name:'Post',exact:true}).isDisabled(),true,'Unsafe link cannot be posted');
+    await page.getByRole('textbox',{name:'Resource Link (optional)',exact:true}).fill('https://resources.example.invalid/worksheet');
+    await page.getByRole('textbox',{name:'Link Display Name (optional)',exact:true}).fill('Worksheet on the web');
     const chooser=page.waitForEvent('filechooser');
     await page.getByRole('button',{name:'Attach File',exact:true}).click();
     await (await chooser).setFiles({name:'Rabbi worksheet.txt',mimeType:'text/plain',buffer:Buffer.from('Synthetic private worksheet')});
@@ -236,17 +251,37 @@ async function main() {
     failSave=true;
     await page.getByRole('button',{name:'Post',exact:true}).click();
     await page.getByText(/Synthetic save failure/).waitFor();
+    assert.equal(await page.getByRole('textbox',{name:'Resource Link (optional)',exact:true}).inputValue(),'https://resources.example.invalid/worksheet','Retry retains the web address');
     await page.getByRole('button',{name:'Remove attachment Rabbi worksheet.txt',exact:true}).waitFor();
     failSave=false;
     await page.getByRole("button",{name:"Post",exact:true}).click();
     await page.getByText("Useful resource discussion",{exact:true}).waitFor();
     await page.getByRole('button',{name:'Download Rabbi worksheet.txt',exact:true}).waitFor();
+    await page.getByText('Worksheet on the web',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Open Resource',exact:true}).scrollIntoViewIfNeeded();
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Resource link fits phone width');
     await page.screenshot({path:path.join(out,'private-resource.png'),scale:'css'});
+    const popupPromise=page.waitForEvent('popup');
+    await page.getByRole('button',{name:'Open Resource',exact:true}).click();
+    const popup=await popupPromise;await popup.waitForLoadState('domcontentloaded');
+    assert.equal(popup.url(),'https://resources.example.invalid/worksheet');
+    assert.equal(await popup.evaluate(()=>window.opener===null&&document.referrer===''),true,'External links do not receive opener or private discussion URL');
+    await popup.close();
     await page.getByRole('button',{name:'Edit discussion',exact:true}).click();
+    assert.equal(await page.getByRole('textbox',{name:'Link Display Name (optional)',exact:true}).inputValue(),'Worksheet on the web');
+    await page.getByRole('textbox',{name:'Resource Link (optional)',exact:true}).fill('http://resources.example.invalid/revised');
     await page.getByRole('button',{name:'Remove attachment Rabbi worksheet.txt',exact:true}).click();
     await page.getByRole('button',{name:'Save Changes',exact:true}).click();
     await page.getByText('Useful resource discussion',{exact:true}).waitFor();
     assert.equal(await page.getByRole('button',{name:'Download Rabbi worksheet.txt',exact:true}).count(),0);
+    await page.getByRole('button',{name:'Open Resource',exact:true}).waitFor();
+    const resourceThread=new URL(page.url()).searchParams.get('thread');
+    assert.equal((await sqlAs(10,()=>db.query('select resource_url from public.bm_threads where id=$1',[resourceThread]))).rows[0].resource_url,'http://resources.example.invalid/revised');
+    await page.getByRole('button',{name:'Edit discussion',exact:true}).click();
+    await page.getByRole('button',{name:'Remove Resource Link',exact:true}).click();
+    await page.getByRole('button',{name:'Save Changes',exact:true}).click();
+    await page.getByText('Useful resource discussion',{exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Open Resource',exact:true}).count(),0);
     await page.getByRole("button",{name:"Back to Discussions",exact:true}).click();
     await page.getByRole("button",{name:"Open discussion: Useful resource discussion",exact:true}).waitFor();
     assert.equal(await page.getByRole("button",{name:"Open discussion: Official question discussion",exact:true}).count(),0);

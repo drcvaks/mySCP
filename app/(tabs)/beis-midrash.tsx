@@ -16,6 +16,7 @@ import { theme } from "../../src/shared/theme";
 import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { chunkDisplayCode } from "../../src/shared/chunkLabels";
 import { openBmResource } from "../../src/shared/beisMidrashResources";
+import { openBmResourceLink } from "../../src/shared/beisMidrashLinks";
 
 export default function BeisMidrashScreen() {
   const router = useRouter(); const params = useLocalSearchParams<{ thread?: string }>();
@@ -166,6 +167,13 @@ export default function BeisMidrashScreen() {
           <Row><Pill label={bmCategories[detail.thread.category]} /><Pill label={bmStatuses[detail.thread.status]} />
             {detail.thread.is_hidden ? <Pill label="Hidden" tone="danger" /> : null}{detail.thread.deleted_at ? <Pill label="Removed" tone="danger" /> : null}</Row>
           <BmBody text={detail.thread.body ?? ""} />
+          {detail.thread.category === "resources" && detail.thread.resource_url ? <View style={{ gap: 8 }}>
+            {detail.thread.resource_label ? <SectionTitle>{detail.thread.resource_label}</SectionTitle> : null}
+            <MetaText>{resourceHost(detail.thread.resource_url)}</MetaText>
+            <Button label="Open Resource" variant="secondary" onPress={() => {
+              void openBmResourceLink(detail.thread.resource_url!).catch(e => setError(e instanceof Error ? e.message : "Unable to open resource."));
+            }} />
+          </View> : null}
           {detail.thread.category === "resources" && detail.resources?.length ? <View style={{ gap: 8 }}>
             <SectionTitle>Resources</SectionTitle>
             {detail.resources.map(resource => <Button key={resource.id} label={`Download ${resource.file_name}`} variant="secondary"
@@ -221,6 +229,7 @@ function Icon({ label, icon, onPress, selected = false, disabled = false }: { la
   </Pressable>;
 }
 function date(value: string) { return new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
+function resourceHost(value: string) { try { return new URL(value).host; } catch { return "External resource"; } }
 const s = StyleSheet.create({
   filters: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.border, paddingVertical: 12, gap: 12 },
   threadTitle: { fontSize: 19, lineHeight: 27, fontWeight: "700", color: theme.colors.ink },

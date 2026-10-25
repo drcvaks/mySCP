@@ -12,7 +12,7 @@ function load(file) {
   } });
   return exports;
 }
-const { groupBmMaterial } = load("src/shared/beisMidrash.ts");
+const { groupBmMaterial, groupBmWorkbooks } = load("src/shared/beisMidrash.ts");
 const { chunkDisplayCode } = load("src/shared/chunkLabels.ts");
 const chunks = [
   { id:"n1", code:"HC1-A1", section:"A", program_id:"winter-5787", source_type:"notes" },
@@ -36,4 +36,14 @@ const workbooks=groupBmMaterial([
 ]);
 assert.equal(workbooks.length,2,'Sections from different workbooks must not merge');
 assert.equal(workbooks[0].title,'Introduction to the Mitzvah of Challah');
+const bookChunks = [...'ABCDEFG'].map((section,index)=>({id:`note-${index}`,code:`HC1-${section}1`,section,section_title:`Title ${section}`,
+  workbook_title:'Hafrasha Challah Part 1',program_id:'winter-5787',source_type:'notes'}));
+const books=groupBmWorkbooks([...bookChunks,{...bookChunks[0],id:'question',source_type:'qa'}]);
+assert.equal(books.length,1,'A-G and the questions share one workbook heading');
+assert.equal(books[0].title,'Hafrasha Challah Part 1');
+assert.equal(books[0].sections.length,8,'Seven Notes sections and separate Q&A section are preserved');
+assert.equal(books[0].sections[0].chunks[0],bookChunks[0],'Selections still use the original official records');
+assert.equal(groupBmWorkbooks([...bookChunks,{...bookChunks[0],workbook_title:'Part 2'},{...bookChunks[0],program_id:'summer-5787'}]).length,3);
+const controls=fs.readFileSync('src/shared/BeisMidrashControls.tsx','utf8').split('export function BmChunkPicker')[1];
+assert.ok(!controls.includes('<BmInput'),'Picker has no free-text field');
 console.log("PASS: material section folders, program/type separation, shortened display codes, and unchanged canonical records.");
