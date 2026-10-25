@@ -6,6 +6,7 @@ import { Button, Card, FormInput, MetaText, Pill, Row, Screen, SectionTitle, Sta
 import { fileCoverageDetailLabel, learningFileTypeLabel } from "../../src/shared/format";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 import { PacketPreviewModal } from "../../src/shared/PacketPreviewModal";
+import { materialTextStyle } from "../../src/shared/materialLanguages";
 import { supabase } from "../../src/lib/supabase";
 import { theme } from "../../src/shared/theme";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
@@ -618,8 +619,8 @@ export default function MyChaburahScreen() {
               {localFiles.slice(0, 10).map((file) => (
                 <View key={file.id} style={localStyles.fileRow}>
                   <View style={localStyles.fileInfo}>
-                    <Text style={styles.body}>{file.title}</Text>
-                    <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {learningFileTypeLabel(file)}</MetaText>
+                    <Text style={[styles.body, materialTextStyle(file.language)]}>{file.title}</Text>
+                    <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {learningFileTypeLabel(file)} - {file.language === "he" ? "Hebrew" : "English"}</MetaText>
                   </View>
                   <View style={localStyles.fileActions}>
                     <Button

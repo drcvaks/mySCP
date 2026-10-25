@@ -72,7 +72,7 @@ function setup(failure = "") {
   const context = {
     chunkHeadingOptions: { notes: false, qa: true },
     supabase, profile: { id: "rabbi" }, managedChaburahId: "chaburah", programsReady: true,
-    selectedProgramId: "winter-5787", selectedProgram: { topic: "Challah" }, week: 1, title: "Packet",
+    selectedProgramId: "winter-5787", selectedProgram: { topic: "Challah" }, contentLanguage: "en", week: 1, title: "Packet",
     buildPublishedCategoryTitle: (title, label) => `${title} - ${label}`,
     setSaving: (value) => { saving = value; }, setMessage: (value) => { message = value; },
     setActivePacketId: (value) => { activeId = value; }, setActivePacketStatus: () => {},

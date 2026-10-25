@@ -23,6 +23,7 @@ export function isolateImportSpans(parts: ImportSpan[]) {
 
 export interface RichContentDocument {
   version: 1;
+  language?: "en" | "he";
   blocks: ImportBlock[];
   footnotes: { id: number; blocks: ImportBlock[] }[];
 }

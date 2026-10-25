@@ -6,6 +6,7 @@ import { compactSourceDocument, compactSourceImage } from "./sourceSheetLayout";
 import { uri as logoUri } from "../data/scpLogo.json";
 
 export interface PrintablePacket {
+  language?: "en" | "he";
   chunkHeadingOptions?: PacketHeadingOptions;
   chunks: ContentChunk[];
   meta?: string;
@@ -81,9 +82,9 @@ export async function printPacket(packet: PrintablePacket): Promise<string | nul
   return null;
 }
 
-export function buildPrintablePacketHtml({ chunks, meta, title, chunkHeadingOptions }: PrintablePacket) {
+export function buildPrintablePacketHtml({ chunks, meta, title, chunkHeadingOptions, language = chunks[0]?.language ?? "en" }: PrintablePacket) {
   return `<!doctype html>
-<html>
+<html lang="${language}" dir="${language === "he" ? "rtl" : "ltr"}">
 <head>
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
@@ -111,6 +112,9 @@ export function buildPrintablePacketHtml({ chunks, meta, title, chunkHeadingOpti
     .packet-heading { flex: 1; min-width: 0; overflow-wrap: anywhere; }
     header .packet-logo { width: 96px; height: 96px; flex: 0 0 96px; margin: 0; object-fit: contain; }
     h1 {
+      direction: ${language === "he" ? "rtl" : "ltr"};
+      text-align: ${language === "he" ? "right" : "left"};
+      overflow-wrap: anywhere;
       font-family: Arial, Helvetica, sans-serif;
       font-size: 22pt;
       line-height: 1.15;
@@ -204,19 +208,19 @@ export function buildPrintablePacketHtml({ chunks, meta, title, chunkHeadingOpti
 <body>
   <div class="screen-only">Use your browser print dialog to print or save as PDF.</div>
   <header>
-    <div class="packet-heading">
+    <div class="packet-heading" dir="${language === "he" ? "rtl" : "ltr"}">
     <h1>${escapeHtml(title)}</h1>
     ${meta ? `<div class="meta">${escapeHtml(meta)}</div>` : ""}
     </div>
     <img class="packet-logo" alt="SCP logo" src="${logoUri}" width="96" height="96" />
   </header>
-  ${chunks.map((chunk) => renderChunk(chunk, chunkHeadingOptions)).join("\n")}
+  ${chunks.map((chunk) => renderChunk(chunk, chunkHeadingOptions, language)).join("\n")}
 </body>
 </html>`;
 }
 
-function renderChunk(chunk: ContentChunk, options?: PacketHeadingOptions) {
-  return `<section class="chunk ${chunk.sourceType === "source" ? "source-sheet" : ""}">
+function renderChunk(chunk: ContentChunk, options?: PacketHeadingOptions, language: "en" | "he" = "en") {
+  return `<section dir="${(chunk.language ?? language) === "he" ? "rtl" : "ltr"}" class="chunk ${chunk.sourceType === "source" ? "source-sheet" : ""}">
   ${chunk.sourceType !== "source" && includesChunkHeading(chunk, options) ? `<h2>${escapeHtml(chunk.chunkTitle)}</h2>` : ""}
   ${chunk.contentDocument ? renderRichDocument(chunk.contentDocument) : renderMarkdownBlocks(chunk.contentMarkdown)}
 </section>`;

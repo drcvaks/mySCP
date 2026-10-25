@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { formatSupabaseError } from "../lib/errors";
 import { supabase } from "../lib/supabase";
@@ -13,6 +13,7 @@ import { readRichContent } from "./documentContent";
 import { ImportDocument } from "./ImportDocument";
 import { chunkDisplayCode } from "./chunkLabels";
 import { PacketDocumentHeader } from "./PacketDocumentHeader";
+import { loadMaterialLanguage, materialLanguageName, materialTextStyle } from "./materialLanguages";
 
 export function PacketPreviewModal({
   packetId,
@@ -28,16 +29,21 @@ export function PacketPreviewModal({
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const loadSequence = useRef(0);
 
   useEffect(() => {
     if (!visible || !packetId) return;
     void loadPacket(packetId);
+    return () => { loadSequence.current++; };
   }, [packetId, visible]);
 
   async function loadPacket(targetPacketId: string) {
+    const sequence = ++loadSequence.current;
+    setPacket(null); setChunks([]);
     setLoading(true);
     setMessage("");
     const packetResult = await supabase.from("review_packets").select("*").eq("id", targetPacketId).single();
+    if (sequence !== loadSequence.current) return;
     if (packetResult.error || !packetResult.data) {
       setLoading(false);
       setMessage(formatSupabaseError(packetResult.error ?? new Error("Packet not found.")));
@@ -49,22 +55,24 @@ export function PacketPreviewModal({
       .select("sort_order, content_chunks(*)")
       .eq("packet_id", targetPacketId)
       .order("sort_order");
-    setLoading(false);
+    if (sequence !== loadSequence.current) return;
     if (itemsResult.error) {
+      setLoading(false);
       setMessage(formatSupabaseError(itemsResult.error));
       return;
     }
 
-    setPacket(mapPacket(packetResult.data));
-    setChunks(
-      (itemsResult.data ?? [])
-        .map((item: any) => item.content_chunks)
-        .filter(Boolean)
-        .map(mapContentChunk)
-    );
+    const savedPacket = mapPacket(packetResult.data);
+    try {
+      const localized = await loadMaterialLanguage((itemsResult.data ?? []).map((item: any) => item.content_chunks).filter(Boolean).map(mapContentChunk), savedPacket.language ?? "en", true);
+      if (sequence !== loadSequence.current) return;
+      setPacket(savedPacket); setChunks(localized);
+    } catch (error) { if (sequence === loadSequence.current) setMessage(error instanceof Error ? error.message : "Unable to load packet language."); }
+    if (sequence === loadSequence.current) setLoading(false);
   }
 
   function closePreview() {
+    loadSequence.current++;
     setPacket(null);
     setChunks([]);
     setMessage("");
@@ -74,6 +82,7 @@ export function PacketPreviewModal({
   async function printCurrentPacket() {
     if (!packet || chunks.length === 0) return;
     const printError = await printPacket({
+      language: packet.language,
       chunkHeadingOptions: packet.chunkHeadingOptions,
       chunks,
       meta: `${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`,
@@ -89,11 +98,12 @@ export function PacketPreviewModal({
           <Row>
             <View style={{ flex: 1, minWidth: 240 }}>
               <MetaText>Packet Preview</MetaText>
-              <SectionTitle>{packet?.title ?? (loading ? "Loading packet..." : "Review Packet")}</SectionTitle>
+              <Text style={[styles.sectionTitle, materialTextStyle(packet?.language)]}>{packet?.title ?? (loading ? "Loading packet..." : "Review Packet")}</Text>
               {packet ? <Text style={styles.muted}>{packet.siman}</Text> : null}
             </View>
             {packet ? <Pill label={`Week ${packet.week}`} tone="primary" /> : null}
             {packet ? <Pill label={programName(packet.programId, programs)} /> : null}
+            {packet ? <Pill label={materialLanguageName(packet.language)} /> : null}
             {packet ? (
               <Pill label={packet.status === "published" ? "Published" : "Draft"} tone={packet.status === "published" ? "success" : "accent"} />
             ) : null}
@@ -106,13 +116,13 @@ export function PacketPreviewModal({
           ) : null}
           <ScrollView contentContainerStyle={modalStyles.pageContent} style={modalStyles.pageShell}>
             {packet && chunks.length > 0 ? <View style={modalStyles.chunk}>
-              <PacketDocumentHeader title={packet.title}
+              <PacketDocumentHeader language={packet.language} title={packet.title}
                 meta={`${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`} />
             </View> : null}
             {chunks.map((chunk, index) => (
               <View key={chunk.id} style={modalStyles.chunk}>
                 <MetaText>{index + 1}. {chunkDisplayCode(chunk.chunkCode)}</MetaText>
-                {includesChunkHeading(chunk, packet?.chunkHeadingOptions) ? <Text style={modalStyles.chunkTitle}>{chunk.chunkTitle}</Text> : null}
+                {includesChunkHeading(chunk, packet?.chunkHeadingOptions) ? <Text style={[modalStyles.chunkTitle, materialTextStyle(chunk.language)]}>{chunk.chunkTitle}</Text> : null}
                 <PacketChunkContent chunk={chunk} />
               </View>
             ))}
@@ -124,7 +134,7 @@ export function PacketPreviewModal({
 }
 
 function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
-  if (chunk.contentDocument) return <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} />;
+  if (chunk.contentDocument) return <ImportDocument language={chunk.language} blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} />;
   const blocks = chunk.contentMarkdown
     .split(/\n\s*\n/)
     .map((block) => block.replace(/\r/g, "").trim())
@@ -158,6 +168,7 @@ function PacketImage({ alt, uri }: { alt: string; uri: string }) {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    language: row.language ?? "en",
     chunkHeadingOptions: row.chunk_heading_options ?? {},
     programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
@@ -175,6 +186,7 @@ function mapPacket(row: any): ReviewPacket {
 
 function mapContentChunk(row: any): ContentChunk {
   return {
+    language: row.language ?? "en",
     contentDocument: readRichContent(row.content_document),
     id: row.id,
     chunkCode: row.chunk_code,

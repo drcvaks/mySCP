@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hebrew Challah Local Preview</title>
+<style>
+[hidden]{display:none!important}
+*{box-sizing:border-box}body{margin:0;color:#172033;background:#f6f8fa;font:15px/1.65 Arial,sans-serif;letter-spacing:0}button,input{font:inherit}button{padding:8px 12px;background:#fff;color:#172033;border:1px solid #ccd7e3;border-radius:5px;cursor:pointer}button.active{background:#245bd6;color:#fff;border-color:#245bd6}button:disabled{opacity:.4;cursor:default}button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #217f66;outline-offset:2px}header{padding:16px 24px;background:white;border-bottom:1px solid #dce4ec}h1{font-size:23px;line-height:1.4;margin:0 0 6px}h2{font-size:22px;line-height:1.5;margin:0 0 16px}h3{font-size:16px;margin:0 0 8px}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.toolbar{margin-top:12px;justify-content:space-between}.pill{font-size:12px;padding:3px 9px;background:#e4f2e9;border-radius:4px}.local{background:#fff1c7}.meta{color:#53687f;font-size:12px}.workspace{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;max-width:1380px;margin:auto;padding:20px}aside,main{min-width:0}input{width:100%;border:1px solid #ccd7e3;border-radius:5px;padding:10px}.tree{max-height:72vh;overflow:auto;margin-top:12px}details.folder{border-bottom:1px solid #dce4ec;padding:8px 0}summary{cursor:pointer;font-weight:bold;padding:8px 4px}.folder-tools{margin:2px 0 8px}.folder-tools button{padding:4px 9px;font-size:12px}.chunk{display:block;width:100%;text-align:start;border:0;border-inline-start:3px solid transparent;border-radius:0;background:transparent;margin:4px 0;padding:9px 10px}.chunk.selected{background:#e6f2ed;border-inline-start-color:#16734e}.chunk strong{display:block;overflow-wrap:anywhere;font-size:14px}.chunk bdi{font-size:12px;color:#44617b}.actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;direction:ltr}.actions .position{flex:1;min-width:110px}.document{height:72vh;overflow:auto;padding:16px;border:1px solid #dce4ec;background:#eaf0f4}.paper{background:white;max-width:850px;margin:0 auto 16px;padding:30px;min-width:0}.paper .code{display:block;font-size:12px;color:#52647c;margin-bottom:5px}.summary{padding-bottom:14px;margin-bottom:18px;border-bottom:1px solid #e2e8ef;color:#52647c;font-size:14px}.paragraph{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;margin:0 0 14px;font-size:17px;tab-size:4}.heading{font-size:19px;font-weight:bold;margin-top:12px}.list-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}.list-row .paragraph{margin:0}.marker{min-width:26px;text-align:center;flex-shrink:0}.grow{flex:1;min-width:0}.image img{display:block;width:100%;height:auto;margin:12px auto}.footnotes{border-top:1px solid #ccd7e3;margin-top:22px;padding-top:14px}.footnotes .paragraph{font-size:13px;line-height:1.75}.footnote{display:flex;gap:8px}.footnote .marker{font-size:12px}.fnref{font-size:.7em;vertical-align:super;direction:ltr;unicode-bidi:isolate;color:#235789}.links{padding:14px 0}.links .group{margin-top:12px}.links button{display:block;text-align:start;margin:5px 0;padding:6px 9px;max-width:100%;overflow-wrap:anywhere}.pending{color:#8b4e16;background:#fff7e6;padding:8px;margin-top:8px;font-size:13px}.issues{margin:12px 24px;border-inline-start:3px solid #ba8d1c;background:#fff8e6;padding:12px 16px}.issues li{margin-bottom:8px}.qa-tools{margin-bottom:10px}.empty{padding:20px;background:white}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(max-width:800px){header{padding:14px}.workspace{display:block;padding:12px}.tree{max-height:240px;margin-bottom:14px}.document{height:65vh;padding:5px}.paper{padding:18px}.paragraph{font-size:16px}.issues{margin:12px}.toolbar{align-items:flex-start}}
+</style></head><body>
+<header><h1>Hafrashas Challah Part 1 · Hebrew Review</h1><div class="row"><span class="pill local">Local preview only · No database import</span><span class="pill" id="counts"></span></div>
+<div class="row toolbar"><nav class="row" aria-label="Material category"><button data-category="notes">Review Notes</button><button data-category="qa">Q&amp;A</button><button data-category="sources">Source Sheets</button></nav>
+<div class="row" aria-label="Material language"><button data-language="he" lang="he">עברית</button><button data-language="en">English</button></div></div></header>
+<details class="issues"><summary>Review Findings / נקודות לבדיקה</summary><ul id="issues"></ul></details>
+<div class="workspace" id="workspace" dir="rtl"><aside><input id="search" aria-label="Search chunks" placeholder="Search / חיפוש"><div class="tree" id="tree"></div></aside>
+<main><div class="actions"><button id="previous">Previous</button><span class="position meta" id="position"></span><button id="next">Next</button><button id="full">Full Document</button></div>
+<div class="row qa-tools" id="qa-tools" hidden><button id="with-answers">עם תשובות</button><button id="questions-only">שאלות בלבד</button></div>
+<div class="document" id="document" aria-label="Document preview"></div><div class="links" id="links"></div></main></div>
+<script type="application/json" id="preview-data">__PREVIEW_DATA__</script>
+<script>
+const data=JSON.parse(document.getElementById('preview-data').textContent);
+const $=id=>document.getElementById(id),escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let language='he',category='notes',selectedCode='HC1-A1',scope=null,questionsOnly=false;
+const expanded=new Set(['he:notes:A']);
+const he=()=>language==='he',code=c=>c.code.replace(/^HC1-/,''),direction=()=>he()?'rtl':'ltr';
+function materials(){
+ const notes=data.languages[language].chunks.filter(c=>c.sourceType==='notes');
+ if(category!=='sources')return data.languages[language].chunks.filter(c=>c.sourceType===category).map(c=>{
+   if(c.sourceType!=='qa')return c;
+   const first=c.relatedNotes?.[0]??c.pendingRelatedNotes?.[0];
+   return {...c,section:first?.[4]??c.section??'QA'};
+ });
+ return data.sources.map(c=>({...c,relatedNotes:notes.filter(n=>n.sourceNumbers.includes(c.sourceNumber)).map(n=>n.code),
+   pendingRelatedNotes:(c.relatedNotes??[]).filter(id=>!notes.some(n=>n.code===id))}));
+}
+function title(c){return c.sourceType==='sources'?(he()?'מקור '+hebrewNumber(c.sourceNumber):'Source '+c.sourceNumber):c.title}
+function hebrewNumber(n){if(n===15)return'טו';if(n===16)return'טז';return(n>=10?'יכלמנסעפצ'[Math.floor(n/10)-1]:'')+(n%10?'אבגדהוזחט'[n%10-1]:'')}
+function sectionName(key){return key==='QA'?(he()?'שאלות ותשובות':'Q&A'):key==='P2'?(he()?'חלק ב — ללא קישור':'Part 2 — Unlinked'):(he()?'סעיף '+(data.sectionLabels[key]??key):'Section '+key)}
+function filtered(){const query=$('search').value.trim().toLowerCase();return materials().filter(c=>!query||(c.code+' '+c.title+' '+c.summary).toLowerCase().includes(query))}
+function spanHtml(parts,owner){return(parts??[]).map(s=>{
+ let text=escape(s.text);if(s.bold)text='<strong>'+text+'</strong>';if(s.italic)text='<em>'+text+'</em>';if(s.underline)text='<u>'+text+'</u>';
+ const reset=(s.bold===false?'font-weight:400;':'')+(s.italic===false?'font-style:normal;':'')+(s.underline===false?'text-decoration:none;':'');
+ if(reset)text='<span style="'+reset+'">'+text+'</span>';
+ if(/^#[a-f\d]{6}$/i.test(s.color??''))text='<span style="color:'+s.color+'">'+text+'</span>';
+ if(s.footnote)text='<a class="fnref" dir="ltr" href="#'+owner+'-fn'+s.footnote+'">'+text+'</a>';
+ if(s.href&&/^https?:\/\//i.test(s.href))text='<a href="'+escape(s.href)+'" target="_blank" rel="noopener noreferrer">'+text+'</a>';
+ return text;
+}).join('')}
+function layout(b){
+ let indent=Math.max(0,b.rtl?(b.rightIndent??b.indent??0):(b.indent??0)),first=(b.firstLine??0)-(b.hanging??0),tabs=b.leadingTabs??0;
+ if(tabs){let position=indent+first;const stops=(b.tabStops??[]).filter(s=>s.alignment!=='clear').map(s=>s.position).sort((a,b)=>a-b),width=b.defaultTabWidth||36;
+   for(let i=0;i<tabs;i++)position=stops.find(s=>s>position)??(Math.floor(position/width)+1)*width;indent=Math.max(indent,position);first=0}
+ const spans=(b.spans??[]).map(s=>{let i=0;while(tabs>0&&s.text[i]==='\t'){tabs--;i++}return{...s,text:s.text.slice(i)}});
+ return{indent,first,spans};
+}
+function block(b,owner){
+ if(b.kind==='image')return /^data:image\/(png|jpeg|webp);base64,/.test(b.uri??'')?'<div class="image"><img src="'+escape(b.uri)+'" alt="'+escape(b.alt)+'" style="max-width:'+Math.max(1,b.displayWidth??850)+'px"></div>':'';
+ const l=layout(b),rtl=b.rtl===true,dir=rtl?'rtl':'ltr',align=['right','left','center'].includes(b.alignment)?b.alignment:(rtl?'right':'left'),list=b.kind==='list'||b.kind==='question';
+ const text=(b.kind==='heading'&&b.marker?escape(b.marker)+' ':'')+spanHtml(l.spans,owner);
+ const body='<div class="paragraph '+(b.kind==='heading'?'heading':'')+'" dir="'+dir+'" style="text-align:'+align+';text-indent:'+(list?0:l.first)+'pt">'+text+'</div>';
+ if(list)return'<div class="list-row" dir="'+dir+'" style="margin-inline-start:'+Math.min(l.indent||12+(b.level??0)*18,100)+'pt"><span class="marker"><bdi>'+escape(b.marker)+'</bdi></span><div class="grow">'+body+'</div></div>';
+ return'<div dir="'+dir+'" style="margin-inline-start:'+Math.min(l.indent,100)+'pt">'+body+'</div>';
+}
+function paper(c){
+ const doc=questionsOnly&&he()&&c.questionDocument?c.questionDocument:c,owner=language+'-'+c.code;
+ return'<article class="paper" dir="'+direction()+'" data-chunk="'+c.code+'"><bdi dir="ltr" class="code">'+code(c)+'</bdi><h2>'+escape(title(c))+'</h2>'+
+ (c.summary&&c.sourceType!=='qa'?'<div class="summary" dir="auto">'+escape(c.summary)+'</div>':'')+
+ (he()&&c.pendingRelatedNotes?.length?'<div class="pending">טרם סופקו סיכומים בעברית למקטעים: <bdi dir="ltr">'+c.pendingRelatedNotes.map(id=>id.replace('HC1-','')).join(', ')+'</bdi></div>':'')+
+ doc.blocks.map(b=>block(b,owner)).join('')+(doc.footnotes.length?'<section class="footnotes"><h3>'+(he()?'הערות שוליים':'Source Notes')+'</h3>'+doc.footnotes.map(n=>'<div class="footnote" id="'+owner+'-fn'+n.id+'"><bdi class="marker" dir="ltr">['+n.id+']</bdi><div class="grow">'+n.blocks.map(b=>block(b,owner)).join('')+'</div></div>').join('')+'</section>':'')+'</article>';
+}
+function select(id){selectedCode=id;scope=null;const c=materials().find(c=>c.code===id);if(c)expanded.add(language+':'+category+':'+c.section);render();$('document').scrollTop=0}
+function switchLanguage(next){language=next;scope=null;questionsOnly=false;$('search').value='';render();$('document').scrollTop=0}
+function switchCategory(next){category=next;scope=null;questionsOnly=false;$('search').value='';render();$('document').scrollTop=0}
+function linkGroup(label,ids,kind){const target=kind==='sources'?data.sources:data.languages[language].chunks;return'<section class="group"><h3>'+label+'</h3>'+ids.map(id=>target.find(c=>c.code===id)).filter(Boolean).map(c=>'<button data-link="'+c.code+'" data-kind="'+c.sourceType+'"><bdi dir="ltr">'+code(c)+'</bdi> — '+escape(title(c))+'</button>').join('')+(!ids.length?'<span class="meta">'+(he()?'אין חומר מקושר זמין בשפה זו':'No linked material available in this language')+'</span>':'')+'</section>'}
+function render(){
+ $('workspace').dir=direction();document.querySelectorAll('[data-language]').forEach(b=>{b.classList.toggle('active',b.dataset.language===language);b.setAttribute('aria-pressed',b.dataset.language===language)});
+ document.querySelectorAll('[data-category]').forEach(b=>{b.classList.toggle('active',b.dataset.category===category);b.setAttribute('aria-pressed',b.dataset.category===category)});
+ const all=materials(),items=filtered(),selected=items.find(c=>c.code===selectedCode)??items[0],index=items.indexOf(selected);if(selected)selectedCode=selected.code;
+ const languageChunks=data.languages[language].chunks;
+ $('counts').textContent=languageChunks.filter(c=>c.sourceType==='notes').length+' notes · '+languageChunks.filter(c=>c.sourceType==='qa').length+' Q&A · 57 shared sources';
+ $('tree').innerHTML=[...new Set(items.map(c=>c.section))].map(section=>{
+   const members=items.filter(c=>c.section===section),key=language+':'+category+':'+section;
+   return'<details class="folder" '+(expanded.has(key)?'open':'')+' data-folder="'+key+'"><summary>'+escape(sectionName(section))+' <span class="meta">('+members.length+')</span></summary><div class="folder-tools"><button data-section="'+section+'">'+(he()?'הצגת הסעיף':'View Section')+'</button></div>'+members.map(c=>'<button class="chunk '+(c.code===selected?.code?'selected':'')+'" data-code="'+c.code+'"><bdi dir="ltr">'+code(c)+'</bdi><strong>'+escape(title(c))+'</strong></button>').join('')+'</details>';
+ }).join('');
+ $('tree').querySelectorAll('details').forEach(d=>d.ontoggle=()=>{if(d.open)expanded.add(d.dataset.folder);else expanded.delete(d.dataset.folder)});
+ $('tree').querySelectorAll('[data-code]').forEach(b=>b.onclick=()=>select(b.dataset.code));
+ $('tree').querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>{scope=b.dataset.section;render();$('document').scrollTop=0});
+ const shown=scope==='all'?items:scope?items.filter(c=>c.section===scope):selected?[selected]:[];
+ $('document').innerHTML=shown.length?shown.map(paper).join(''):'<div class="empty">No matching material / לא נמצא חומר תואם</div>';
+ $('position').textContent=scope?(scope==='all'?'Full document':sectionName(scope))+' · '+shown.length+' chunks':selected?code(selected)+' · '+(index+1)+' / '+items.length:'No selection';
+ $('previous').disabled=!!scope||index<=0;$('next').disabled=!!scope||index<0||index===items.length-1;
+ $('previous').onclick=()=>select(items[index-1].code);$('next').onclick=()=>select(items[index+1].code);
+ $('full').textContent=scope?'Single Chunk':'Full Document';
+ $('qa-tools').hidden=!(category==='qa'&&he());$('with-answers').classList.toggle('active',!questionsOnly);$('questions-only').classList.toggle('active',questionsOnly);
+ $('links').innerHTML=!selected||scope?'':category==='notes'?linkGroup(he()?'שאלות ותשובות קשורות':'Suggested Q&A',selected.relatedQa??[],'qa')+linkGroup(he()?'מקורות קשורים':'Suggested Source Sheets',selected.relatedSources??[],'sources'):linkGroup(he()?'סיכומים קשורים':'Related Review Notes',selected.relatedNotes??[],'notes');
+ if(selected&&!scope&&he()&&selected.pendingRelatedNotes?.length)$('links').innerHTML+='<p class="pending">Missing Hebrew notes: <bdi dir="ltr">'+selected.pendingRelatedNotes.map(id=>id.replace('HC1-','')).join(', ')+'</bdi></p>';
+ $('links').querySelectorAll('[data-link]').forEach(b=>b.onclick=()=>{const id=b.dataset.link;switchCategory(b.dataset.kind);select(id)});
+}
+document.querySelectorAll('[data-language]').forEach(b=>b.onclick=()=>switchLanguage(b.dataset.language));
+document.querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>switchCategory(b.dataset.category));
+$('search').oninput=()=>{scope=null;render()};$('full').onclick=()=>{scope=scope?null:'all';render();$('document').scrollTop=0};
+$('with-answers').onclick=()=>{questionsOnly=false;render()};$('questions-only').onclick=()=>{questionsOnly=true;render()};
+$('issues').innerHTML=data.corrections.concat(data.warnings).map(item=>'<li>'+escape(item)+'</li>').join('');render();
+</script></body></html>

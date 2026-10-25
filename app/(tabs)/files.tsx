@@ -21,6 +21,7 @@ import { useAppState } from "../../src/state/AppState";
 import { useAuthState } from "../../src/state/AuthState";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 import { PacketPreviewModal } from "../../src/shared/PacketPreviewModal";
+import { materialTextStyle } from "../../src/shared/materialLanguages";
 
 type FileTypeFilter = FileType | "all" | "qa_packet";
 
@@ -195,7 +196,7 @@ export default function FilesScreen() {
           <Card key={file.id}>
             <Row>
               <View style={{ flex: 1, minWidth: 220 }}>
-                <Text style={styles.sectionTitle}>{file.title}</Text>
+                <Text testID={`file-title-${file.id}`} style={[styles.sectionTitle, materialTextStyle(file.language)]}>{file.title}</Text>
                 <Text style={styles.muted}>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</Text>
               </View>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -221,6 +222,7 @@ export default function FilesScreen() {
               )}
               <Pill label={`By ${uploaderLabel(file, isGlobalAdmin, profile)}`} />
               <Pill label={selectedProgram.name} />
+              <Pill label={file.language === "he" ? "Hebrew" : "English"} />
             </View>
 
           </Card>

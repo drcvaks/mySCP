@@ -31,7 +31,7 @@ function blockHtml(block: ImportBlock, small = false) {
   const list = block.kind === "list" || block.kind === "question";
   const heading = block.kind === "heading";
   const layout = paragraphLayout(block);
-  const align = ["left", "right", "center"].includes(block.alignment ?? "") ? block.alignment : "left";
+  const align = ["left", "right", "center"].includes(block.alignment ?? "") ? block.alignment : block.rtl ? "right" : "left";
   const css = "white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;margin:0 0 12px;line-height:1.7;direction:" +
     (block.rtl ? "rtl" : "ltr") + ";text-align:" + align + ";" +
     (heading ? "font-weight:700;font-size:1.125em;" : "") +
@@ -40,17 +40,18 @@ function blockHtml(block: ImportBlock, small = false) {
   const body = '<div style="' + css + '">' + text + "</div>";
   if (list) {
     const indent = block.indent ? Math.max(0, block.indent - (block.hanging ?? 18)) : 12 + (block.level ?? 0) * 18;
-    return '<div style="display:flex;gap:8pt;margin-left:' + size(indent) +
+    return '<div dir="' + (block.rtl ? 'rtl' : 'ltr') + '" style="display:flex;gap:8pt;margin-' + (block.rtl ? 'right' : 'left') + ':' + size(indent) +
       'pt;align-items:flex-start"><div style="width:20pt;flex-shrink:0;text-align:right;direction:ltr">' +
       escape(block.marker) + '</div><div style="flex:1;min-width:0">' + body + "</div></div>";
   }
-  return '<div style="margin-left:' + size(layout.indent) + "pt;margin-right:" + size(block.rightIndent) + 'pt">' + body + "</div>";
+  return '<div style="margin-' + (block.rtl ? 'right' : 'left') + ':' + size(layout.indent) + 'pt;margin-' + (block.rtl ? 'left' : 'right') + ':' + size(block.rightIndent) + 'pt">' + body + "</div>";
 }
 
 export function renderRichDocument(doc: RichContentDocument) {
-  return '<div class="rich-document" style="font-family:Arial,sans-serif;line-height:1.7;letter-spacing:0">' +
+  const rtl = doc.language === "he";
+  return '<div class="rich-document" lang="' + (rtl ? 'he' : 'en') + '" dir="' + (rtl ? 'rtl' : 'ltr') + '" style="font-family:Arial,sans-serif;line-height:1.7;letter-spacing:0">' +
     doc.blocks.map((block) => blockHtml(block)).join("") +
-    (doc.footnotes.length ? '<section style="border-top:1px solid #cbd5e1;padding-top:12px;margin-top:16px"><strong style="font-size:0.8em">Source Notes</strong>' +
+    (doc.footnotes.length ? '<section style="border-top:1px solid #cbd5e1;padding-top:12px;margin-top:16px"><strong style="font-size:0.8em">' + (rtl ? 'הערות שוליים' : 'Source Notes') + '</strong>' +
       doc.footnotes.map((note) => '<div style="display:flex;gap:8px;margin-top:8px"><span style="min-width:28px;direction:ltr;font-size:0.8em">[' +
         note.id + ']</span><div style="flex:1;min-width:0">' + note.blocks.map((block) => blockHtml(block, true)).join("") + "</div></div>").join("") + "</section>" : "") +
     "</div>";

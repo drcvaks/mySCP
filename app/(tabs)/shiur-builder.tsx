@@ -36,6 +36,8 @@ import { RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
 import { RabbiToolCards, useExpandedRabbiTools } from "../../src/shared/RabbiToolCards";
 import { PacketDocumentHeader } from "../../src/shared/PacketDocumentHeader";
 import { canAccessBeisMidrash } from "../../src/shared/permissions";
+import { hebrewSectionLabels, loadMaterialLanguage, MaterialLanguage, materialLanguageName, materialTextStyle } from "../../src/shared/materialLanguages";
+import { buildPublishedCategoryTitle, defaultPacketTitle } from "../../src/shared/packetTitles";
 
 type BuilderCategory = Extract<ContentSourceType, "notes" | "qa" | "source">;
 type PacketListItem = ReviewPacket & { categories: BuilderCategory[]; itemCount: number };
@@ -57,8 +59,11 @@ export default function ShiurBuilderScreen() {
   const [showSavedPackets, setShowSavedPackets] = useState(false);
   const { chaburos, currentReviewWeek, refresh, selectedChaburahId, selectedProgramId, selectedProgram, programsReady, registerProgramEdits, memberships } = useAppState();
   const loadSequence = useRef(0);
+  const previousBuilderContext = useRef("");
   const { profile } = useAuthState();
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
+  const [contentLanguage, setContentLanguage] = useState<MaterialLanguage>("en");
+  const [missingTranslations, setMissingTranslations] = useState({ notes: 0, qa: 0 });
   const [links, setLinks] = useState<ContentChunkLink[]>([]);
   const [packets, setPackets] = useState<PacketListItem[]>([]);
   const [coverageRows, setCoverageRows] = useState<ReviewPacketCoverage[]>([]);
@@ -74,6 +79,7 @@ export default function ShiurBuilderScreen() {
   const [packetPreviewChunkId, setPacketPreviewChunkId] = useState<string | null>(null);
   const [previewingPacket, setPreviewingPacket] = useState(false);
   const [title, setTitle] = useState("");
+  const [automaticTitle, setAutomaticTitle] = useState(true);
   const [week, setWeek] = useState(fallbackCurrentReviewWeek);
   const [activeCategory, setActiveCategory] = useState<BuilderCategory>("notes");
   const [coverageFilter, setCoverageFilter] = useState<"all" | "covered" | "not-covered">("all");
@@ -181,21 +187,25 @@ export default function ShiurBuilderScreen() {
   }, [currentReviewWeek]);
 
   useEffect(() => {
+    const context = `${managedChaburahId}/${selectedProgramId}/${programsReady}`;
+    const contextChanged = previousBuilderContext.current !== context;
+    previousBuilderContext.current = context;
     resetDraftState();
-    setWeek(currentReviewWeek);
+    if (contextChanged) setWeek(currentReviewWeek);
     setChunks([]);
+    setMissingTranslations({ notes: 0, qa: 0 });
     setLinks([]);
     setPackets([]);
     setCoverageRows([]);
     setExpandedSectionKeys([]);
     void loadBuilderData();
-  }, [managedChaburahId, selectedProgramId, programsReady]);
+  }, [managedChaburahId, selectedProgramId, programsReady, contentLanguage]);
 
   useEffect(() => {
-    if (managedChaburah?.name && (!title || isAutoPacketTitle(title, managedChaburah.name, week))) {
-      setTitle(defaultPacketTitle(managedChaburah.name, week, activeCategoryConfig.label));
+    if (managedChaburah?.name && automaticTitle) {
+      setTitle(defaultPacketTitle(managedChaburah.name, week, activeCategoryConfig.label, contentLanguage));
     }
-  }, [activeCategoryConfig.label, managedChaburah?.name, title, week]);
+  }, [activeCategoryConfig.label, managedChaburah?.name, automaticTitle, week, contentLanguage]);
 
   async function loadBuilderData() {
     const sequence = ++loadSequence.current;
@@ -211,17 +221,24 @@ export default function ShiurBuilderScreen() {
       supabase.from("review_packet_content_coverage").select("*").eq("chaburah_id", managedChaburahId)
     ]);
     if (sequence !== loadSequence.current) return;
-    setLoading(false);
-
     const firstError = [chunksResult.error, linksResult.error, packetsResult.error, coverageResult.error].find(Boolean);
     if (firstError) {
+      setLoading(false);
       setMessage(formatSupabaseError(firstError));
       return;
     }
 
-    setChunks((chunksResult.data ?? []).map(mapContentChunk).filter((c) => belongsToProgram(c, selectedProgramId)));
+    const canonical = (chunksResult.data ?? []).map(mapContentChunk).filter((c) => belongsToProgram(c, selectedProgramId));
+    let displayed: ContentChunk[];
+    try { displayed = await loadMaterialLanguage(canonical, contentLanguage); }
+    catch (error) { if (sequence === loadSequence.current) { setMessage(error instanceof Error ? error.message : "Unable to load material."); setLoading(false); } return; }
+    if (sequence !== loadSequence.current) return;
+    setChunks(displayed);
+    const displayedIds = new Set(displayed.map(chunk => chunk.id));
+    setMissingTranslations({ notes: canonical.filter(c => c.sourceType === "notes" && !displayedIds.has(c.id)).length,
+      qa: canonical.filter(c => c.sourceType === "qa" && !displayedIds.has(c.id)).length });
     setLinks((linksResult.data ?? []).map(mapContentChunkLink));
-    const programPacketRows = (packetsResult.data ?? []).filter((p) => (p.program_id ?? SUMMER_PROGRAM) === selectedProgramId);
+    const programPacketRows = (packetsResult.data ?? []).filter((p) => (p.program_id ?? SUMMER_PROGRAM) === selectedProgramId && (p.language ?? "en") === contentLanguage);
     const ids = new Set(programPacketRows.map((p) => p.id));
     setCoverageRows((coverageResult.data ?? []).filter((c) => ids.has(c.packet_id)).map(mapCoverage));
     const packetRows = programPacketRows.map(mapPacket);
@@ -233,6 +250,7 @@ export default function ShiurBuilderScreen() {
         return { ...packet, categories: summary?.categories ?? [], itemCount: summary?.itemCount ?? 0 };
       })
     );
+    setLoading(false);
   }
 
   async function summarizePacketItems(packetIds: string[]) {
@@ -249,6 +267,18 @@ export default function ShiurBuilderScreen() {
       summaries.set(row.packet_id, current);
     });
     return summaries;
+  }
+
+  async function chooseMaterialLanguage(language: MaterialLanguage) {
+    if (language === contentLanguage || saving || loading) return;
+    if (selectedIds.length || editingPublishedPacket) {
+      const text = "Switch material language? Unsaved selections will be cleared. Saved drafts and published packets keep their original language.";
+      const confirmed = Platform.OS === "web" ? window.confirm(text) : await new Promise<boolean>(resolve => Alert.alert("Switch language?", text, [
+        { text: "Cancel", style: "cancel", onPress: () => resolve(false) }, { text: "Switch", onPress: () => resolve(true) }
+      ], { cancelable: true, onDismiss: () => resolve(false) }));
+      if (!confirmed) return;
+    }
+    setContentLanguage(language);
   }
 
   function normalizePacketIds(ids: string[]) {
@@ -341,10 +371,11 @@ export default function ShiurBuilderScreen() {
 
   async function printPreviewPacket() {
     const printError = await printPacket({
+      language: contentLanguage,
       chunkHeadingOptions,
       chunks: selectedCategoryChunks,
       meta: `${selectedProgram.name} - ${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`,
-      title: buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)
+      title: buildPublishedCategoryTitle(title, activeCategoryConfig.label, contentLanguage)
     });
     if (printError) setMessage(printError);
   }
@@ -445,7 +476,8 @@ export default function ShiurBuilderScreen() {
     setSelectedIds([]);
     setExpandedPacketSectionKeys([]);
     clearPreview();
-    setTitle(defaultPacketTitle(managedChaburah?.name ?? "My Chaburah", week, activeCategoryConfig.label));
+    setAutomaticTitle(true);
+    setTitle(defaultPacketTitle(managedChaburah?.name ?? (contentLanguage === "he" ? "החבורה שלי" : "My Chaburah"), week, activeCategoryConfig.label, contentLanguage));
     setMessage("Started a new draft packet.");
   }
 
@@ -464,6 +496,7 @@ export default function ShiurBuilderScreen() {
     setEditingPublishedPacket(false);
     setPublishedEditSnapshot(null);
     setTitle(packet.title);
+    setAutomaticTitle(false);
     setWeek(packet.week);
     setSelectedIds(loadedIds);
     setActivePane("packet");
@@ -487,6 +520,7 @@ export default function ShiurBuilderScreen() {
       .order("sort_order");
     const loadedIds = (data ?? []).map((item) => item.chunk_id);
     const loadedChunks = loadedIds.map((id) => chunkById.get(id)).filter((chunk): chunk is ContentChunk => Boolean(chunk));
+    if (!error && loadedChunks.length !== loadedIds.length) return { loadedChunks: [], loadedIds: [], error: { message: "Some packet material is unavailable in this language. The packet was not changed." } };
     return { loadedChunks, loadedIds, error };
   }
 
@@ -505,6 +539,7 @@ export default function ShiurBuilderScreen() {
     setEditingPublishedPacket(true);
     setActivePane("packet");
     setTitle(packet.title);
+    setAutomaticTitle(false);
     setWeek(packet.week);
     setSelectedIds(loadedIds);
     const loadedSections = groupSelectedChunksBySection(loadedChunks);
@@ -634,6 +669,7 @@ export default function ShiurBuilderScreen() {
     setSaving(true);
     setMessage("");
     const packetPayload = {
+      language: contentLanguage,
       chunk_heading_options: chunkHeadingOptions,
       program_id: programsReady ? selectedProgramId : undefined,
       chaburah_id: managedChaburahId,
@@ -674,8 +710,8 @@ export default function ShiurBuilderScreen() {
     }
     setActivePacketId(packetId);
     setActivePacketStatus("draft");
-    setMessage("Draft packet saved.");
     await loadBuilderData();
+    setMessage("Draft packet saved.");
     return packetId;
   }
 
@@ -699,7 +735,7 @@ export default function ShiurBuilderScreen() {
     }
     setSaving(true);
     setMessage("");
-    const publishedTitle = buildPublishedCategoryTitle(title.trim(), activeCategoryConfig.label);
+    const publishedTitle = buildPublishedCategoryTitle(title.trim(), activeCategoryConfig.label, contentLanguage);
     const { data, error } = await supabase.rpc("update_published_review_packet_display", {
       new_chunk_heading_options: chunkHeadingOptions,
       target_packet_id: activePacketId,
@@ -772,10 +808,11 @@ export default function ShiurBuilderScreen() {
     }
     setSaving(true);
     setMessage("");
-    const categoryTitle = buildPublishedCategoryTitle(title.trim(), activeCategoryConfig.label);
+    const categoryTitle = buildPublishedCategoryTitle(title.trim(), activeCategoryConfig.label, contentLanguage);
     const packetResult = await supabase
       .from("review_packets")
       .insert({
+        language: contentLanguage,
         program_id: programsReady ? selectedProgramId : undefined,
         chaburah_id: managedChaburahId,
         title: categoryTitle,
@@ -895,8 +932,15 @@ export default function ShiurBuilderScreen() {
             </Text> : null}
           </View>
           <Pill label={`Week ${week}`} tone="primary" />
+          <Pill label={materialLanguageName(contentLanguage)} />
         </Row>
         <MetaText>{managedChaburah?.name ?? "Current Chaburah"}{!layout.compact ? " - official text is controlled and cannot be edited in this version." : ""}</MetaText>
+        <View style={localStyles.weekRow}>
+          <MetaText>Material Language</MetaText>
+          <FilterChip label="English" selected={contentLanguage === "en"} onPress={() => { void chooseMaterialLanguage("en"); }} />
+          <FilterChip label="עברית" selected={contentLanguage === "he"} onPress={() => { void chooseMaterialLanguage("he"); }} />
+        </View>
+        {contentLanguage === "he" && missingTranslations.notes + missingTranslations.qa > 0 ? <MetaText>Hebrew translations are unavailable for {missingTranslations.notes} Notes chunks and {missingTranslations.qa} Q&A chunks. English is not substituted.</MetaText> : null}
         <View style={localStyles.weekRow}>
           {reviewWeeks.map((reviewWeek) => (
             <FilterChip key={reviewWeek} label={`Week ${reviewWeek}`} onPress={() => setWeek(reviewWeek)} selected={week === reviewWeek} />
@@ -969,11 +1013,11 @@ export default function ShiurBuilderScreen() {
                   <View key={section.key} style={localStyles.folderShell}>
                     <View style={[localStyles.folderRow, layout.compact && localStyles.stackedFileRow]}>
                     <Pressable accessibilityRole="button" accessibilityLabel={`${expanded ? "Collapse" : "Expand"} ${section.title}`}
-                      accessibilityState={{ expanded }} onPress={() => toggleSection(section.key)} style={localStyles.folderHeading}>
-                      <Ionicons name={expanded ? "chevron-down" : "chevron-forward"} color={theme.colors.muted} size={18} />
+                      accessibilityState={{ expanded }} onPress={() => toggleSection(section.key)} style={[localStyles.folderHeading, contentLanguage === "he" && { flexDirection: "row-reverse" }]}>
+                      <Ionicons name={expanded ? "chevron-down" : contentLanguage === "he" ? "chevron-back" : "chevron-forward"} color={theme.colors.muted} size={18} />
                       <Ionicons name={expanded ? "folder-open-outline" : "folder-outline"} color={theme.colors.accent} size={23} />
                       <View style={localStyles.folderText}>
-                        <Text style={localStyles.folderTitle}>{section.title}</Text>
+                        <Text style={[localStyles.folderTitle, contentLanguage === "he" && { textAlign: "right", writingDirection: "rtl" }]}>{section.title}</Text>
                         <MetaText>
                           {section.sourceLabel} - {section.chunks.length} chunk{section.chunks.length === 1 ? "" : "s"} - {addedCount} added - {coveredCount} covered
                         </MetaText>
@@ -997,8 +1041,10 @@ export default function ShiurBuilderScreen() {
                             <View style={localStyles.treeLine} />
                             <Ionicons name="document-text-outline" color={theme.colors.muted} size={19} />
                             <View style={localStyles.fileText}>
-                              <Text style={localStyles.fileTitle}>{chunk.chunkTitle}</Text>
-                              <MetaText>{chunkDisplayCode(chunk.chunkCode)}{chunk.chunkSummary ? ` - ${chunk.chunkSummary}` : ""}</MetaText>
+                              <Text style={[localStyles.fileTitle, materialTextStyle(chunk.language)]}>{chunk.chunkTitle}</Text>
+                              {chunk.language === "he" ? <><MetaText>{chunkDisplayCode(chunk.chunkCode)}</MetaText>
+                                {chunk.chunkSummary ? <Text style={[styles.muted, materialTextStyle(chunk.language)]}>{chunk.chunkSummary}</Text> : null}</>
+                                : <MetaText>{chunkDisplayCode(chunk.chunkCode)}{chunk.chunkSummary ? ` - ${chunk.chunkSummary}` : ""}</MetaText>}
                               <CoverageLine coverage={coverageByChunkId.get(chunk.id) ?? []} />
                             </View>
                             </View>
@@ -1034,7 +1080,8 @@ export default function ShiurBuilderScreen() {
             <View style={localStyles.titleRow}>
               <Text style={localStyles.titleLabel}>Title:</Text>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <FormInput onChangeText={setTitle} placeholder="Packet title" value={title} />
+                <FormInput onChangeText={value => { setAutomaticTitle(false); setTitle(value); }} placeholder="Packet title" value={title}
+                  textDirection={contentLanguage === "he" ? "rtl" : "ltr"} />
               </View>
             </View>
             {!layout.compact ? <Text style={styles.muted}>The official packet text below is controlled and cannot be edited here.</Text> : null}
@@ -1049,7 +1096,7 @@ export default function ShiurBuilderScreen() {
                         <Ionicons name={expanded ? "chevron-down" : "chevron-forward"} color={theme.colors.muted} size={18} />
                         <Ionicons name={expanded ? "folder-open-outline" : "folder-outline"} color={theme.colors.accent} size={23} />
                         <View style={localStyles.folderText}>
-                          <Text style={localStyles.folderTitle}>{section.title}</Text>
+                          <Text style={[localStyles.folderTitle, contentLanguage === "he" && { textAlign: "right", writingDirection: "rtl" }]}>{section.title}</Text>
                           <MetaText>
                             {section.sourceLabel} - {section.chunks.length} item{section.chunks.length === 1 ? "" : "s"}
                           </MetaText>
@@ -1083,7 +1130,7 @@ export default function ShiurBuilderScreen() {
                               <View style={localStyles.treeLine} />
                               <Ionicons name="document-text-outline" color={theme.colors.muted} size={19} />
                               <View style={localStyles.fileText}>
-                                <Text style={localStyles.fileTitle} numberOfLines={2}>{chunk.chunkTitle}</Text>
+                                <Text style={[localStyles.fileTitle, materialTextStyle(chunk.language)]} numberOfLines={2}>{chunk.chunkTitle}</Text>
                                 <MetaText>{chunkDisplayCode(chunk.chunkCode)}</MetaText>
                               </View>
                             </View>
@@ -1206,7 +1253,7 @@ export default function ShiurBuilderScreen() {
         {selectedCategoryChunks.length > 0 ? (
           <View style={localStyles.documentPreviewShell}>
             <View style={localStyles.documentPage}>
-              <PacketDocumentHeader title={buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}
+              <PacketDocumentHeader language={contentLanguage} title={buildPublishedCategoryTitle(title, activeCategoryConfig.label, contentLanguage)}
                 meta={`${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`} />
               {selectedCategoryChunks.map((chunk, index) => (
                 <DocumentChunk key={chunk.id} chunk={chunk} coverage={coverageByChunkId.get(chunk.id) ?? []} index={index} showCoverageState showHeading={includesChunkHeading(chunk, chunkHeadingOptions)} />
@@ -1240,9 +1287,9 @@ export default function ShiurBuilderScreen() {
                             ? activeCategoryConfig.packetLabel
                             : `${previewChunk ? chunkDisplayCode(previewChunk.chunkCode) : ""} - ${previewChunk?.sectionTitle}`}
                     </MetaText>
-                    <Text style={[localStyles.modalTitle, !desktopPreview && { fontSize: 18, lineHeight: 24 }]}>
+                    <Text style={[localStyles.modalTitle, !desktopPreview && { fontSize: 18, lineHeight: 24 }, materialTextStyle(contentLanguage)]}>
                       {previewingPacket
-                        ? buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)
+                        ? buildPublishedCategoryTitle(title, activeCategoryConfig.label, contentLanguage)
                         : previewSection
                           ? previewSection.title
                           : packetPreviewChunk
@@ -1269,7 +1316,7 @@ export default function ShiurBuilderScreen() {
                 <ScrollView contentContainerStyle={[localStyles.previewPageContent, !desktopPreview && { padding: 6 }]} style={[localStyles.previewPage, previewPageStyle]}>
                   <View style={[localStyles.modalDocumentPage, !desktopPreview && { padding: 12 }]}>
                     {previewingPacket ? (
-                      <PacketDocumentHeader title={buildPublishedCategoryTitle(title || "Untitled Packet", activeCategoryConfig.label)}
+                      <PacketDocumentHeader language={contentLanguage} title={buildPublishedCategoryTitle(title, activeCategoryConfig.label, contentLanguage)}
                         meta={`${managedChaburah?.name ?? "My Chaburah"} - Week ${week}`} />
                     ) : null}
                     {modalPreviewChunks.map((chunk, index) => (
@@ -1367,9 +1414,9 @@ function DocumentChunk({
   return (
     <View style={[localStyles.documentChunk, index === 0 && localStyles.documentChunkFirst]}>
       <MetaText>{showNumber ? `${index + 1}. ` : ""}{chunkDisplayCode(chunk.chunkCode)}</MetaText>
-      {showHeading ? <Text style={isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle}>{chunk.chunkTitle}</Text> : null}
+      {showHeading ? <Text style={[isQa ? localStyles.documentQaTitle : localStyles.documentSectionTitle, materialTextStyle(chunk.language)]}>{chunk.chunkTitle}</Text> : null}
       {showCoverageState ? <CoverageLine coverage={coverage} showEmpty /> : null}
-      {chunk.contentDocument ? <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} /> : blocks.map((block, blockIndex) => {
+      {chunk.contentDocument ? <ImportDocument language={chunk.language} blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} /> : blocks.map((block, blockIndex) => {
         if (block.kind === "question") {
           return (
             <View key={`${chunk.id}-${blockIndex}`} style={localStyles.documentQuestionBlock}>
@@ -1563,11 +1610,6 @@ function splitListLead(text: string) {
   };
 }
 
-function buildPublishedCategoryTitle(baseTitle: string, categoryLabel: string) {
-  const cleanTitle = baseTitle || "Review Packet";
-  return cleanTitle.toLowerCase().includes(categoryLabel.toLowerCase()) ? cleanTitle : `${cleanTitle} - ${categoryLabel}`;
-}
-
 function getPreviewDimensions(mode: PreviewSizeMode, screenWidth: number, screenHeight: number) {
   const maxWidth = Math.max(720, screenWidth - 48);
   const maxHeight = Math.max(520, screenHeight - 48);
@@ -1585,30 +1627,6 @@ function getPreviewDimensions(mode: PreviewSizeMode, screenWidth: number, screen
 
 function isBuilderCategory(sourceType?: ContentSourceType): sourceType is BuilderCategory {
   return sourceType === "notes" || sourceType === "qa" || sourceType === "source";
-}
-
-function defaultPacketTitle(chaburahName: string, week: number, categoryLabel: string) {
-  return `${chaburahName} - Week ${week} - ${categoryLabel}`;
-}
-
-function isAutoPacketTitle(title: string, chaburahName: string, week: number) {
-  const currentWeekPrefix = `${chaburahName} Week ${week} `;
-  const generatedTitleMatch =
-    title.match(new RegExp(`^${escapeRegExp(chaburahName)}\\s+-\\s+Week \\d+\\s+-\\s+(.+)$`)) ??
-    title.match(new RegExp(`^${escapeRegExp(chaburahName)} Week \\d+ (.+)$`));
-  if (!title.startsWith(currentWeekPrefix) && !generatedTitleMatch) return false;
-  const suffix = (generatedTitleMatch?.[1] ?? title.slice(currentWeekPrefix.length)).trim();
-  if (suffix === "Review Packet") return true;
-  return builderCategories.some(
-    (category) =>
-      suffix === category.label ||
-      suffix === `${category.label} Packet` ||
-      suffix === `Review Packet - ${category.label}`
-  );
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function categoryLabel(category: BuilderCategory) {
@@ -1655,11 +1673,12 @@ function PacketGroup({
       {packets.length === 0 ? <Text style={styles.muted}>No {title.toLowerCase()} for this week.</Text> : null}
       <View style={compact ? localStyles.existingPacketList : { gap: 10 }}>
         {packets.map((packet) => {
-          const displayTitle = isDraftGroup ? `${chaburahName ?? "Chaburah"} / Week ${packet.week}` : packet.title;
+          const displayTitle = isDraftGroup && packet.language !== "he" ? `${chaburahName ?? "Chaburah"} / Week ${packet.week}` : packet.title;
           return (
             <View key={packet.id} style={[localStyles.packetListRow, compact && localStyles.compactPacketListRow]}>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.body} numberOfLines={2}>{displayTitle}</Text>
+                <Text style={[styles.body, materialTextStyle(packet.language)]} numberOfLines={2}>{displayTitle}</Text>
+                <MetaText>{materialLanguageName(packet.language)}</MetaText>
                 <MetaText>
                   {packet.itemCount} section{packet.itemCount === 1 ? "" : "s"}
                   {formatPacketDate(packet.updatedAt) ? ` - ${formatPacketDate(packet.updatedAt)}` : ""}
@@ -1784,6 +1803,10 @@ function sectionKeyForChunk(chunk: ContentChunk) {
 
 function sectionTitleForChunk(chunk: ContentChunk) {
   const sectionCode = sectionCodeForChunk(chunk);
+  if (chunk.language === "he" && chunk.sourceType !== "source") {
+    const label = hebrewSectionLabels[sectionCode] ?? sectionCode;
+    return `${chunk.sourceType === "qa" ? "שאלות ותשובות - " : ""}סעיף ${label}${chunk.sectionTitle && chunk.sectionTitle !== label ? ` - ${chunk.sectionTitle}` : ""}`;
+  }
   if (chunk.sourceType === "qa") return chunk.programId !== SUMMER_PROGRAM && /^[A-G]$/i.test(chunk.sectionKey)
     ? `Q&A - Section ${sectionCode} - ${chunk.sectionTitle}` : `Q&A - ${chunk.workbookTitle}`;
   if (chunk.sourceType === "source") return chunk.sectionTitle || "Source Sheets";
@@ -1806,6 +1829,7 @@ function sourceLabelForChunk(chunk: ContentChunk) {
 
 function mapContentChunk(row: any): ContentChunk {
   return {
+    language: row.language ?? "en",
     contentDocument: readRichContent(row.content_document),
     programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
@@ -1841,6 +1865,7 @@ function mapContentChunkLink(row: any): ContentChunkLink {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    language: row.language ?? "en",
     chunkHeadingOptions: row.chunk_heading_options ?? {},
     programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,

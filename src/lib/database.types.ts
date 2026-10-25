@@ -84,6 +84,7 @@ type AnnouncementRow = {
 };
 
 type LearningFileRow = {
+  language: "en" | "he";
   program_id: string;
   id: string;
   chaburah_id: string | null;
@@ -103,6 +104,7 @@ type LearningFileRow = {
 };
 
 type ContentChunkRow = {
+  language: "en";
   content_document: Json | null;
   program_id: string;
   id: string;
@@ -137,6 +139,7 @@ type ContentChunkLinkRow = {
 };
 
 type ReviewPacketRow = {
+  language: "en" | "he";
   chunk_heading_options: Json;
   program_id: string;
   id: string;
@@ -327,6 +330,12 @@ export interface Database {
       announcements: Table<AnnouncementRow>;
       learning_files: Table<LearningFileRow>;
       content_chunks: Table<ContentChunkRow>;
+      content_chunk_translations: Table<{
+        id: string; chunk_id: string; language: "he"; workbook_title: string; section_title: string;
+        chunk_title: string; chunk_summary: string | null; content_markdown: string; content_document: Json;
+        question_document: Json | null; source_file_name: string; source_numbers: number[]; approved_hash: string;
+        created_at: string; updated_at: string;
+      }>;
       content_chunk_links: Table<ContentChunkLinkRow>;
       review_packets: Table<
         ReviewPacketRow,

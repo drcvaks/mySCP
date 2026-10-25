@@ -204,12 +204,14 @@ export function FormInput({
   value,
   onChangeText,
   placeholder,
-  keyboardType = "default"
+  keyboardType = "default",
+  textDirection
 }: {
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
   keyboardType?: "default" | "email-address" | "numeric" | "url";
+  textDirection?: "ltr" | "rtl";
 }) {
   return (
     <TextInput
@@ -218,7 +220,7 @@ export function FormInput({
       placeholder={placeholder}
       placeholderTextColor={theme.colors.muted}
       keyboardType={keyboardType}
-      style={styles.formInput}
+      style={[styles.formInput, textDirection && { writingDirection: textDirection, textAlign: textDirection === "rtl" ? "right" : "left" }]}
       value={value}
     />
   );

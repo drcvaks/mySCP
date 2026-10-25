@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Card, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
@@ -14,6 +14,7 @@ import { readRichContent } from "../../src/shared/documentContent";
 import { ImportDocument } from "../../src/shared/ImportDocument";
 import { chunkDisplayCode } from "../../src/shared/chunkLabels";
 import { PacketDocumentHeader } from "../../src/shared/PacketDocumentHeader";
+import { loadMaterialLanguage, materialLanguageName, materialTextStyle } from "../../src/shared/materialLanguages";
 
 export default function ShiurPacketScreen() {
   const router = useRouter();
@@ -24,12 +25,16 @@ export default function ShiurPacketScreen() {
   const [chunks, setChunks] = useState<ContentChunk[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const loadSequence = useRef(0);
 
   useEffect(() => {
     void loadPacket();
+    return () => { loadSequence.current++; };
   }, [packetId]);
 
   async function loadPacket() {
+    const sequence = ++loadSequence.current;
+    setPacket(null); setChunks([]);
     if (!packetId) {
       setMessage("Packet not found.");
       return;
@@ -37,6 +42,7 @@ export default function ShiurPacketScreen() {
     setLoading(true);
     setMessage("");
     const packetResult = await supabase.from("review_packets").select("*").eq("id", packetId).single();
+    if (sequence !== loadSequence.current) return;
     if (packetResult.error || !packetResult.data) {
       setLoading(false);
       setMessage(formatSupabaseError(packetResult.error ?? new Error("Packet not found.")));
@@ -48,24 +54,26 @@ export default function ShiurPacketScreen() {
       .select("sort_order, content_chunks(*)")
       .eq("packet_id", packetId)
       .order("sort_order");
-    setLoading(false);
+    if (sequence !== loadSequence.current) return;
     if (itemsResult.error) {
+      setLoading(false);
       setMessage(formatSupabaseError(itemsResult.error));
       return;
     }
 
-    setPacket(mapPacket(packetResult.data));
-    setChunks(
-      (itemsResult.data ?? [])
-        .map((item: any) => item.content_chunks)
-        .filter(Boolean)
-        .map(mapContentChunk)
-    );
+    const savedPacket = mapPacket(packetResult.data);
+    try {
+      const localized = await loadMaterialLanguage((itemsResult.data ?? []).map((item: any) => item.content_chunks).filter(Boolean).map(mapContentChunk), savedPacket.language ?? "en", true);
+      if (sequence !== loadSequence.current) return;
+      setPacket(savedPacket); setChunks(localized);
+    } catch (error) { if (sequence === loadSequence.current) setMessage(error instanceof Error ? error.message : "Unable to load packet language."); }
+    if (sequence === loadSequence.current) setLoading(false);
   }
 
   async function printCurrentPacket() {
     if (!packet || chunks.length === 0) return;
     const printError = await printPacket({
+      language: packet.language,
       chunkHeadingOptions: packet.chunkHeadingOptions,
       chunks,
       meta: `${programName(packet.programId, programs)} - ${packet.siman} - Week ${packet.week}`,
@@ -82,10 +90,11 @@ export default function ShiurPacketScreen() {
       </View>
       {packet ? (
         <Card>
-          <PacketDocumentHeader title={packet.title} meta={packet.siman} />
+          <PacketDocumentHeader language={packet.language} title={packet.title} meta={packet.siman} />
           <Row>
             <Pill label={`Week ${packet.week}`} tone="primary" />
             <Pill label={programName(packet.programId, programs)} />
+            <Pill label={materialLanguageName(packet.language)} />
             <Pill label={packet.status === "published" ? "Published" : "Draft"} tone={packet.status === "published" ? "success" : "accent"} />
             <Button label="Print" onPress={printCurrentPacket} disabled={chunks.length === 0} />
           </Row>
@@ -102,7 +111,7 @@ export default function ShiurPacketScreen() {
       {chunks.map((chunk, index) => (
         <Card key={chunk.id}>
           <MetaText>{index + 1}. {chunkDisplayCode(chunk.chunkCode)}</MetaText>
-          {includesChunkHeading(chunk, packet?.chunkHeadingOptions) ? <Text style={localStyles.chunkTitle}>{chunk.chunkTitle}</Text> : null}
+          {includesChunkHeading(chunk, packet?.chunkHeadingOptions) ? <Text style={[localStyles.chunkTitle, materialTextStyle(chunk.language)]}>{chunk.chunkTitle}</Text> : null}
           <PacketChunkContent chunk={chunk} />
         </Card>
       ))}
@@ -111,7 +120,7 @@ export default function ShiurPacketScreen() {
 }
 
 function PacketChunkContent({ chunk }: { chunk: ContentChunk }) {
-  if (chunk.contentDocument) return <ImportDocument blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} />;
+  if (chunk.contentDocument) return <ImportDocument language={chunk.language} blocks={chunk.contentDocument.blocks} footnotes={chunk.contentDocument.footnotes} compactSources={chunk.sourceType === "source"} />;
   const blocks = chunk.contentMarkdown
     .split(/\n\s*\n/)
     .map((block) => block.replace(/\r/g, "").trim())
@@ -145,6 +154,7 @@ function PacketImage({ alt, uri }: { alt: string; uri: string }) {
 
 function mapPacket(row: any): ReviewPacket {
   return {
+    language: row.language ?? "en",
     chunkHeadingOptions: row.chunk_heading_options ?? {},
     programId: row.program_id ?? SUMMER_PROGRAM,
     id: row.id,
@@ -162,6 +172,7 @@ function mapPacket(row: any): ReviewPacket {
 
 function mapContentChunk(row: any): ContentChunk {
   return {
+    language: row.language ?? "en",
     contentDocument: readRichContent(row.content_document),
     id: row.id,
     chunkCode: row.chunk_code,

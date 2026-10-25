@@ -351,6 +351,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             uploadedBy: row.uploaded_by,
             uploadedByName: uploaderProfile?.fullName ?? uploaderProfile?.email,
             fileType: row.file_type,
+            language: row.language ?? "en",
             url: row.external_url ?? undefined,
             storagePath: row.storage_path ?? undefined,
             reviewPacketId: row.review_packet_id ?? undefined,

@@ -27,9 +27,9 @@ export function fileTypeLabel(type: FileType) {
 export function learningFileTypeLabel(file: { fileType: FileType; title?: string }) {
   if (file.fileType !== "custom_review_packet") return fileTypeLabel(file.fileType);
   const title = file.title?.toLowerCase() ?? "";
-  if (title.includes("source sheet")) return "Source Sheets";
-  if (title.includes("q&a") || title.includes("q & a")) return "Q&A";
-  if (title.includes("review note")) return "Review Notes";
+  if (title.includes("source sheet") || title.includes("דפי מקורות")) return "Source Sheets";
+  if (title.includes("q&a") || title.includes("q & a") || title.includes("שאלות ותשובות")) return "Q&A";
+  if (title.includes("review note") || title.includes("סיכום השיעור")) return "Review Notes";
   return "Review Packet";
 }
 

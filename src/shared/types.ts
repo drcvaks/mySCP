@@ -79,6 +79,7 @@ export interface Announcement {
 }
 
 export interface LearningFile {
+  language?: "en" | "he";
   programId?: string;
   id: string;
   title: string;
@@ -101,6 +102,7 @@ export type ContentDifficulty = "core" | "advanced" | "practical";
 export type ReviewPacketStatus = "draft" | "published" | "archived";
 
 export interface ContentChunk {
+  language?: "en" | "he";
   contentDocument?: RichContentDocument;
   programId?: string;
   id: string;
@@ -132,6 +134,7 @@ export interface ContentChunkLink {
 }
 
 export interface ReviewPacket {
+  language?: "en" | "he";
   chunkHeadingOptions?: import("./packetHeadings").PacketHeadingOptions;
   programId?: string;
   id: string;

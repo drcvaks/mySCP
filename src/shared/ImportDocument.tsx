@@ -65,8 +65,8 @@ export { isolateImportSpans } from "./documentContent";
 
 const emptyFootnotes: ImportChunk["footnotes"] = [];
 
-export function ImportDocument({ blocks, footnotes = emptyFootnotes, compactSources = false }: { blocks: ImportBlock[]; footnotes?: ImportChunk["footnotes"]; compactSources?: boolean }) {
-  const document = useMemo<RichContentDocument>(() => ({ version: 1, blocks, footnotes }), [blocks, footnotes]);
+export function ImportDocument({ blocks, footnotes = emptyFootnotes, compactSources = false, language = "en" }: { blocks: ImportBlock[]; footnotes?: ImportChunk["footnotes"]; compactSources?: boolean; language?: "en" | "he" }) {
+  const document = useMemo<RichContentDocument>(() => ({ version: 1, blocks, footnotes, language }), [blocks, footnotes, language]);
   const [resolved, setResolved] = useState<RichContentDocument | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -91,9 +91,9 @@ export function ImportDocument({ blocks, footnotes = emptyFootnotes, compactSour
       {resolved.blocks.map((block, index) => <DocumentBlock key={index} block={block} />)}
       {resolved.footnotes.length ? (
         <View style={s.footnotes}>
-          <Text style={s.noteHeading}>Source Notes</Text>
+          <Text style={[s.noteHeading, language === "he" && { textAlign: "right", writingDirection: "rtl" }]}>{language === "he" ? "הערות שוליים" : "Source Notes"}</Text>
           {resolved.footnotes.map((note) => (
-            <View key={note.id} style={s.noteRow}>
+            <View key={note.id} style={[s.noteRow, language === "he" && { flexDirection: "row-reverse" }]}>
               <Text style={s.noteMarker}>[{note.id}]</Text>
               <View style={s.grow}>{note.blocks.map((block, index) => <DocumentBlock key={index} block={block} small />)}</View>
             </View>
@@ -120,7 +120,7 @@ function DocumentBlock({ block, small = false }: { block: ImportBlock; small?: b
   // A separate marker keeps initial Hebrew text from reordering the list number.
   const text = (
     <Text style={[s.paragraph, small && s.small, heading && s.heading, block.kind === "question" && s.question,
-      { textAlign: block.alignment ?? "left", writingDirection: block.rtl ? "rtl" : "ltr" }]}>
+      { textAlign: block.alignment ?? (block.rtl ? "right" : "left"), writingDirection: block.rtl ? "rtl" : "ltr" }]}>
       {heading && block.marker ? `${block.marker} ` : ""}
       {layout.firstLine > 0 && !list ? "\u2003".repeat(Math.round(layout.firstLine / 12)) : ""}
       {isolateImportSpans(paragraphSpans(block)).map((span, index) => (
@@ -135,13 +135,14 @@ function DocumentBlock({ block, small = false }: { block: ImportBlock; small?: b
   );
   if (list) {
     return (
-      <View style={[s.list, { marginLeft: block.indent ? Math.max(0, block.indent - (block.hanging ?? 18)) * 4 / 3 : 16 + (block.level ?? 0) * 22 }]}>
+      <View style={[s.list, { flexDirection: block.rtl ? "row-reverse" : "row", marginLeft: block.rtl ? 0 : block.indent ? Math.max(0, block.indent - (block.hanging ?? 18)) * 4 / 3 : 16 + (block.level ?? 0) * 22,
+        marginRight: block.rtl ? block.indent ? Math.max(0, block.indent - (block.hanging ?? 18)) * 4 / 3 : 16 + (block.level ?? 0) * 22 : 0 }]}>
         <Text style={[s.marker, small && s.small]}>{block.marker}</Text>
         <View style={s.grow}>{text}</View>
       </View>
     );
   }
-  return <View style={{ marginLeft: layout.indent * 4 / 3, marginRight: (block.rightIndent ?? 0) * 4 / 3 }}>{text}</View>;
+  return <View style={{ marginLeft: (block.rtl ? block.rightIndent ?? 0 : layout.indent) * 4 / 3, marginRight: (block.rtl ? layout.indent : block.rightIndent ?? 0) * 4 / 3 }}>{text}</View>;
 }
 
 const s = StyleSheet.create({

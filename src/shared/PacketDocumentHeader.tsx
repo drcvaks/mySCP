@@ -1,11 +1,11 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 import { uri as logoUri } from "../data/scpLogo.json";
 
-export function PacketDocumentHeader({ title, meta }: { title: string; meta?: string }) {
+export function PacketDocumentHeader({ title, meta, language = "en" }: { title: string; meta?: string; language?: "en" | "he" }) {
   return <View style={s.header}>
     <View style={s.text}>
-      <Text style={s.title}>{title}</Text>
-      {meta ? <Text style={s.meta}>{meta}</Text> : null}
+      <Text style={[s.title, { textAlign: language === "he" ? "right" : "left", writingDirection: language === "he" ? "rtl" : "ltr" }]}>{title}</Text>
+      {meta ? <Text style={[s.meta, { textAlign: language === "he" ? "right" : "left" }]}>{meta}</Text> : null}
     </View>
     <Image accessibilityLabel="SCP logo" source={{ uri: logoUri }} resizeMode="contain" style={s.logo} />
   </View>;
