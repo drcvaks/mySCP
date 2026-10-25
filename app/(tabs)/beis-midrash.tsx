@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
-import { Button, Card, FormInput, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
+import { Button, Card, FormInput, MetaText, Pill, Row, Screen, SectionTitle, StatusBanner } from "../../src/shared/components";
 import { canAccessBeisMidrash, chaburahToolAccess } from "../../src/shared/permissions";
 import { RabbiTool, RabbiToolSwitcher } from "../../src/shared/RabbiToolSwitcher";
 import { RabbiToolCards, useExpandedRabbiTools } from "../../src/shared/RabbiToolCards";
@@ -17,6 +17,9 @@ import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { chunkDisplayCode } from "../../src/shared/chunkLabels";
 import { openBmResource } from "../../src/shared/beisMidrashResources";
 import { openBmResourceLink } from "../../src/shared/beisMidrashLinks";
+import { BmActionButton as Icon } from "../../src/shared/BmActionButton";
+import { BmDiscussionCard } from "../../src/shared/BmDiscussionCard";
+import { BmAreaPicker } from "../../src/shared/BmAreaPicker";
 
 export default function BeisMidrashScreen() {
   const router = useRouter(); const params = useLocalSearchParams<{ thread?: string }>();
@@ -108,7 +111,8 @@ export default function BeisMidrashScreen() {
         if (destination) { setArea(bmAreaForCategory(destination)); setCategory(destination); setFilterChunks([]); setPage(0); }
         if (id) openThread(id);
       }} /> : <>
-      {threadId || reports ? <Button label="Back to Discussions" onPress={back} variant="ghost" /> : null}
+      {threadId || reports ? <View style={s.actionBar}><Icon label="Back to Discussions" caption="Back to Discussions" icon="arrow-back" solid
+        description="Return to the discussion list with your current filters." onPress={back} /></View> : null}
       {loading ? <MetaText>Loading discussions...</MetaText> : null}
       {reports ? <>
         <SectionTitle>Reported Content</SectionTitle>
@@ -120,15 +124,15 @@ export default function BeisMidrashScreen() {
               if (await action("review_report", report.id)) await showReports();
             }} /></Row></Card>)}
       </> : !threadId ? <>
-        <BmChoices label="Beis Midrash" value={area} options={[...Object.entries(bmAreas).map(([id, item]) => ({ id, label: item.label })), { id: "all", label: "All Areas" }]}
-          onChange={value => { setArea(value as BmArea | "all"); setCategory("all"); setFilterChunks([]); setPage(0); }} />
+        <BmAreaPicker value={area} onChange={value => { setArea(value); setCategory("all"); setFilterChunks([]); setPage(0); }} />
         {area !== "resources" ? <BmChoices label={area === "message" ? "Message Board" : area === "teaching" ? "Teaching & Chaburah" : "Topics"} value={category}
           options={[{ id: "all", label: "All Topics" }, ...(area === "all" ? Object.keys(bmCategories) as BmCategory[] : bmAreas[area].categories).map(id => ({ id, label: bmCategories[id] }))]}
           onChange={value => { setCategory(value); setFilterChunks([]); setPage(0); }} /> : null}
         <Row><View style={{ flex: 1, minWidth: 180 }}><FormInput placeholder="Search discussions and replies" value={search} onChangeText={setSearch} /></View>
           <Button label="Start Discussion" onPress={() => setEditor({ kind: "thread" })} />
-          <Icon label="Discussion filters" icon="options-outline" selected={showFilters} onPress={() => setShowFilters(v => !v)} />
-          {moderator ? <Icon label="Review reports" icon="flag-outline" onPress={showReports} /> : null}</Row>
+          <Icon label="Discussion filters" description={showFilters ? "Hide filters for zeman, status, section, author, and official material." : "Show filters for zeman, status, section, author, and official material."}
+            icon="options" selected={showFilters} onPress={() => setShowFilters(v => !v)} />
+          {moderator ? <Icon label="Review reports" description="Review content flagged for Global Admin attention." icon="flag" tone="red" onPress={showReports} /> : null}</Row>
         <BmChoices label="Discussions" value={savedFilter} options={[{ id: "all", label: "All" }, { id: "following", label: "Following" }, { id: "unread", label: "Unread" }, { id: "bookmarked", label: "Bookmarked" }]}
           onChange={value => { setSavedFilter(value); setPage(0); if (value !== "all") { setArea("all"); setCategory("all"); setFilterChunks([]); } }} />
         {showFilters ? <View style={s.filters}>
@@ -147,17 +151,8 @@ export default function BeisMidrashScreen() {
               onChange={value => { setSort(value); setPage(0); }} /></Row>
         </View> : null}
         {!loading && !error && !list.items.length ? <MetaText>No discussions match these filters.</MetaText> : null}
-        {list.items.map(thread => <Card key={thread.id}>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Open discussion: ${thread.title}`} onPress={() => openThread(thread.id)}>
-            <Text style={[s.threadTitle, { writingDirection: bmIsRtl(thread.title) ? "rtl" : "ltr", textAlign: bmIsRtl(thread.title) ? "right" : "left" }]}>{thread.title}</Text>
-          </Pressable>
-          <Row><Pill label={bmCategories[thread.category]} /><Pill label={bmStatuses[thread.status]} />{thread.unread ? <Pill label="Unread" tone="primary" /> : null}
-            {thread.is_hidden ? <Pill label="Hidden" tone="danger" /> : null}{thread.deleted_at ? <Pill label="Removed" tone="danger" /> : null}</Row>
-          <Text numberOfLines={3} style={[styles.body, { textAlign: bmIsRtl(thread.excerpt ?? "") ? "right" : "left", writingDirection: bmIsRtl(thread.excerpt ?? "") ? "rtl" : "ltr" }]}>{thread.excerpt}</Text>
-          <MetaText>{thread.author_name} - {thread.program_id ? programName(thread.program_id, programs) : "General SCP"}</MetaText>
-          <Row><MetaText>{thread.reply_count} replies - {date(thread.last_activity_at)}</MetaText>
-            {(thread.chunks ?? []).map(chunk => <Pill key={chunk.id} label={chunkDisplayCode(chunk.code)} />)}</Row>
-        </Card>)}
+        {list.items.map(thread => <BmDiscussionCard key={thread.id} thread={thread} onOpen={() => openThread(thread.id)}
+          programLabel={thread.program_id ? programName(thread.program_id, programs) : "General SCP"} activityLabel={date(thread.last_activity_at)} />)}
         <Row><Button label="Previous" disabled={page === 0 || loading} variant="secondary" onPress={() => setPage(p => p - 1)} />
           <MetaText>Page {page + 1} - {list.total} discussions</MetaText><Button label="Next" disabled={(page + 1) * 25 >= list.total || loading} onPress={() => setPage(p => p + 1)} /></Row>
       </> : detail ? <>
@@ -180,18 +175,24 @@ export default function BeisMidrashScreen() {
               onPress={() => { void openBmResource(resource).catch(e => setError(e instanceof Error ? e.message : "Unable to open attachment.")); }} />)}
           </View> : null}
           <Row>{detail.chunks.map(chunk => <Button key={chunk.id} label={`View ${chunk.source_type === "qa" ? "Question" : "Notes"} ${chunkDisplayCode(chunk.code)}`} onPress={() => setPreview(chunk)} variant="secondary" />)}</Row>
-          <Row>
-            <Icon label={detail.following ? "Unfollow discussion" : "Follow discussion"} icon={detail.following ? "notifications" : "notifications-outline"} selected={detail.following} disabled={busy}
+          <View style={s.actionBar}>
+            <Icon label={detail.following ? "Unfollow discussion" : "Follow discussion"} caption={detail.following ? "Following" : "Follow"} minWidth={128}
+              description={detail.following ? "Stop tracking new replies in Following and Unread." : "Track this discussion and its new replies in Following and Unread."}
+              icon={detail.following ? "notifications" : "notifications-outline"} selected={detail.following} disabled={busy}
               onPress={() => action("follow", threadId, { enabled: !detail.following })} />
-            <Icon label={detail.bookmarked ? "Remove bookmark" : "Bookmark discussion"} icon={detail.bookmarked ? "bookmark" : "bookmark-outline"} selected={detail.bookmarked} disabled={busy}
+            <Icon label={detail.bookmarked ? "Remove bookmark" : "Bookmark discussion"} caption={detail.bookmarked ? "Saved" : "Save"} tone="amber" minWidth={100}
+              description={detail.bookmarked ? "Remove this discussion from Bookmarked." : "Save this discussion in Bookmarked for later."}
+              icon={detail.bookmarked ? "bookmark" : "bookmark-outline"} selected={detail.bookmarked} disabled={busy}
               onPress={() => action("bookmark", threadId, { enabled: !detail.bookmarked })} />
-            <Icon label="Share discussion link" icon="share-outline" onPress={share} />
-            <Icon label="Report discussion" icon="flag-outline" onPress={() => setEditor({ kind: "report" })} />
-            {author && !closed ? <Icon label="Edit discussion" icon="create-outline" onPress={() => setEditor({ kind: "thread", id: threadId })} /> : null}
-            {author && !detail.thread.deleted_at ? <Icon label="Remove discussion" icon="trash-outline" onPress={() => remove("delete_thread", threadId)} /> : null}
-            {moderator ? <Icon label={detail.thread.is_hidden ? "Restore discussion" : "Hide discussion"} icon="eye-off-outline" disabled={busy}
+            <Icon label="Share discussion link" caption="Share" description="Share a private discussion link. Rabbi sign-in is still required." icon="share" tone="teal" onPress={share} />
+            <Icon label="Report discussion" caption="Report" description="Flag this discussion for Global Admin review." icon="flag" tone="red" onPress={() => setEditor({ kind: "report" })} />
+            {author && !closed ? <Icon label="Edit discussion" caption="Edit" description="Update the title, message, links, or attachments of your discussion." icon="create" onPress={() => setEditor({ kind: "thread", id: threadId })} /> : null}
+            {author && !detail.thread.deleted_at ? <Icon label="Remove discussion" caption="Remove" description="Remove your discussion from view for other Rabbonim. You will be asked to confirm." icon="trash" tone="red" onPress={() => remove("delete_thread", threadId)} /> : null}
+            {moderator ? <Icon label={detail.thread.is_hidden ? "Restore discussion" : "Hide discussion"} caption={detail.thread.is_hidden ? "Restore" : "Hide"}
+              description={detail.thread.is_hidden ? "Make this moderated discussion visible again." : "Hide this discussion from other Rabbonim for moderation."}
+              icon={detail.thread.is_hidden ? "eye" : "eye-off"} tone="red" disabled={busy}
               onPress={() => action(detail.thread.is_hidden ? "restore_thread" : "hide_thread", threadId)} /> : null}
-          </Row>
+          </View>
           {shareUrl ? <Text selectable>{shareUrl}</Text> : null}
           {author || moderator ? <BmChoices label="Discussion Status" value={detail.thread.status}
             options={Object.entries(bmStatuses).map(([id, label]) => ({ id, label }))} onChange={value => action("status", threadId, { status: value })} /> : null}
@@ -201,17 +202,20 @@ export default function BeisMidrashScreen() {
           <MetaText>{reply.author_name}{reply.parent_reply_id ? ` - replying to ${reply.parent_author_name ?? "a response"}` : ""}</MetaText>
           {reply.is_hidden || reply.deleted_at ? <Pill label={reply.deleted_at ? "Removed" : "Hidden"} tone="danger" /> : null}
           <BmBody text={reply.body} />
-          <Row><MetaText>{date(reply.created_at)}{reply.updated_at !== reply.created_at ? " - edited" : ""}</MetaText>
+          <View style={s.actionBar}><MetaText>{date(reply.created_at)}{reply.updated_at !== reply.created_at ? " - edited" : ""}</MetaText>
             {!closed && !reply.is_hidden && !reply.deleted_at ? <Icon label={`Reply to ${reply.author_name}`} icon="return-down-forward-outline"
+              description="Write a response linked to this reply."
               onPress={() => setEditor({ kind: "reply", parent: reply.parent_reply_id ?? reply.id })} /> : null}
-            {!reply.is_hidden && !reply.deleted_at ? <Icon label="Quote reply" icon="chatbox-outline" onPress={() => setEditor({ kind: "reply", parent: reply.parent_reply_id ?? reply.id, initialBody: `${reply.author_name}:\n${reply.body}\n\n` })} disabled={closed} /> : null}
+            {!reply.is_hidden && !reply.deleted_at ? <Icon label="Quote reply" description="Include this reply's text in your response." icon="chatbox" tone="teal" onPress={() => setEditor({ kind: "reply", parent: reply.parent_reply_id ?? reply.id, initialBody: `${reply.author_name}:\n${reply.body}\n\n` })} disabled={closed} /> : null}
             {reply.author_id === profile?.id && !reply.is_hidden && !reply.deleted_at ? <>
-              <Icon label="Edit reply" icon="create-outline" onPress={() => setEditor({ kind: "reply", id: reply.id, initialBody: reply.body })} />
-              <Icon label="Remove reply" icon="trash-outline" onPress={() => remove("delete_reply", reply.id)} /></> : null}
-            <Icon label="Report reply" icon="flag-outline" onPress={() => setEditor({ kind: "report", id: reply.id })} />
-            {moderator ? <Icon label={reply.is_hidden ? "Restore reply" : "Hide reply"} icon="eye-off-outline" disabled={busy}
+              <Icon label="Edit reply" description="Update the text of your reply." icon="create" onPress={() => setEditor({ kind: "reply", id: reply.id, initialBody: reply.body })} />
+              <Icon label="Remove reply" description="Remove your reply from view. You will be asked to confirm." icon="trash" tone="red" onPress={() => remove("delete_reply", reply.id)} /></> : null}
+            <Icon label="Report reply" description="Flag this reply for Global Admin review." icon="flag" tone="red" onPress={() => setEditor({ kind: "report", id: reply.id })} />
+            {moderator ? <Icon label={reply.is_hidden ? "Restore reply" : "Hide reply"}
+              description={reply.is_hidden ? "Make this moderated reply visible again." : "Hide this reply from other Rabbonim for moderation."}
+              icon={reply.is_hidden ? "eye" : "eye-off"} tone="red" disabled={busy}
               onPress={() => action(reply.is_hidden ? "restore_reply" : "hide_reply", reply.id)} /> : null}
-          </Row>
+          </View>
         </View>)}
         {!detail.replies.length ? <MetaText>No replies yet.</MetaText> : null}
         <Row><Button label="Previous Replies" disabled={replyPage === 0 || loading} variant="secondary" onPress={() => setReplyPage(p => p - 1)} />
@@ -221,13 +225,6 @@ export default function BeisMidrashScreen() {
     {preview ? <BmChunkPreview chunk={preview} close={() => setPreview(null)} /> : null}
   </Screen>;
 }
-function Icon({ label, icon, onPress, selected = false, disabled = false }: { label: string; icon: keyof typeof Ionicons.glyphMap;
-  onPress: () => void; selected?: boolean; disabled?: boolean }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} aria-pressed={selected} disabled={disabled} onPress={onPress}
-    {...(Platform.OS === "web" ? { title: label } : {})} style={({ pressed }) => [s.icon, (selected || pressed) && { backgroundColor: "#EAF1FF" }, disabled && { opacity: 0.4 }]}>
-    <Ionicons name={icon} size={21} color={/Remove|Report|Hide/.test(label) ? "#A33030" : "#235789"} />
-  </Pressable>;
-}
 function date(value: string) { return new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
 function resourceHost(value: string) { try { return new URL(value).host; } catch { return "External resource"; } }
 const s = StyleSheet.create({
@@ -235,5 +232,5 @@ const s = StyleSheet.create({
   threadTitle: { fontSize: 19, lineHeight: 27, fontWeight: "700", color: theme.colors.ink },
   reply: { borderBottomWidth: 1, borderColor: theme.colors.border, paddingVertical: 14, gap: 10 },
   nestedReply: { marginLeft: 20, borderLeftWidth: 2, paddingLeft: 12, borderLeftColor: "#C9D9F8" },
-  icon: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }
+  actionBar: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }
 });

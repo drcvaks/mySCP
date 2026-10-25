@@ -18,10 +18,10 @@ vm.runInNewContext(ts.transpileModule(screen,{compilerOptions:{jsx:ts.JsxEmit.Re
   useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width,height}),
   usesCompactNavigation:responsive.usesCompactNavigation,
   usesLandscapeMenu:responsive.usesLandscapeMenu,useSafeAreaInsets:()=>({left:0,right:0,top:0,bottom:0}),
-  chaburahToolAccess:()=>({rabbiHub,admin:rabbiHub}),
+  chaburahToolAccess:()=>({rabbiHub,admin:rabbiHub}),canAccessBeisMidrash:()=>false,
   useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{},spacing:{xs:6}},
   SafeAreaView:"SafeAreaView",View:"View",ScrollView:"ScrollView",Pressable:"Pressable",Modal:"Modal",Text:"Text",PageHeading:"Heading",Ionicons:"Icon",
-  SidebarNavigation:"Sidebar",StyleSheet:{absoluteFill:{}},
+  SidebarNavigation:"Sidebar",AccountMenu:"AccountMenu",SignOutButton:"SignOutButton",StyleSheet:{absoluteFill:{}},
   cloneElement:(element,props)=>({type:element.type,props:{...element.props,...props}})
 });
 function all(tree,type){

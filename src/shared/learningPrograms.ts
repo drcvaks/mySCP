@@ -23,10 +23,14 @@ export const legacySummerProgram: LearningProgram = {
   id: SUMMER_PROGRAM, name: "Summer 5786", topic: "Nat Bar Nat", defaultWeek: 12, archived: false
 };
 
-export function selectablePrograms(programs: LearningProgram[], access: ProgramAccessContext = {}) {
+export function rolloutPrograms(programs: LearningProgram[]) {
   const hideLegacy = WINTER_ONLY_ROLLOUT && programs.some((p) => p.id === WINTER_PROGRAM);
-  return programs.filter((p) => (!hideLegacy || p.id !== SUMMER_PROGRAM) &&
-    (!p.earlyAccess || access.isGlobalAdmin || (access.chaburahId && p.allowedChaburahIds?.includes(access.chaburahId))));
+  return programs.filter((p) => !hideLegacy || p.id !== SUMMER_PROGRAM);
+}
+
+export function selectablePrograms(programs: LearningProgram[], access: ProgramAccessContext = {}) {
+  return rolloutPrograms(programs).filter((p) =>
+    !p.earlyAccess || access.isGlobalAdmin || (access.chaburahId && p.allowedChaburahIds?.includes(access.chaburahId)));
 }
 
 export function rolloutProgramSelection(requested: string | undefined, programs: LearningProgram[], ready: boolean,

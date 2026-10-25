@@ -4,9 +4,11 @@ import { Alert, Platform, Pressable, Text, View } from "react-native";
 import { useAppState } from "../state/AppState";
 import { Button, MetaText, Row, SectionTitle, StatusBanner } from "./components";
 import { BmChoices, BmChunkPicker, BmInput } from "./BeisMidrashControls";
-import { bmAreas, bmAreaForCategory, bmCategories, bmMaterialType, BmArea, BmCategory, BmChunk, BmDetail, BmResource, mutateBm } from "./beisMidrash";
+import { bmAreas, bmAreaForCategory, bmCategories, bmMaterialType, BmCategory, BmChunk, BmDetail, BmResource, mutateBm } from "./beisMidrash";
 import { discardBmResource, pickBmResource } from "./beisMidrashResources";
 import { bmResourceLinkError, normalizeBmResourceUrl } from "./beisMidrashLinks";
+import { rolloutPrograms } from "./learningPrograms";
+import { BmAreaPicker } from "./BmAreaPicker";
 
 export interface BmEditorTarget { kind: "thread" | "reply" | "report"; id?: string; parent?: string; initialBody?: string }
 export async function confirmBmDiscard(message: string) {
@@ -100,11 +102,12 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
     <SectionTitle>{target.kind === "thread" ? target.id ? "Edit Discussion" : "Start Discussion" : target.kind === "report" ? "Report Content" : target.id ? "Edit Reply" : "Write a Reply"}</SectionTitle>
     {target.kind === "thread" ? <>
       <BmInput label="Title" value={title} onChange={setTitle} maxLength={160} />
-      <BmChoices label="Post in" value={bmAreaForCategory(category)} options={Object.entries(bmAreas).map(([id, area]) => ({ id, label: area.label }))}
-        onChange={value => changeCategory(bmAreas[value as BmArea].categories[0])} />
+      <MetaText>Post in</MetaText>
+      <BmAreaPicker value={bmAreaForCategory(category)} includeAll={false}
+        onChange={value => { if (value !== "all") changeCategory(bmAreas[value].categories[0]); }} />
       {bmAreas[bmAreaForCategory(category)].categories.length > 1 ? <BmChoices label="Topic" value={category}
         options={bmAreas[bmAreaForCategory(category)].categories.map(id => ({ id, label: bmCategories[id] }))} onChange={value => changeCategory(value as BmCategory)} /> : null}
-      <BmChoices label="Discussion Zeman" value={program} options={[...programs.map(p => ({ id: p.id, label: p.name })), { id: "general", label: "General / Cross-Zeman" }]}
+      <BmChoices label="Discussion Zeman" value={program} options={[...rolloutPrograms(programs).map(p => ({ id: p.id, label: p.name })), { id: "general", label: "General / Cross-Zeman" }]}
         onChange={value => { if (!busy && value !== program) { setProgram(value); setChunks([]); } }} />
       <BmChoices label="Language" value={language} options={[{ id: "mixed", label: "Mixed" }, { id: "en", label: "English" }, { id: "he", label: "Hebrew" }]}
         onChange={value => setLanguage(value as typeof language)} />
@@ -138,7 +141,7 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
             <Ionicons name="close-circle-outline" size={23} color="#A33030" />
           </Pressable>
         </View>)}
-        <Button label={busy ? "Please wait..." : "Attach File"} onPress={attach} disabled={busy || resources.length >= 5} variant="secondary" />
+        <Button label={busy ? "Please wait..." : "Attach File"} onPress={attach} disabled={busy || resources.length >= 5} variant="primary" />
       </View> : null}
     </> : null}
     <StatusBanner message={error} tone="error" />

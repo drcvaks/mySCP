@@ -26,7 +26,12 @@ async function main() {
     queue = task.catch(()=>{}); return task;
   };
   async function setup(context, role="local_rabbi", uid=10, extra={}) {
-    await fixture(context,role,{ content_chunks:[{id:id(20),chunk_code:"HC1-B3",chunk_title:"Notes B3",program_id:"winter-5787",source_type:"notes",
+    const fixturePrograms=[
+      {id:'summer-5786',name:'Summer 5786',topic:'Nat Bar Nat',default_week:12,archived:false},
+      {id:'winter-5787',name:'Winter 5787',topic:'Challah & Terumos/Maasros',default_week:1,archived:false},
+      {id:'summer-5787',name:'Summer 5787',topic:'Hilchos Tefillin',default_week:1,archived:false,early_access:true}
+    ];
+    await fixture(context,role,{ learning_programs:role==='global_admin'?fixturePrograms:fixturePrograms.slice(0,2), content_chunks:[{id:id(20),chunk_code:"HC1-B3",chunk_title:"Notes B3",program_id:"winter-5787",source_type:"notes",
       content_markdown:"Original controlled Notes content.",content_document:null}],...extra });
     await context.route('https://resources.example.invalid/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<h1>Synthetic resource</h1>'}));
     await context.route("**/rest/v1/content_chunks*",async route=>{
@@ -115,9 +120,24 @@ async function main() {
         await page.screenshot({path:path.join(out,`tools-${tool.replaceAll(" ","-")}-${width}.png`),scale:"css"});
       }
     }
+    await page.setViewportSize({width:1440,height:1000});
+    const filterButton=page.getByRole('button',{name:'Discussion filters',exact:true});
+    await filterButton.hover();
+    const help=page.getByRole('tooltip');
+    await help.waitFor();assert.match(await help.textContent(),/Show filters for zeman, status, section, author/);
+    const helpBox=await help.boundingBox();assert.ok(helpBox.x>=8&&helpBox.x+helpBox.width<=1440-7,'Right-edge filter tooltip remains on screen');
+    await page.screenshot({path:path.join(out,'filters-hover.png'),scale:'css'});
+    await page.mouse.move(0,0);await help.waitFor({state:'hidden'});
+    await filterButton.focus();await help.waitFor();
+    assert.equal(await filterButton.getAttribute('aria-describedby'),await help.getAttribute('id'));
+    await page.keyboard.press('Escape');await help.waitFor({state:'hidden'});
+    await filterButton.click();
+    await page.getByText('Search scope',{exact:true}).waitFor();
+    await filterButton.click();
     await page.setViewportSize({width:390,height:844});
     await page.getByRole("button",{name:"Start Discussion",exact:true}).waitFor();
     await page.getByRole("button",{name:"Start Discussion",exact:true}).click();
+    assert.equal(await page.getByRole('button',{name:'Summer 5786',exact:true}).count(),0,'Test zeman stays hidden in header and composer');
     await page.getByRole("textbox",{name:"Title",exact:true}).fill(title);
     await page.getByRole("textbox",{name:"Question, sources, or discussion",exact:true}).fill(body);
     assert.equal(await page.getByRole("button",{name:"Post",exact:true}).isDisabled(),true,"Official Notes require a link");
@@ -157,6 +177,14 @@ async function main() {
     await page.getByRole("textbox",{name:"Title",exact:true}).waitFor({state:"hidden"});
     await page.getByRole("button",{name:"View Notes B3",exact:true}).waitFor();
     const tid=new URL(page.url()).searchParams.get("thread"); assert.ok(tid);
+    const backButton=page.getByRole('button',{name:'Back to Discussions',exact:true});
+    assert.equal(await backButton.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(37, 99, 235)','Back navigation is highlighted');
+    const followingButton=page.getByRole('button',{name:'Unfollow discussion',exact:true});
+    await followingButton.focus();await page.getByRole('tooltip').waitFor();
+    assert.match(await page.getByRole('tooltip').textContent(),/Stop tracking new replies in Following and Unread/);
+    await page.keyboard.press('Escape');await page.getByRole('tooltip').waitFor({state:'hidden'});
+    await page.screenshot({path:path.join(out,'discussion-actions-phone.png'),scale:'css'});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Labeled actions fit phone width');
     await page.getByText(title,{exact:true}).waitFor();
     assert.equal(await page.getByText(title,{exact:true}).evaluate(el=>getComputedStyle(el).direction),"rtl");
     await page.getByRole("button",{name:"View Notes B3",exact:true}).click();
@@ -164,6 +192,9 @@ async function main() {
     await page.getByRole("button",{name:"Close",exact:true}).click();
     await page.getByRole("button",{name:"Bookmark discussion",exact:true}).click();
     await page.getByRole("button",{name:"Remove bookmark",exact:true}).waitFor();
+    await page.getByRole('button',{name:'Remove bookmark',exact:true}).focus();await page.getByRole('tooltip').waitFor();
+    assert.match(await page.getByRole('tooltip').textContent(),/Remove this discussion from Bookmarked/);
+    await page.keyboard.press('Escape');
     await page.getByRole("button",{name:"Reply",exact:true}).click();
     await page.getByRole("textbox",{name:"Reply",exact:true}).fill("My first sourced response.");
     await page.getByRole("button",{name:"Post",exact:true}).click();
@@ -174,7 +205,17 @@ async function main() {
     await page.getByRole("button",{name:"Open discussion: "+title,exact:true}).waitFor();
     await page.getByRole("button",{name:"Unread",exact:true}).click();
     await page.getByText("Page 1 - 1 discussions",{exact:true}).waitFor();
-    await page.getByRole("button",{name:`Open discussion: ${title}`,exact:true}).click();
+    const wholeCard=page.getByRole("button",{name:`Open discussion: ${title}`,exact:true});
+    await wholeCard.scrollIntoViewIfNeeded();
+    const cardBox=await wholeCard.boundingBox();
+    await wholeCard.click({position:{x:8,y:cardBox.height-8}});
+    await page.getByText("A peer explanation with unique-search-term.",{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Back to Discussions',exact:true}).click();
+    await page.getByRole('button',{name:'All',exact:true}).click();
+    await wholeCard.focus();await page.keyboard.press('Enter');
+    await page.getByText("A peer explanation with unique-search-term.",{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Back to Discussions',exact:true}).click();
+    await wholeCard.getByText(/English reference/).click();
     await page.getByText("A peer explanation with unique-search-term.",{exact:true}).waitFor();
     await page.getByRole("button",{name:"Reply to Rav One",exact:true}).click();
     await page.getByRole("textbox",{name:"Reply",exact:true}).fill("Thanks for the reference.");
@@ -202,6 +243,11 @@ async function main() {
       await page.setViewportSize({width,height});
       await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       await page.getByText("Private discussion for Rabbonim. Community replies are not official SCP rulings.",{exact:true}).scrollIntoViewIfNeeded();
+      const areaButtons=page.getByRole('button',{name:/^(Message Board|Resources & Materials)$/});
+      const areaBoxes=await areaButtons.evaluateAll(items=>items.map(item=>item.getBoundingClientRect().toJSON()));
+      assert.equal(areaBoxes.length,2);
+      assert.ok(Math.abs(areaBoxes[0].y-areaBoxes[1].y)<1&&Math.abs(areaBoxes[0].width-areaBoxes[1].width)<1,'Two equal-width primary areas share one row');
+      assert.ok(areaBoxes.every(box=>box.x>=0&&box.right<=width+1),'Illustrated area buttons fit the viewport');
       await page.screenshot({path:path.join(out,`list-top-${width}.png`),scale:"css"});
       await page.getByRole("button",{name:"Open discussion: Revised discussion title",exact:true}).scrollIntoViewIfNeeded();
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`No page overflow ${width}`);
@@ -244,6 +290,7 @@ async function main() {
     await page.getByRole('textbox',{name:'Resource Link (optional)',exact:true}).fill('https://resources.example.invalid/worksheet');
     await page.getByRole('textbox',{name:'Link Display Name (optional)',exact:true}).fill('Worksheet on the web');
     const chooser=page.waitForEvent('filechooser');
+    assert.equal(await page.getByRole('button',{name:'Attach File',exact:true}).evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(37, 99, 235)','Attach File is highlighted blue');
     await page.getByRole('button',{name:'Attach File',exact:true}).click();
     await (await chooser).setFiles({name:'Rabbi worksheet.txt',mimeType:'text/plain',buffer:Buffer.from('Synthetic private worksheet')});
     await page.getByRole('button',{name:'Remove attachment Rabbi worksheet.txt',exact:true}).waitFor();
@@ -326,6 +373,7 @@ async function main() {
     await page.getByRole("button",{name:"Winter 5787",exact:true}).click();await winter;
     await page.getByRole("button",{name:"Start Discussion",exact:true}).click();
     await page.getByRole("textbox",{name:"Title",exact:true}).fill("Cross-zeman post");
+    assert.equal(await page.getByRole('button',{name:'Summer 5786',exact:true}).count(),0,'Global Admin also does not see the test zeman');
     await page.getByRole("textbox",{name:"Question, sources, or discussion",exact:true}).fill("This belongs to Summer while the header remains Winter.");
     await page.getByRole("button",{name:"Summer 5787",exact:true}).last().click();
     await page.getByRole("button",{name:"Other Learning Questions",exact:true}).click();

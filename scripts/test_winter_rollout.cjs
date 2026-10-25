@@ -21,12 +21,17 @@ for (const requested of [undefined, "summer-5786", "winter-5787"]) {
 assert.equal(api.rolloutProgramSelection("summer-5786", programs, false), "summer-5786");
 assert.equal(api.rolloutProgramSelection(undefined, [api.legacySummerProgram], true), "summer-5786");
 assert.equal(programs.length, 2, "Keep Summer records available internally");
+assert.equal(api.rolloutPrograms(programs).map(p=>p.id).join(','),'winter-5787');
 assert.equal(api.belongsToProgram({ programId: "summer-5786" }, "winter-5787"), false);
 assert.equal(api.programName("summer-5786"), "Summer 5786");
 const restored = load(source.replace("WINTER_ONLY_ROLLOUT = true", "WINTER_ONLY_ROLLOUT = false"));
 assert.equal(restored.selectablePrograms(programs).length, 2);
 assert.equal(restored.rolloutProgramSelection("summer-5786", programs, true), "summer-5786");
 const all = [...programs, tefillin];
+assert.equal(api.rolloutPrograms(all).map(p=>p.id).join(','),'winter-5787,summer-5787','Worldwide composer hides test zeman without changing authorized Tefillin visibility');
+assert.equal(restored.rolloutPrograms(all).length,3,'Test zeman visibility remains reversible');
+const editor=fs.readFileSync('src/shared/BeisMidrashEditor.tsx','utf8');
+assert.ok(editor.includes('rolloutPrograms(programs).map'),'Discussion selector uses the rollout rule');
 for (const access of [{}, { chaburahId: "other" }]) {
   assert.equal(api.selectablePrograms(all, access).map((p) => p.id).join(","), "winter-5787");
   assert.equal(api.rolloutProgramSelection("summer-5787", all, true, access), "winter-5787");
