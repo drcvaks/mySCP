@@ -1,6 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { createContext, ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { usePathname } from "expo-router";
+import { useAuthState } from "../state/AuthState";
+import { useAppState } from "../state/AppState";
+import { claimInstallInvitation } from "./pwaRegistration.web";
 import { installDevice, installDismissDays, installDismissKey, isHomeScreenApp } from "./pwaCapabilities";
 
 interface InstallPrompt extends Event {
@@ -10,14 +14,19 @@ interface InstallPrompt extends Event {
 declare global {
   interface Window { __mySCPInstallPrompt?: InstallPrompt; __mySCPInstalled?: boolean; }
 }
-type InstallState = { installed: boolean; banner: boolean; busy: boolean; requestInstall: () => void; dismiss: () => void };
+type InstallState = { installed: boolean; banner: boolean; busy: boolean; mobile: boolean; requestInstall: () => void; dismiss: () => void };
 const InstallContext = createContext<InstallState | null>(null);
 
 export function PwaProvider({ children }: { children: ReactNode }) {
+  const { profile, session, loading, passwordRecovery } = useAuthState();
+  const { hydrated } = useAppState();
+  const pathname = usePathname();
   const [installed, setInstalled] = useState(false);
   const [banner, setBanner] = useState(false);
   const [busy, setBusy] = useState(false);
   const [instructions, setInstructions] = useState(false);
+  const [invitationUser, setInvitationUser] = useState<string | null>(null);
+  const [registrationRevision, setRegistrationRevision] = useState(0);
   const [device, setDevice] = useState<ReturnType<typeof installDevice>>("desktop");
   const prompt = useRef<InstallPrompt | undefined>(undefined);
   const pending = useRef(false);
@@ -36,7 +45,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     function sync() {
       const active = !!window.__mySCPInstalled || isHomeScreenApp(navigator as Navigator & { standalone?: boolean }, window.matchMedia.bind(window));
       setInstalled(active);
-      if (active) { setBanner(false); setInstructions(false); return; }
+      if (active) { setBanner(false); setInstructions(false); setInvitationUser(null); return; }
       prompt.current = window.__mySCPInstallPrompt;
       let dismissed = dismissedThisSession.current;
       try { dismissed = dismissed || Number(localStorage.getItem(installDismissKey)) > Date.now(); } catch { /* Use this session's state if storage is unavailable. */ }
@@ -59,6 +68,23 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    const changed = () => setRegistrationRevision(value => value + 1);
+    window.addEventListener("myscp-registration-ready", changed);
+    window.addEventListener("storage", changed);
+    return () => { window.removeEventListener("myscp-registration-ready", changed); window.removeEventListener("storage", changed); };
+  }, []);
+
+  useEffect(() => { setInvitationUser(null); }, [profile?.id, pathname]);
+
+  useEffect(() => {
+    if (pathname !== "/dashboard" || loading || passwordRecovery || !hydrated || !profile || session?.user.id !== profile.id) return;
+    if (claimInstallInvitation(profile.id) && !installed) setInvitationUser(profile.id);
+  }, [pathname, loading, passwordRecovery, hydrated, profile?.id, session?.user.id, installed, registrationRevision]);
+  const invitation = !!invitationUser && invitationUser === profile?.id && pathname === "/dashboard" && !installed && !passwordRecovery;
+
+  function closeInvitation() { setInvitationUser(null); dismiss(); }
+
   function requestInstall() {
     if (installed || pending.current) return;
     const available = prompt.current;
@@ -79,11 +105,11 @@ export function PwaProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    if (!instructions) return;
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setInstructions(false); };
+    if (!instructions && !invitation) return;
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setInstructions(false); if (invitation) closeInvitation(); } };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
-  }, [instructions]);
+  }, [instructions, invitation]);
 
   const steps = device === "ios" ? [
     "Open mySCP in Safari on your iPhone or iPad.",
@@ -95,10 +121,22 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     "Confirm, then open mySCP from its new icon."
   ] : [
     "Open mySCP in Chrome or Microsoft Edge.",
-    "Use the install icon in the address bar, or the browser menu's Install option. On Safari for Mac, use File > Add to Dock if available."
+    "Use the install icon in the address bar, or the browser menu's Install option. On Safari for Mac, use File > Add to Dock if available.",
+    "If the browser offers a desktop shortcut, select it. Some browsers also offer Create shortcut in their menu."
   ];
-  return <InstallContext.Provider value={{ installed, banner, busy, requestInstall, dismiss }}>
+  return <InstallContext.Provider value={{ installed, banner, busy, mobile: device !== "desktop", requestInstall, dismiss }}>
     {children}
+    <Modal visible={invitation} transparent animationType="fade" onRequestClose={closeInvitation}>
+      <View style={s.overlay}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss install invitation" style={StyleSheet.absoluteFill} onPress={closeInvitation} />
+        <View style={s.dialog} accessibilityViewIsModal accessibilityLabel="Welcome install invitation">
+          <View style={s.heading}><Image source={{ uri: "/icons/icon-192-v2.png" }} style={s.appIcon} /><Text style={s.title}>Keep mySCP Close</Text></View>
+          <Text style={s.invitationCopy}>{device === "desktop" ? "Add mySCP to your computer for easy access to your learning and chaburah." : "Add mySCP to your Home Screen for easy access to your learning and chaburah."}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Install mySCP from welcome" style={s.primary} onPress={() => { setInvitationUser(null); requestInstall(); }}><Text style={s.primaryLabel}>Install mySCP</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.notNow} onPress={closeInvitation}><Text style={s.menuLabel}>Not Now</Text></Pressable>
+        </View>
+      </View>
+    </Modal>
     <Modal visible={instructions} transparent animationType="fade" onRequestClose={() => setInstructions(false)}>
       <View style={s.overlay}>
         <Pressable accessibilityRole="button" accessibilityLabel="Dismiss installation instructions" style={StyleSheet.absoluteFill} onPress={() => setInstructions(false)} />
@@ -116,12 +154,23 @@ export function PwaProvider({ children }: { children: ReactNode }) {
   </InstallContext.Provider>;
 }
 
-export function InstallButton({ onSelect }: { onSelect?: () => void }) {
+export function InstallButton({ onSelect, variant = "menu" }: { onSelect?: () => void; variant?: "menu" | "account" }) {
   const state = useContext(InstallContext);
   if (!state || state.installed) return null;
   return <Pressable accessibilityRole="button" accessibilityLabel="Install mySCP" disabled={state.busy}
-    onPress={() => { onSelect?.(); state.requestInstall(); }} style={({ pressed }) => [s.menuItem, pressed && { backgroundColor: "#EAF1FF" }]}>
+    onPress={() => { onSelect?.(); state.requestInstall(); }} style={({ pressed }) => [s.menuItem, variant === "account" && s.accountItem, pressed && { backgroundColor: "#EAF1FF" }]}>
     <Image source={{ uri: "/icons/icon-192-v2.png" }} style={s.appIcon} /><Text style={s.menuLabel}>{state.busy ? "Opening..." : "Install mySCP"}</Text>
+  </Pressable>;
+}
+
+export function InstallHeaderButton() {
+  const state = useContext(InstallContext);
+  const { width } = useWindowDimensions();
+  if (!state || state.installed || !state.mobile) return null;
+  return <Pressable accessibilityRole="button" accessibilityLabel="Install mySCP from header" {...{ title: "Install mySCP" }}
+    disabled={state.busy} onPress={state.requestInstall} style={({ pressed }) => [s.headerButton, pressed && { backgroundColor: "#EAF1FF" }]}>
+    <Image source={{ uri: "/icons/icon-192-v2.png" }} style={s.headerIcon} />
+    {width >= 520 ? <Text style={s.menuLabel}>Install</Text> : <Ionicons name="download" size={12} color="#2563EB" style={s.installBadge} />}
   </Pressable>;
 }
 
@@ -141,6 +190,12 @@ export function InstallBanner() {
 }
 
 const s = StyleSheet.create({
+  headerButton: { minWidth: 44, height: 44, paddingHorizontal: 6, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: "#C9DAFF", backgroundColor: "#F1F6FF", borderRadius: 8 },
+  headerIcon: { width: 28, height: 28, borderRadius: 5 },
+  installBadge: { position: "absolute", right: 1, bottom: 1, backgroundColor: "#FFFFFF", borderRadius: 3 },
+  accountItem: { marginTop: 0, borderWidth: 0, borderRadius: 0, paddingHorizontal: 16, backgroundColor: "#FFFFFF" },
+  notNow: { minHeight: 44, alignItems: "center", justifyContent: "center" },
+  invitationCopy: { fontSize: 14, lineHeight: 22, color: "#42516B", flexShrink: 1 },
   appIcon: { width: 32, height: 32, borderRadius: 6, flexShrink: 0 },
   banner: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: "#C9DAFF", backgroundColor: "#EFF5FF" },
   bannerTitle: { flex: 1, minWidth: 110, color: "#1E3E70", fontSize: 13, fontWeight: "600", lineHeight: 19 },

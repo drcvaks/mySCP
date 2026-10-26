@@ -19,9 +19,9 @@ export function PageHeading({ title, eyebrow, pathname, navigationButton, onRefr
   return <View style={s.header}>
     <View style={[s.mainRow, compact && s.compactRow]}>
       {navigationButton}
-      <View style={[s.icon, compact && s.compactIcon, { backgroundColor: visual.tint }]}>
+      {!(compact && width < 380) ? <View style={[s.icon, compact && s.compactIcon, { backgroundColor: visual.tint }]}>
         <Ionicons name={visual.icon} size={compact ? 20 : 23} color={visual.color} />
-      </View>
+      </View> : null}
       <View style={s.titleBlock}>
         {eyebrow ? <Text numberOfLines={compact ? 1 : undefined} style={s.eyebrow}>{eyebrow}</Text> : null}
         <Text accessibilityRole="header" style={[s.title, compact && s.compactTitle]}>{title}</Text>

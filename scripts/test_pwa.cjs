@@ -14,6 +14,32 @@ assert.equal(installDevice({ userAgent: 'Android Chrome', platform: 'Linux', max
 assert.equal(isHomeScreenApp({ standalone: true }, () => ({ matches: false })), true);
 assert.equal(isHomeScreenApp({}, query => ({ matches: query.includes('standalone') })), true);
 assert.equal(isHomeScreenApp({}, () => ({ matches: false })), false);
+const registrationSource = ts.transpileModule(fs.readFileSync('src/shared/pwaRegistration.web.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS }
+}).outputText;
+const storage = new Map();
+function registration(blocked = false) {
+  const api = {};
+  vm.runInNewContext(registrationSource, {
+    exports: api, Event: class {}, window: { dispatchEvent() {} },
+    localStorage: { getItem(key) { if (blocked) throw Error('blocked'); return storage.get(key) ?? null; },
+      setItem(key, value) { if (blocked) throw Error('blocked'); storage.set(key, value); } }
+  });
+  return api;
+}
+let registrationApi = registration();
+assert.equal(registrationApi.claimInstallInvitation('existing-user'), false);
+registrationApi.markRegisteredForInstall('new-user');
+assert.equal(registrationApi.claimInstallInvitation('another-user'), false);
+registrationApi = registration(); // Confirmation may return in a fresh tab.
+assert.equal(registrationApi.claimInstallInvitation('new-user'), true);
+assert.equal(registrationApi.claimInstallInvitation('new-user'), false);
+registrationApi.markRegisteredForInstall('new-user');
+assert.equal(registration().claimInstallInvitation('new-user'), false);
+const privateRegistration = registration(true);
+privateRegistration.markRegisteredForInstall('private-user');
+assert.equal(privateRegistration.claimInstallInvitation('private-user'), true);
+assert.equal(privateRegistration.claimInstallInvitation('private-user'), false);
 const manifest = JSON.parse(fs.readFileSync('public/manifest.webmanifest', 'utf8'));
 assert.equal(manifest.display, 'standalone');
 assert.equal(manifest.start_url, '/dashboard');

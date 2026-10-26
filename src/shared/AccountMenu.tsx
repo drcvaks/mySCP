@@ -5,6 +5,7 @@ import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWin
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthState } from "../state/AuthState";
 import { useAppState } from "../state/AppState";
+import { InstallButton } from "./PwaInstall";
 
 function useSignOutAction() {
   const { signOut } = useAuthState();
@@ -118,6 +119,7 @@ export function AccountMenu({ onRefresh, refreshing = false }: {
               onPress={refreshData} style={({ pressed }) => [s.item, pressed && s.pressed, (refreshing || refreshPending) && { opacity: 0.5 }]}>
               <Ionicons name="refresh-outline" size={21} color="#365C91" /><Text style={s.itemLabel}>{refreshing || refreshPending ? "Refreshing..." : "Refresh Data"}</Text>
             </Pressable> : null}
+            <InstallButton variant="account" onSelect={() => setOpen(false)} />
             <View style={s.separator}><SignOutButton /></View>
           </ScrollView>
         </View>

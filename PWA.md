@@ -24,6 +24,21 @@ Mobile web users see a compact install suggestion. Dismissing it hides it for
 seven days in that browser; **Install mySCP** remains in the navigation menu.
 Desktop browsers have the menu option without an automatic banner.
 
+Mobile browsers also have a compact icon beside the account avatar at the top
+of the page. Tablets show its Install label when space permits. The account
+dropdown includes Install mySCP on desktop and mobile, with desktop shortcut
+guidance where the browser offers it. Website code does not create OS shortcuts
+silently or guarantee that every browser offers the same installation choices.
+
+After a successful new registration, an invitation appears once the user has
+confirmed their email (if required), signed in, and reached the dashboard.
+Install opens the appropriate browser prompt/instructions; Not Now dismisses the
+invitation and the banner. The pending/seen state is per account in that browser's
+local storage, not Supabase; it survives confirmation in another tab on the same
+origin. Confirming on a different device/browser will not transfer that reminder.
+Existing sign-ins, recovery screens, and native/already-installed apps do not
+receive this invitation. Blocked storage falls back to memory for the session.
+
 - Android: uses the browser install prompt when available, otherwise explains
   Chrome's **Install app / Add to Home screen** menu.
 - iPhone/iPad: explains Safari's **Share > Add to Home Screen > Add**. Leave

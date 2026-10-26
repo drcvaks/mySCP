@@ -11,7 +11,7 @@ import { canAccessBeisMidrash, chaburahToolAccess } from "./permissions";
 import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
 import { usesCompactNavigation, usesLandscapeMenu } from "./responsiveLayout";
 import { AccountMenu, SignOutButton } from "./AccountMenu";
-import { InstallBanner } from "./PwaInstall";
+import { InstallBanner, InstallHeaderButton } from "./PwaInstall";
 
 interface ScreenProps {
   title: string;
@@ -74,7 +74,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
       <View style={[styles.headerShell, !showDrawerButton && styles.wideHeaderShell]}>
         <View style={[styles.screenHeader, !showDrawerButton && styles.wideHeaderContent]}>
           <PageHeading title={title} eyebrow={eyebrow} pathname={pathname}
-            accountButton={<AccountMenu onRefresh={onRefresh} refreshing={refreshing} />}
+            accountButton={<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><InstallHeaderButton /><AccountMenu onRefresh={onRefresh} refreshing={refreshing} /></View>}
             accessory={header} stackAccessory={width < 1100 && !landscapePhone}
             navigationButton={showDrawerButton ? (
             <Pressable
