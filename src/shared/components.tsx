@@ -11,6 +11,7 @@ import { canAccessBeisMidrash, chaburahToolAccess } from "./permissions";
 import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
 import { usesCompactNavigation, usesLandscapeMenu } from "./responsiveLayout";
 import { AccountMenu, SignOutButton } from "./AccountMenu";
+import { InstallBanner } from "./PwaInstall";
 
 interface ScreenProps {
   title: string;
@@ -102,6 +103,7 @@ export function Screen({ title, eyebrow, children, onRefresh, refreshing = false
             You are using a beta version of mySCP. Please report bugs or confusing parts in Beta Feedback.
           </Text>
         </View>
+        <InstallBanner />
         {management}
         {children}
       </ScrollView>

@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Href, Link } from "expo-router";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { InstallButton } from "./PwaInstall";
 
 export const navigationItems = {
   dashboard: { icon: "speedometer", color: "#2563EB", tint: "#EAF1FF", group: "Learning" },
@@ -49,6 +50,7 @@ export function SidebarNavigation({ items, selected, chaburah, width = 248, onCl
           <SidebarButton item={item} selected={selected === item.name} mobile={!!onClose} iconsOnly={iconsOnly} />
         </View>;
       })}
+      {!iconsOnly ? <InstallButton onSelect={onClose} /> : null}
     </ScrollView>
     {footer ? <View style={{ flexShrink: 0, borderTopWidth: 1, borderColor: "#DEE6F0" }}>{footer}</View> : null}
   </View>;
