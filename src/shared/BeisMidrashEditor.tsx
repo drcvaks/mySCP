@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Alert, Platform, Pressable, Text, View } from "react-native";
 import { useAppState } from "../state/AppState";
-import { Button, MetaText, Row, SectionTitle, StatusBanner } from "./components";
+import { Button, Card, MetaText, Row, SectionTitle, StatusBanner } from "./components";
 import { BmChoices, BmChunkPicker, BmInput } from "./BeisMidrashControls";
 import { bmAreas, bmAreaForCategory, bmCategories, bmMaterialType, BmCategory, BmChunk, BmDetail, BmResource, mutateBm } from "./beisMidrash";
 import { discardBmResource, pickBmResource } from "./beisMidrashResources";
 import { bmResourceLinkError, normalizeBmResourceUrl } from "./beisMidrashLinks";
 import { rolloutPrograms } from "./learningPrograms";
 import { BmAreaPicker } from "./BmAreaPicker";
+import { theme } from "./theme";
 
 export interface BmEditorTarget { kind: "thread" | "reply" | "report"; id?: string; parent?: string; initialBody?: string }
 export async function confirmBmDiscard(message: string) {
@@ -98,7 +99,7 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to save. Your text is still here."); }
     finally { setBusy(false); }
   }
-  return <View style={{ gap: 16 }}>
+  return <Card>
     <SectionTitle>{target.kind === "thread" ? target.id ? "Edit Discussion" : "Start Discussion" : target.kind === "report" ? "Report Content" : target.id ? "Edit Reply" : "Write a Reply"}</SectionTitle>
     {target.kind === "thread" ? <>
       <BmInput label="Title" value={title} onChange={setTitle} maxLength={160} />
@@ -118,7 +119,7 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
     {target.kind === "thread" ? <>
       {materialType === "all" ? <Pressable accessibilityRole="checkbox" accessibilityLabel="Link official material (optional)" aria-checked={optionalLinks}
         onPress={() => { if (optionalLinks) setChunks([]); setOptionalLinks(value => !value); }} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Ionicons name={optionalLinks ? "checkbox" : "square-outline"} size={22} color="#2563EB" /><Text>Link official material (optional)</Text>
+        <Ionicons name={optionalLinks ? "checkbox" : "square-outline"} size={22} color={theme.colors.primary} /><Text>Link official material (optional)</Text>
       </Pressable> : null}
       {materialType !== "all" || optionalLinks ? <BmChunkPicker program={program === "general" ? null : program} selected={chunks} onChange={setChunks}
         materialType={materialType} label={materialType === "notes" ? "Official Notes (required)" : materialType === "qa" ? "Official Questions (required)" : "Official material (optional)"} /> : null}
@@ -129,16 +130,16 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
         <StatusBanner message={linkError} tone="error" />
         {resourceUrl || resourceLabel ? <Pressable accessibilityRole="button" accessibilityLabel="Remove Resource Link" disabled={busy}
           onPress={() => { setResourceUrl(""); setResourceLabel(""); setError(""); }} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Ionicons name="trash-outline" size={21} color="#A33030" /><Text>Remove Resource Link</Text>
+          <Ionicons name="trash-outline" size={21} color={theme.colors.danger} /><Text>Remove Resource Link</Text>
         </Pressable> : null}
         <SectionTitle>Attachments</SectionTitle>
         <MetaText>Rabbonim only - up to 5 files, 10 MB each. PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG, WebP.</MetaText>
         {resources.map(resource => <View key={resource.id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Ionicons name="document-attach-outline" size={22} color="#235789" />
+          <Ionicons name="document-attach-outline" size={22} color={theme.colors.info} />
           <Text style={{ flex: 1, minWidth: 0 }}>{resource.file_name} ({Math.ceil(resource.byte_size / 1024)} KB)</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={`Remove attachment ${resource.file_name}`} disabled={busy} onPress={() => removeResource(resource)}
             style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="close-circle-outline" size={23} color="#A33030" />
+            <Ionicons name="close-circle-outline" size={23} color={theme.colors.danger} />
           </Pressable>
         </View>)}
         <Button label={busy ? "Please wait..." : "Attach File"} onPress={attach} disabled={busy || resources.length >= 5} variant="primary" />
@@ -148,6 +149,6 @@ export function BeisMidrashEditor({ target, detail, close, saved, initialCategor
     <Row><Button label={busy ? "Saving..." : target.kind === "report" ? "Submit Report" : target.id ? "Save Changes" : "Post"}
       onPress={save} disabled={busy || missingOfficialLink || !!linkError || !body.trim() || (target.kind === "thread" && !title.trim())} />
       <Button label="Cancel" onPress={cancel} disabled={busy} variant="secondary" /></Row>
-    {target.kind === "report" ? <Text>Reports are visible only to you and authorized moderators.</Text> : null}
-  </View>;
+    {target.kind === "report" ? <MetaText>Reports are visible only to you and authorized moderators.</MetaText> : null}
+  </Card>;
 }

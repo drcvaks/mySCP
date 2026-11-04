@@ -1,12 +1,14 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { theme } from "./theme";
 
+// Tone keys are kept for existing call sites; they now map onto the navy/gold palette.
 const tones = {
-  blue: { ink: "#2359B5", tint: "#EDF3FF", border: "#CFDDF5" },
-  teal: { ink: "#167C80", tint: "#EAF7F6", border: "#C9E6E3" },
-  amber: { ink: "#95610C", tint: "#FFF7E5", border: "#EEDDB2" },
-  red: { ink: "#B43F45", tint: "#FFF0F1", border: "#EFCFD2" }
+  blue: { ink: theme.colors.primary, tint: theme.colors.primarySoft, border: theme.colors.primaryBorder, fill: theme.colors.primary, fillHover: theme.colors.primaryDark },
+  teal: { ink: theme.colors.info, tint: theme.colors.infoSoft, border: theme.colors.primaryBorder, fill: theme.colors.info, fillHover: theme.colors.primary },
+  amber: { ink: theme.colors.accentText, tint: theme.colors.accentSoft, border: theme.colors.accentBorder, fill: theme.colors.accent, fillHover: "#E5A91F" },
+  red: { ink: theme.colors.danger, tint: theme.colors.dangerSoft, border: "#F4C7C3", fill: theme.colors.danger, fillHover: "#8E1B12" }
 };
 
 export function BmActionButton({ label, caption, description, icon, onPress, selected, solid = false, disabled = false, tone = "blue", minWidth }: {
@@ -28,7 +30,7 @@ export function BmActionButton({ label, caption, description, icon, onPress, sel
     Object.assign(tip.style, {
       position: "fixed", zIndex: "10000", pointerEvents: "none", boxSizing: "border-box",
       width: "260px", maxWidth: "calc(100vw - 16px)", padding: "10px 12px", borderRadius: "6px",
-      background: "#172033", color: "#FFFFFF", font: "13px/19px system-ui, sans-serif", letterSpacing: "0",
+      background: "#0E1A3A", color: "#FFFFFF", font: "13px/19px system-ui, sans-serif", letterSpacing: "0",
       boxShadow: "0 4px 16px #17203326", overflowWrap: "anywhere", visibility: "hidden"
     });
     let active = true;
@@ -65,18 +67,18 @@ export function BmActionButton({ label, caption, description, icon, onPress, sel
     onLongPress={Platform.OS !== "web" ? () => Alert.alert(label, description) : undefined}
     onPress={() => { setShowHelp(false); onPress(); }}
     style={({ pressed }) => [s.button, {
-      backgroundColor: filled ? "#2563EB" : palette.tint,
-      borderColor: filled ? "#2563EB" : palette.border,
+      backgroundColor: filled ? palette.fill : palette.tint,
+      borderColor: filled ? palette.fill : palette.border,
       minWidth,
       ...(caption ? { paddingHorizontal: 12 } : { width: 44 }),
-      ...((hovered || pressed) && !disabled ? { borderColor: palette.ink, backgroundColor: filled ? "#1D4ED8" : palette.border } : {}),
-      ...(focused ? { borderColor: "#172033" } : {}), ...(disabled ? { opacity: 0.45 } : {})
+      ...((hovered || pressed) && !disabled ? { borderColor: palette.ink, backgroundColor: filled ? palette.fillHover : palette.border } : {}),
+      ...(focused ? theme.focusRing : {}), ...(disabled ? { opacity: 0.45 } : {})
     }]}>
-    <Ionicons name={icon} size={21} color={filled ? "#FFFFFF" : palette.ink} />
-    {caption ? <Text style={[s.caption, { color: filled ? "#FFFFFF" : palette.ink }]}>{caption}</Text> : null}
+    <Ionicons name={icon} size={21} color={filled ? (tone === "amber" ? theme.colors.ink : theme.colors.onPrimary) : palette.ink} />
+    {caption ? <Text style={[s.caption, { color: filled ? (tone === "amber" ? theme.colors.ink : theme.colors.onPrimary) : palette.ink }]}>{caption}</Text> : null}
   </Pressable>;
 }
 const s = StyleSheet.create({
-  button: { minHeight: 44, flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", borderRadius: 8, borderWidth: 2, flexShrink: 0 },
+  button: { minHeight: 44, flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", borderRadius: theme.radius.md, borderWidth: 1.5, flexShrink: 0 },
   caption: { fontSize: 13, lineHeight: 19, fontWeight: "700" }
 });

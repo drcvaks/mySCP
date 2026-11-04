@@ -56,15 +56,15 @@ export function ChaburahReviewResults({ chaburahId, programId, weeks, refreshing
   return <View testID="chaburah-review-results"><Card>
     <Row>
       <View style={{ flex: 1, minWidth: 160 }}>
-        <SectionTitle>Chaburah Results</SectionTitle>
+        <SectionTitle icon="stats-chart-outline">Chaburah Results</SectionTitle>
         <MetaText>First answer per question</MetaText>
       </View>
-      <Pill label="Rabbi only" />
+      <Pill label="Rabbi only" tone="accent" />
       <Pressable accessibilityRole="button" accessibilityLabel="Refresh review results"
         disabled={loading} onPress={() => setRevision(value => value + 1)}
         {...(Platform.OS === "web" ? { title: "Refresh review results" } : {})}
         style={[s.refresh, loading && { opacity: 0.4 }]}>
-        <Ionicons name="refresh-outline" size={20} color={theme.colors.info} />
+        <Ionicons name="refresh-outline" size={18} color={theme.colors.primary} />
       </Pressable>
     </Row>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
@@ -84,8 +84,8 @@ export function ChaburahReviewResults({ chaburahId, programId, weeks, refreshing
           {filtered.map(row => <View key={row.user_id} style={s.compactRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Text style={[s.cell, { width: 24 }, row.score_rank !== null && row.score_rank <= 3 && s.topRank]}>{row.score_rank ?? "-"}</Text>
-              <Text style={[s.cell, { flex: 1, fontWeight: "600" }]}>{row.display_name}</Text>
-              <Text style={s.cell}>{row.answered_questions ? `${Number((100 * row.correct_answers / row.answered_questions).toFixed(1))}%` : "-"}</Text>
+              <Text style={[s.cell, { flex: 1, fontWeight: "700" }]}>{row.display_name}</Text>
+              <Text style={[s.cell, { fontWeight: "700", color: theme.colors.primary }]}>{row.answered_questions ? `${Number((100 * row.correct_answers / row.answered_questions).toFixed(1))}%` : "-"}</Text>
             </View>
             <View style={{ marginLeft: 32, gap: 3 }}>
               <MetaText>{row.correct_answers}/{row.answered_questions} correct - {row.weeks_attempted} week{row.weeks_attempted === 1 ? "" : "s"} tried</MetaText>
@@ -106,8 +106,8 @@ export function ChaburahReviewResults({ chaburahId, programId, weeks, refreshing
             </View>
             {filtered.map(row => <View key={row.user_id} style={s.row}>
               <Text style={[s.cell, s.rank, row.score_rank !== null && row.score_rank <= 3 && s.topRank]}>{row.score_rank ?? "-"}</Text>
-              <Text style={[s.cell, s.name]}>{row.display_name}</Text>
-              <Text style={[s.cell, s.score]}>{row.answered_questions ? `${Number((100 * row.correct_answers / row.answered_questions).toFixed(1))}%` : "-"}</Text>
+              <Text style={[s.cell, s.name, { fontWeight: "600" }]}>{row.display_name}</Text>
+              <Text style={[s.cell, s.score, { fontWeight: "700", color: theme.colors.primary }]}>{row.answered_questions ? `${Number((100 * row.correct_answers / row.answered_questions).toFixed(1))}%` : "-"}</Text>
               <Text style={[s.cell, s.correct]}>{row.correct_answers}/{row.answered_questions}</Text>
               <Text style={[s.cell, s.participation]}>{row.answered_questions}/{row.available_questions} ({row.available_questions ? Math.round(100 * row.answered_questions / row.available_questions) : 0}%)</Text>
               <Text style={[s.cell, s.weeks]}>{row.weeks_attempted}</Text>
@@ -119,13 +119,52 @@ export function ChaburahReviewResults({ chaburahId, programId, weeks, refreshing
 }
 
 const s = StyleSheet.create({
-  refresh: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8 },
-  row: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderColor: theme.colors.border, paddingVertical: 11, paddingHorizontal: 8, gap: 8 },
-  compactRow: { gap: 4, paddingVertical: 12, borderBottomWidth: 1, borderColor: theme.colors.border },
-  header: { backgroundColor: "#F1F5F9" },
-  label: { color: theme.colors.muted, fontSize: 12, fontWeight: "700" },
-  cell: { fontSize: 14, lineHeight: 20, color: theme.colors.ink },
-  rank: { width: 40 }, name: { flex: 1, minWidth: 170 }, score: { width: 70 }, correct: { width: 74 },
-  participation: { width: 132 }, weeks: { width: 68 },
-  topRank: { color: theme.colors.info, fontWeight: "700" }
+  refresh: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBorder,
+    borderRadius: theme.radius.sm
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderColor: theme.colors.borderSoft,
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+    gap: 8
+  },
+  compactRow: {
+    gap: 4,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.borderSoft
+  },
+  header: {
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primaryBorder,
+    borderRadius: theme.radius.xs
+  },
+  label: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase"
+  },
+  cell: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: theme.colors.ink
+  },
+  rank: { width: 44 },
+  name: { flex: 1, minWidth: 170 },
+  score: { width: 72 },
+  correct: { width: 74 },
+  participation: { width: 132 },
+  weeks: { width: 74 },
+  topRank: { color: theme.colors.accent, fontWeight: "800" }
 });

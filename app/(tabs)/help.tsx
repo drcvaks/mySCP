@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { Card, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { Card, IconTile, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { theme } from "../../src/shared/theme";
 import { useAuthState } from "../../src/state/AuthState";
 
@@ -58,9 +58,16 @@ export default function HelpScreen() {
   return (
     <Screen title="Help / How to Use" eyebrow="Beta quick start">
       <Card>
-        <SectionTitle>Quick Start</SectionTitle>
-        <Text style={styles.muted}>Short, screen-based reminders for the role you are testing.</Text>
-        <Pill label={roleLabel(role)} tone="primary" />
+        <Row>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 220 }}>
+            <IconTile icon="book-outline" tone="accent" size={42} />
+            <View style={{ flex: 1 }}>
+              <SectionTitle>Quick Start</SectionTitle>
+              <Text style={styles.muted}>Short, screen-based reminders for the role you are testing.</Text>
+            </View>
+          </View>
+          <Pill label={roleLabel(role)} tone="primary" />
+        </Row>
       </Card>
 
       {visibleGuides.map((guide) => (
@@ -78,8 +85,10 @@ export default function HelpScreen() {
           </View>
           {guide.steps.map((step, index) => (
             <View key={step} style={localStyles.stepRow}>
-              <Text style={localStyles.stepNumber}>{index + 1}</Text>
-              <Text style={styles.body}>{step}</Text>
+              <View style={localStyles.stepBadge}>
+                <Text style={localStyles.stepNumber}>{index + 1}</Text>
+              </View>
+              <Text style={[styles.body, { flex: 1 }]}>{step}</Text>
             </View>
           ))}
         </Card>
@@ -96,11 +105,20 @@ function roleLabel(role: string) {
 }
 
 const localStyles = StyleSheet.create({
+  stepBadge: {
+    alignItems: "center",
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primaryBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 26,
+    justifyContent: "center",
+    width: 26
+  },
   stepNumber: {
     color: theme.colors.primary,
-    fontSize: 14,
-    fontWeight: "900",
-    width: 24
+    fontSize: 12,
+    fontWeight: "800"
   },
   stepRow: {
     alignItems: "flex-start",
@@ -109,8 +127,8 @@ const localStyles = StyleSheet.create({
   },
   videoPlaceholder: {
     backgroundColor: theme.colors.primarySoft,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
+    borderColor: theme.colors.primaryBorder,
+    borderRadius: theme.radius.md,
     borderStyle: "dashed",
     borderWidth: 1,
     gap: 3,
@@ -119,6 +137,6 @@ const localStyles = StyleSheet.create({
   videoTitle: {
     color: theme.colors.primary,
     fontSize: 15,
-    fontWeight: "900"
+    fontWeight: "800"
   }
 });

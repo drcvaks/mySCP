@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import {
+  Avatar,
   Button,
   Card,
   FilterChip,
   FormInput,
+  IconTile,
   MetaText,
   Pill,
   Row,
@@ -22,6 +24,7 @@ import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 import { PublicReviewCsvImport } from "../../src/shared/PublicReviewCsvImport";
+import { theme } from "../../src/shared/theme";
 
 const assignableRoles: UserRole[] = ["global_admin", "participant"];
 const participantRoleFilters = ["all", "participant", "local_rabbi", "local_admin", "global_admin"] as const;
@@ -257,14 +260,20 @@ export default function GlobalAdminScreen() {
 
   return (
     <Screen title="Global Admin" eyebrow="SCP headquarters" onRefresh={refreshGlobalAdmin} refreshing={loading || loadingParticipants}>
-      <Card>
+      <Card tone="hero">
         <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Leadership Console</SectionTitle>
-            <Text style={styles.muted}>Create chaburos, manage active status, and manage global app access.</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 14, flex: 1, minWidth: 220 }}>
+            <IconTile icon="globe-outline" tone="accent" size={44} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: "#FFFFFF", fontSize: 20, fontWeight: "800" }}>Leadership Console</Text>
+              <Text style={{ color: "#C5D2EC", fontSize: 13 }}>
+                Create chaburos, manage active status, and manage global app access.
+              </Text>
+            </View>
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <Pill label={`${chaburos.length} chaburos`} tone="primary" />
+            <Pill label={`${chaburos.length} chaburos`} tone="accent" />
+            <Pill label={`${participants.length} users`} tone="primary" />
           </View>
         </Row>
       </Card>
@@ -275,11 +284,15 @@ export default function GlobalAdminScreen() {
       />
 
       <Card>
-        <SectionTitle>Live Overview</SectionTitle>
+        <SectionTitle icon="analytics-outline">Live Overview</SectionTitle>
         <Row>
           <View style={{ minWidth: 160 }}>
             <Text style={styles.statNumber}>{chaburos.length}</Text>
             <MetaText>Configured chaburos</MetaText>
+          </View>
+          <View style={{ minWidth: 160 }}>
+            <Text style={styles.statNumber}>{participants.length}</Text>
+            <MetaText>Registered users</MetaText>
           </View>
         </Row>
       </Card>
@@ -287,7 +300,7 @@ export default function GlobalAdminScreen() {
       <PublicReviewCsvImport />
 
       <Card>
-        <SectionTitle>Create Chaburah</SectionTitle>
+        <SectionTitle icon="add-circle-outline">Create Chaburah</SectionTitle>
         <FormInput onChangeText={setName} placeholder="Chaburah name" value={name} />
         <FormInput onChangeText={setAddress} placeholder="Address" value={address} />
         <Row>
@@ -329,7 +342,7 @@ export default function GlobalAdminScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Global Access</SectionTitle>
+        <SectionTitle icon="key-outline">Global Access</SectionTitle>
         <Text style={styles.muted}>
           Use Admin to assign local rabbis and local admins to a specific chaburah. This tool is only for global admin
           access or resetting a user back to participant.
@@ -351,7 +364,7 @@ export default function GlobalAdminScreen() {
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Participant Directory</SectionTitle>
+            <SectionTitle icon="people-outline">Participant Directory</SectionTitle>
             <Text style={styles.muted}>Find users by name, email, city, role, or chaburah.</Text>
           </View>
           <Pill label={`${filteredParticipants.length} of ${participants.length}`} tone="accent" />
@@ -395,11 +408,14 @@ export default function GlobalAdminScreen() {
           <ScrollView style={{ maxHeight: 520 }} nestedScrollEnabled>
             <View style={{ gap: 12 }}>
               {filteredParticipants.map((participant) => (
-                <View key={participant.id} style={{ gap: 8 }}>
+                <View key={participant.id} style={s.rowBox}>
                   <Row>
-                    <View style={{ flex: 1, minWidth: 220 }}>
-                      <Text style={styles.body}>{participant.fullName}</Text>
-                      <MetaText>{participant.email}</MetaText>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 220 }}>
+                      <Avatar name={participant.fullName} size={36} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.body, { fontWeight: "700" }]}>{participant.fullName}</Text>
+                        <MetaText>{participant.email}</MetaText>
+                      </View>
                     </View>
                     <Pill label={roleLabel(participant.role)} tone={participant.role === "global_admin" ? "primary" : "neutral"} />
                   </Row>
@@ -432,7 +448,7 @@ export default function GlobalAdminScreen() {
       <Card>
         <Row>
           <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Chaburos</SectionTitle>
+            <SectionTitle icon="business-outline">Chaburos</SectionTitle>
             <Text style={styles.muted}>Search before activating or deactivating a chaburah.</Text>
           </View>
           <Pill label={`${filteredChaburos.length} of ${chaburos.length}`} tone="accent" />
@@ -444,10 +460,10 @@ export default function GlobalAdminScreen() {
         />
         {filteredChaburos.length === 0 ? <Text style={styles.muted}>No chaburos match that search.</Text> : null}
         {filteredChaburos.map((chaburah) => (
-          <View key={chaburah.id} style={{ gap: 8 }}>
+          <View key={chaburah.id} style={s.rowBox}>
             <Row>
               <View style={{ flex: 1, minWidth: 220 }}>
-                <Text style={styles.body}>{chaburah.name}</Text>
+                <Text style={[styles.body, { fontWeight: "700" }]}>{chaburah.name}</Text>
                 <MetaText>{chaburah.city}, {chaburah.country} - {chaburah.memberCount} members</MetaText>
               </View>
               <Pill label={chaburah.status === "active" ? "Active" : "Inactive"} tone={chaburah.status === "active" ? "success" : "danger"} />
@@ -476,3 +492,14 @@ export default function GlobalAdminScreen() {
     </Screen>
   );
 }
+
+const s = StyleSheet.create({
+  rowBox: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderSoft,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    gap: 8,
+    padding: 12
+  }
+});

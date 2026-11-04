@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Button, Card, FilterChip, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
+import { Button, Card, EmptyState, FilterChip, IconTile, MetaText, Pill, Row, Screen, SectionTitle, styles } from "../../src/shared/components";
 import { NotificationItem } from "../../src/shared/types";
 import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { useAppState } from "../../src/state/AppState";
@@ -47,9 +47,12 @@ export default function NotificationsScreen() {
     <Screen title="Notifications" eyebrow="Updates" onRefresh={refresh} refreshing={loading}>
       <Card>
         <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>In-App Notifications</SectionTitle>
-            <Text style={styles.muted}>Review recent app updates and mark them read. The inbox shows the latest 50 notifications.</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 220 }}>
+            <IconTile icon="notifications-outline" tone="accent" size={42} />
+            <View style={{ flex: 1 }}>
+              <SectionTitle>In-App Notifications</SectionTitle>
+              <Text style={styles.muted}>Review recent app updates and mark them read. The inbox shows the latest 50 notifications.</Text>
+            </View>
           </View>
           <Pill label={`${notificationUnreadCount} unread`} tone={notificationUnreadCount ? "accent" : "success"} />
         </Row>
@@ -64,12 +67,15 @@ export default function NotificationsScreen() {
 
       {visibleNotifications.length === 0 ? (
         <Card>
-          <SectionTitle>{filter === "unread" ? "No Unread Notifications" : "No Notifications"}</SectionTitle>
-          <Text style={styles.muted}>
-            {filter === "unread"
-              ? "You are caught up. Switch to All to see recent read notifications."
-              : "You do not have any in-app notifications yet."}
-          </Text>
+          <EmptyState
+            icon="checkmark-done-circle-outline"
+            title={filter === "unread" ? "No Unread Notifications" : "No Notifications"}
+            body={
+              filter === "unread"
+                ? "You are caught up. Switch to All to see recent read notifications."
+                : "You do not have any in-app notifications yet."
+            }
+          />
         </Card>
       ) : null}
 

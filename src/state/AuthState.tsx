@@ -5,6 +5,7 @@ import * as Linking from "expo-linking";
 import { formatSupabaseError } from "../lib/errors";
 import { supabase } from "../lib/supabase";
 import { UserProfile } from "../shared/types";
+import { markRegisteredForInstall } from "../shared/pwaRegistration";
 
 interface AuthStateValue {
   session: Session | null;
@@ -184,6 +185,7 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
             options: { data: { full_name: fullName, city } }
           });
           if (signUpError) return formatSupabaseError(signUpError);
+          if (data.user?.id && data.user.identities?.length !== 0) markRegisteredForInstall(data.user.id);
           if (!data.session) return "Check your email to confirm the account, then sign in.";
           return null;
         } catch (signUpError) {

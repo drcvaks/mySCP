@@ -1,16 +1,19 @@
 import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import {
   Button,
   Card,
+  EmptyState,
   FilterChip,
+  IconTile,
   MetaText,
   Pill,
   Row,
   Screen,
   SearchField,
   SectionTitle,
+  SegmentedTabs,
   styles
 } from "../../src/shared/components";
 import { fileCoverageDetailLabel, fileCoverageLabel, fileTypeLabel, learningFileTypeLabel, visibilityLabel } from "../../src/shared/format";
@@ -22,6 +25,8 @@ import { useAuthState } from "../../src/state/AuthState";
 import { openLearningFile } from "../../src/shared/openLearningFile";
 import { PacketPreviewModal } from "../../src/shared/PacketPreviewModal";
 import { materialTextStyle } from "../../src/shared/materialLanguages";
+import { theme } from "../../src/shared/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 type FileTypeFilter = FileType | "all" | "qa_packet";
 
@@ -30,6 +35,8 @@ const scopes: Array<Visibility | "all"> = ["all", "everyone", "chaburah"];
 const coverages: Array<FileCoverage | "all"> = ["all", "week", "bechina_review", "entire_zman"];
 
 export default function FilesScreen() {
+  const { width } = useWindowDimensions();
+  const wide = width >= 900;
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<FileTypeFilter>("all");
   const [selectedScope, setSelectedScope] = useState<Visibility | "all">("all");
@@ -103,29 +110,48 @@ export default function FilesScreen() {
     await openLearningFile(file);
   }
 
+  const hasFilters = Boolean(search.trim()) || selectedType !== "all" || selectedScope !== "all" || selectedCoverage !== "all";
+
   return (
     <Screen title="Files" eyebrow="Source sheets, review sheets, recordings" onRefresh={refresh} refreshing={loading} programSelector={<ProgramSelector />}>
       <Card>
-        <SectionTitle>Find Learning Materials</SectionTitle>
-        <Text style={styles.muted}>Organized by title, topic, coverage, type, and scope.</Text>
+        <Row>
+          <View style={{ flex: 1, minWidth: 220 }}>
+            <SectionTitle icon="folder-open-outline">Find Learning Materials</SectionTitle>
+            <Text style={styles.muted}>Organized by title, topic, coverage, type, and scope.</Text>
+          </View>
+          {hasFilters ? (
+            <Button
+              label="Reset Filters"
+              variant="secondary"
+              compact
+              onPress={() => {
+                setSearch("");
+                setSelectedType("all");
+                setSelectedScope("all");
+                setSelectedCoverage("all");
+              }}
+            />
+          ) : null}
+        </Row>
+
         <SearchField onChangeText={setSearch} placeholder="Search by title, topic, or type..." value={search} />
 
-        <View style={{ gap: 8 }}>
-          <MetaText>Scope</MetaText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {scopes.map((scope) => (
-              <FilterChip
-                key={scope}
-                label={scopeLabel(scope, isGlobalAdmin)}
-                onPress={() => setSelectedScope(scope)}
-                selected={selectedScope === scope}
-              />
-            ))}
-          </View>
-        </View>
+        <SegmentedTabs
+          options={scopes.map((scope) => ({
+            key: scope,
+            label: scopeLabel(scope, isGlobalAdmin),
+            count:
+              scope === "all"
+                ? visibleFiles.length
+                : visibleFiles.filter((f) => f.visibility === scope).length
+          }))}
+          value={selectedScope}
+          onChange={setSelectedScope}
+        />
 
-        <View style={{ gap: 8 }}>
-          <MetaText>Type</MetaText>
+        <View style={{ gap: 6 }}>
+          <MetaText>Format</MetaText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {fileTypes.map((type) => (
               <FilterChip
@@ -138,7 +164,7 @@ export default function FilesScreen() {
           </View>
         </View>
 
-        <View style={{ gap: 8 }}>
+        <View style={{ gap: 6 }}>
           <MetaText>Coverage</MetaText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {coverages.map((coverage) => (
@@ -153,7 +179,7 @@ export default function FilesScreen() {
         </View>
 
         {selectedCoverage === "week" ? (
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: 6 }}>
             <MetaText>Current week is Week {currentReviewWeek}</MetaText>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {fileWeeks.map((week) => (
@@ -187,46 +213,61 @@ export default function FilesScreen() {
       </Row>
 
       {filteredFiles.length === 0 ? (
-        <Card>
-          <SectionTitle>No Files Found</SectionTitle>
-          <Text style={styles.muted}>Try a different search term or filter.</Text>
-        </Card>
+        <EmptyState icon="folder-open-outline" title="No Files Found" body="Try a different search term or filter." />
       ) : (
-        filteredFiles.map((file) => (
-          <Card key={file.id}>
-            <Row>
-              <View style={{ flex: 1, minWidth: 220 }}>
-                <Text testID={`file-title-${file.id}`} style={[styles.sectionTitle, materialTextStyle(file.language)]}>{file.title}</Text>
-                <Text style={styles.muted}>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</Text>
-              </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                <Pill label={learningFileTypeLabel(file)} tone="accent" />
-                <View style={{ minWidth: 112 }}>
-                  <Button
-                    label={file.fileType === "custom_review_packet" || file.url || file.storagePath ? "Open" : "Details"}
-                    onPress={() => openFile(file.id)}
-                    variant="secondary"
+        <View style={[s.grid, wide && s.gridWide]}>
+          {filteredFiles.map((file) => (
+            <View key={file.id} style={[s.fileCard, wide && s.fileCardWide]}>
+              <View style={s.fileTopRow}>
+                <View style={{ flex: 1, minWidth: 200, flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+                  <IconTile
+                    icon={fileIcon(file)}
+                    tone={file.fileType === "recording" || file.fileType === "video" || file.fileType === "custom_review_packet" ? "accent" : "brand"}
+                    size={42}
                   />
+                  <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                    <Text testID={`file-title-${file.id}`} style={[styles.sectionTitle, { fontSize: 16, lineHeight: 22 }, materialTextStyle(file.language)]}>
+                      {file.title}
+                    </Text>
+                    <Text style={styles.muted}>
+                      {fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}
+                    </Text>
+                    {file.description ? (
+                      <Text numberOfLines={2} style={[styles.muted, { fontSize: 12 }]}>
+                        {file.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  <Pill label={learningFileTypeLabel(file)} tone="accent" />
+                  <View style={{ minWidth: 96 }}>
+                    <Button
+                      label={file.fileType === "custom_review_packet" || file.url || file.storagePath ? "Open" : "Details"}
+                      onPress={() => openFile(file.id)}
+                      variant="primary"
+                      compact
+                    />
+                  </View>
                 </View>
               </View>
-            </Row>
 
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {isGlobalAdmin ? (
-                <Pill
-                  label={file.visibility === "everyone" ? "Everyone" : chaburahFileLabel(file.chaburahId, chaburos)}
-                  tone={file.visibility === "everyone" ? "primary" : "neutral"}
-                />
-              ) : (
-                <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
-              )}
-              <Pill label={`By ${uploaderLabel(file, isGlobalAdmin, profile)}`} />
-              <Pill label={selectedProgram.name} />
-              <Pill label={file.language === "he" ? "Hebrew" : "English"} />
+              <View style={s.pillsRow}>
+                {isGlobalAdmin ? (
+                  <Pill
+                    label={file.visibility === "everyone" ? "Everyone" : chaburahFileLabel(file.chaburahId, chaburos)}
+                    tone={file.visibility === "everyone" ? "primary" : "neutral"}
+                  />
+                ) : (
+                  <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
+                )}
+                <Pill label={`By ${uploaderLabel(file, isGlobalAdmin, profile)}`} />
+                <Pill label={selectedProgram.name} />
+                <Pill label={file.language === "he" ? "Hebrew" : "English"} />
+              </View>
             </View>
-
-          </Card>
-        ))
+          ))}
+        </View>
       )}
       <PacketPreviewModal
         packetId={previewPacketId}
@@ -235,6 +276,17 @@ export default function FilesScreen() {
       />
     </Screen>
   );
+}
+
+function fileIcon(file: LearningFile): keyof typeof Ionicons.glyphMap {
+  const label = learningFileTypeLabel(file);
+  if (label === "Q&A") return "help-circle-outline";
+  if (file.fileType === "video") return "videocam-outline";
+  if (file.fileType === "recording") return "mic-outline";
+  if (file.fileType === "link") return "link-outline";
+  if (file.fileType === "pdf") return "document-outline";
+  if (file.fileType === "review_sheet" || label === "Review Notes") return "reader-outline";
+  return "document-text-outline";
 }
 
 function scopeLabel(scope: Visibility | "all", isGlobalAdmin: boolean) {
@@ -274,3 +326,43 @@ function uploaderLabel(
   if (isGlobalAdmin) return file.uploadedBy;
   return file.visibility === "everyone" ? "Program" : "Local Admin";
 }
+
+const s = StyleSheet.create({
+  grid: {
+    gap: 12
+  },
+  gridWide: {
+    flexDirection: "row",
+    flexWrap: "wrap"
+  },
+  fileCard: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    gap: 12,
+    justifyContent: "space-between",
+    padding: 16,
+    ...theme.shadows.card
+  },
+  fileCardWide: {
+    flexBasis: "48.8%",
+    flexGrow: 1,
+    minWidth: 340
+  },
+  fileTopRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    justifyContent: "space-between"
+  },
+  pillsRow: {
+    borderTopColor: theme.colors.borderSoft,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingTop: 10
+  }
+});

@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppStateProvider } from "../src/state/AppState";
 import { AuthStateProvider } from "../src/state/AuthState";
+import { PwaProvider } from "../src/shared/PwaInstall";
 
 export default function RootLayout() {
   return (
@@ -11,7 +12,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthStateProvider>
           <AppStateProvider>
-            <Stack screenOptions={{ headerShown: false }} />
+            <PwaProvider><Stack screenOptions={{ headerShown: false }} /></PwaProvider>
             <StatusBar style="dark" />
           </AppStateProvider>
         </AuthStateProvider>

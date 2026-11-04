@@ -1212,39 +1212,45 @@ export default function ShiurBuilderScreen() {
                   <MetaText>{editingPublishedPacket ? "Updating will change this existing Files entry." : "Publishing again will create a new Files entry for this category."}</MetaText>
                 </View>
               ) : null}
-              <Button
-                label={`Preview ${activeCategoryConfig.label}`}
-                onPress={() => {
-                  setPreviewChunkId(null);
-                  setPreviewChunkListIds(null);
-                  setPreviewSectionKey(null);
-                  setPacketPreviewChunkId(null);
-                  setPreviewSizeMode(activeCategory === "source" ? "full" : "wide");
-                  setPreviewingPacket(true);
-                }}
-                disabled={selectedCategoryChunks.length === 0}
-                variant={selectedCategoryChunks.length > 0 ? "primary" : "secondary"}
-              />
               <View style={localStyles.savePublishActions}>
+                <View style={localStyles.packetActionButton}>
+                  <Button
+                    fullWidth
+                    icon="eye-outline"
+                    label={`Preview ${activeCategoryConfig.label}`}
+                    onPress={() => {
+                      setPreviewChunkId(null);
+                      setPreviewChunkListIds(null);
+                      setPreviewSectionKey(null);
+                      setPacketPreviewChunkId(null);
+                      setPreviewSizeMode(activeCategory === "source" ? "full" : "wide");
+                      setPreviewingPacket(true);
+                    }}
+                    disabled={selectedCategoryChunks.length === 0}
+                    variant="secondary"
+                  />
+                </View>
                 {!editingPublishedPacket ? (
                   <View style={localStyles.packetActionButton}>
                     <Button
+                      fullWidth
+                      icon="bookmark-outline"
                       label={saving ? "Saving..." : "Save Draft"}
                       onPress={saveDraft}
                       disabled={saving || !canEditPacket || selectedIds.length === 0}
-                      variant={selectedIds.length > 0 ? "primary" : "secondary"}
+                      variant="secondary"
                     />
                   </View>
                 ) : null}
-                <View style={localStyles.packetActionButton}>
-                  <Button
-                    label={saving ? "Publishing..." : editingPublishedPacket ? `Update Published ${activeCategoryConfig.label}` : `Publish ${activeCategoryConfig.label}`}
-                    onPress={publishPacket}
-                    disabled={saving || !canEditPacket || selectedCategoryChunks.length === 0 || (editingPublishedPacket && !hasPublishedPacketChanges)}
-                    variant={selectedCategoryChunks.length > 0 && (!editingPublishedPacket || hasPublishedPacketChanges) ? "primary" : "secondary"}
-                  />
-                </View>
               </View>
+              <Button
+                fullWidth
+                icon="cloud-upload-outline"
+                label={saving ? "Publishing..." : editingPublishedPacket ? `Update Published ${activeCategoryConfig.label}` : `Publish ${activeCategoryConfig.label}`}
+                onPress={publishPacket}
+                disabled={saving || !canEditPacket || selectedCategoryChunks.length === 0 || (editingPublishedPacket && !hasPublishedPacketChanges)}
+                variant="primary"
+              />
             </View>
           </Card>
         </View>
@@ -1919,9 +1925,9 @@ const localStyles = StyleSheet.create({
     borderRadius: 8, backgroundColor: "#FFFFFF" },
   paneButton: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 6, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 6 },
-  paneButtonActive: { backgroundColor: "#2563EB" },
+  paneButtonActive: { backgroundColor: theme.colors.primary },
   paneButtonText: { fontSize: 13, lineHeight: 19, fontWeight: "700", color: theme.colors.ink, flexShrink: 1, textAlign: "center" },
-  iconButton: { width: 44, height: 44, borderRadius: 8, backgroundColor: "#F0F4FA", alignItems: "center", justifyContent: "center" },
+  iconButton: { width: 44, height: 44, borderRadius: 8, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder, alignItems: "center", justifyContent: "center" },
   folderHeading: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44 },
   fileMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 },
   stackedFileRow: { flexDirection: "column", alignItems: "stretch" },
@@ -1962,7 +1968,7 @@ const localStyles = StyleSheet.create({
     gap: 8
   },
   folderShell: {
-    backgroundColor: "#FBFDFF",
+    backgroundColor: theme.colors.surfaceMuted,
     borderColor: theme.colors.border,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
@@ -2127,11 +2133,15 @@ const localStyles = StyleSheet.create({
   },
   publishActions: {
     alignItems: "stretch",
-    gap: 8
+    borderTopColor: theme.colors.border,
+    borderTopWidth: 1,
+    gap: 10,
+    marginTop: 4,
+    paddingTop: 12
   },
   publishedNotice: {
     alignItems: "flex-start",
-    backgroundColor: "#ECFDF3",
+    backgroundColor: theme.colors.successSoft,
     borderColor: "#B7E4C7",
     borderRadius: theme.radius.sm,
     borderWidth: 1,
@@ -2149,7 +2159,7 @@ const localStyles = StyleSheet.create({
   },
   suggestionBox: {
     backgroundColor: theme.colors.accentSoft,
-    borderColor: "#F2D37A",
+    borderColor: theme.colors.accentBorder,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     gap: 8,

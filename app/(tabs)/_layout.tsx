@@ -14,8 +14,8 @@ import { useAuthState } from "../../src/state/AuthState";
 function tabIcon(name: SidebarRoute) {
   const visual = navigationItems[name];
   return ({ focused }: { color: string; size: number; focused: boolean }) => (
-    <View style={[mobileTabStyles.icon, { backgroundColor: focused ? "#2563EB" : visual.tint }]}>
-      <Ionicons name={visual.icon} color={focused ? "#FFFFFF" : visual.color} size={22} />
+    <View style={[mobileTabStyles.icon, { backgroundColor: focused ? "#062A72" : visual.tint }]}>
+      <Ionicons name={visual.icon} color={focused ? "#F6BA36" : visual.color} size={22} />
     </View>
   );
 }
@@ -39,7 +39,7 @@ function betaSupportLabel(label: string, badge: string, leftRailNav: boolean, co
       <View
         style={{
           backgroundColor: theme.colors.accentSoft,
-          borderColor: "#F2D37A",
+          borderColor: theme.colors.accentBorder,
           borderRadius: 999,
           borderWidth: 1,
           paddingHorizontal: 7,
@@ -111,8 +111,8 @@ export default function TabLayout() {
           : <MobileTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveBackgroundColor: leftRailNav ? undefined : "#EDF4FF",
-        tabBarActiveTintColor: "#1D56BE",
+        tabBarActiveBackgroundColor: leftRailNav ? undefined : theme.colors.primarySoft,
+        tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.muted,
         tabBarIconStyle: leftRailNav ? undefined : { width: 36, height: 32, marginBottom: 2, flexShrink: 0 },
         tabBarHideOnKeyboard: true,

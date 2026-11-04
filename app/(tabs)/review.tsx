@@ -1,10 +1,12 @@
 import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   Button,
   Card,
+  EmptyState,
   FilterChip,
+  IconTile,
   MetaText,
   Pill,
   ProgressBar,
@@ -14,6 +16,7 @@ import {
   StatusBanner,
   styles
 } from "../../src/shared/components";
+import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../src/shared/theme";
 import { buildProgramWeeks, fallbackCurrentReviewWeek } from "../../src/shared/reviewWeeks";
 import { useAppState } from "../../src/state/AppState";
@@ -156,19 +159,30 @@ export default function ReviewScreen() {
         programSelector={<ProgramSelector disabled={submitting} />}
       >
         <Card>
-          <Pill label={percentage >= 80 ? "Strong result" : "Keep reviewing"} tone={percentage >= 80 ? "success" : "accent"} />
-          <Text style={[styles.statNumber, { fontSize: 44 }]}>{percentage}%</Text>
-          <SectionTitle>{score} of {currentQuestions.length} correct</SectionTitle>
-          <ProgressBar value={percentage} />
-          <Text style={styles.muted}>This result has been saved to your Supabase review history.</Text>
-          <Button label="Try Again" onPress={() => reset()} />
-          {selectedWeek !== "all" && selectedWeek < weeks[weeks.length - 1] ? (
-            <Button label={`Continue to Week ${selectedWeek + 1}`} onPress={() => reset(selectedWeek + 1)} variant="secondary" />
-          ) : null}
+          <View style={choiceStyles.completionCenter}>
+            <View style={choiceStyles.scoreCircle}>
+              <Text style={choiceStyles.scorePctText}>{percentage}%</Text>
+              <Text style={choiceStyles.scoreSubText}>
+                {score} / {currentQuestions.length}
+              </Text>
+            </View>
+            <Pill label={percentage >= 80 ? "Strong result" : "Keep reviewing"} tone={percentage >= 80 ? "success" : "accent"} />
+            <SectionTitle>{score} of {currentQuestions.length} correct</SectionTitle>
+            <View style={{ width: "100%", maxWidth: 360 }}>
+              <ProgressBar value={percentage} />
+            </View>
+            <Text style={styles.muted}>This result has been saved to your Supabase review history.</Text>
+            <Row>
+              <Button label="Try Again" icon="refresh-outline" onPress={() => reset()} />
+              {selectedWeek !== "all" && selectedWeek < weeks[weeks.length - 1] ? (
+                <Button label={`Continue to Week ${selectedWeek + 1}`} onPress={() => reset(selectedWeek + 1)} variant="secondary" />
+              ) : null}
+            </Row>
+          </View>
         </Card>
 
         <Card>
-          <SectionTitle>Recent Review History</SectionTitle>
+          <SectionTitle icon="time-outline">Recent Review History</SectionTitle>
           {reviewSessions.slice(0, 5).map((session) => (
             <Row key={session.id}>
               <MetaText>{session.week === "all" ? "All weeks" : `Week ${session.week}`} - {new Date(session.completedAt).toLocaleDateString()}</MetaText>
@@ -187,13 +201,16 @@ export default function ReviewScreen() {
     <Screen title="Review Questions" eyebrow="Bechina prep" onRefresh={refresh} refreshing={loading} programSelector={<ProgramSelector disabled={submitting} />}>
       <Card>
         <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Choose a Week</SectionTitle>
-            <Text style={styles.muted}>
-              {selectedChaburah
-                ? `Showing questions published for ${selectedChaburah.name}. Current week is Week ${currentReviewWeek}.`
-                : `Current week is Week ${currentReviewWeek}. Join or select a chaburah to see review questions.`}
-            </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 220 }}>
+            <IconTile icon="calendar-outline" tone="accent" size={40} />
+            <View style={{ flex: 1 }}>
+              <SectionTitle>Choose a Week</SectionTitle>
+              <Text style={styles.muted}>
+                {selectedChaburah
+                  ? `Showing questions published for ${selectedChaburah.name}. Current week is Week ${currentReviewWeek}.`
+                  : `Current week is Week ${currentReviewWeek}. Join or select a chaburah to see review questions.`}
+              </Text>
+            </View>
           </View>
           <Pill label={`${currentQuestions.length} questions`} tone="accent" />
         </Row>
@@ -250,16 +267,25 @@ export default function ReviewScreen() {
                   disabled={selectedChoice !== undefined || submitting}
                   key={choice}
                   onPress={() => selectAnswer(index)}
-                  style={[
+                  accessibilityState={{ selected: isSelected, disabled: selectedChoice !== undefined || submitting }}
+                  style={({ pressed, hovered, focused }: { pressed: boolean; hovered?: boolean; focused?: boolean }) => [
                     choiceStyles.choice,
+                    selectedChoice === undefined && (hovered || pressed) && { borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
+                    focused && theme.focusRing,
+                    selectedChoice !== undefined && !isSelected && { opacity: 0.6 },
+                    isSelected && !currentFeedback && { borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
                     isCorrect && { backgroundColor: theme.colors.successSoft, borderColor: theme.colors.success },
                     isIncorrect && { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger }
                   ]}
                 >
-                  <View style={[choiceStyles.choiceMarker, isSelected && choiceStyles.choiceMarkerSelected]}>
-                    <Text style={[choiceStyles.choiceMarkerText, isSelected && choiceStyles.choiceMarkerTextSelected]}>
-                      {String.fromCharCode(65 + index)}
-                    </Text>
+                  <View style={[choiceStyles.choiceMarker, isSelected && choiceStyles.choiceMarkerSelected,
+                    isCorrect && { backgroundColor: theme.colors.success, borderColor: theme.colors.success },
+                    isIncorrect && { backgroundColor: theme.colors.danger, borderColor: theme.colors.danger }]}>
+                    {isCorrect || isIncorrect
+                      ? <Ionicons name={isCorrect ? "checkmark" : "close"} size={16} color="#FFFFFF" />
+                      : <Text style={[choiceStyles.choiceMarkerText, isSelected && choiceStyles.choiceMarkerTextSelected]}>
+                          {String.fromCharCode(65 + index)}
+                        </Text>}
                   </View>
                   <Text style={choiceStyles.choiceText}>{choice}</Text>
                 </Pressable>
@@ -271,10 +297,13 @@ export default function ReviewScreen() {
             <View
               style={[
                 choiceStyles.feedback,
-                { backgroundColor: currentFeedback.isCorrect ? theme.colors.successSoft : theme.colors.dangerSoft }
+                {
+                  backgroundColor: currentFeedback.isCorrect ? theme.colors.successSoft : theme.colors.dangerSoft,
+                  borderColor: currentFeedback.isCorrect ? theme.colors.successBorder : theme.colors.dangerBorder
+                }
               ]}
             >
-              <Text style={[styles.body, { color: currentFeedback.isCorrect ? theme.colors.success : theme.colors.danger, fontWeight: "900" }]}>
+              <Text style={[styles.body, { color: currentFeedback.isCorrect ? theme.colors.success : theme.colors.danger, fontWeight: "800" }]}>
                 {currentFeedback.isCorrect ? "Correct" : "Not quite"}
               </Text>
               <MetaText>{currentFeedback.explanation}</MetaText>
@@ -303,35 +332,33 @@ export default function ReviewScreen() {
           </Row>
         </Card>
       ) : (
-        <Card>
-          <SectionTitle>No Questions Yet</SectionTitle>
-          <Text style={styles.muted}>No review questions have been published for this selection.</Text>
-        </Card>
+        <EmptyState icon="help-circle-outline" title="No Questions Yet" body="No review questions have been published for this selection." />
       )}
     </Screen>
   );
 }
 
-const choiceStyles = {
+const choiceStyles = StyleSheet.create({
   choice: {
-    alignItems: "center" as const,
-    backgroundColor: theme.colors.background,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    flexDirection: "row" as const,
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.md,
+    borderWidth: 1.5,
+    flexDirection: "row",
     gap: theme.spacing.sm,
-    minHeight: 54,
+    minHeight: 58,
     padding: theme.spacing.md
   },
   choiceMarker: {
-    alignItems: "center" as const,
-    borderColor: theme.colors.border,
+    alignItems: "center",
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderStrong,
     borderRadius: 999,
-    borderWidth: 1,
-    height: 28,
-    justifyContent: "center" as const,
-    width: 28
+    borderWidth: 1.5,
+    height: 32,
+    justifyContent: "center",
+    width: 32
   },
   choiceMarkerSelected: {
     backgroundColor: theme.colors.primary,
@@ -340,7 +367,7 @@ const choiceStyles = {
   choiceMarkerText: {
     color: theme.colors.ink,
     fontSize: 13,
-    fontWeight: "900" as const
+    fontWeight: "800"
   },
   choiceMarkerTextSelected: {
     color: "#FFFFFF"
@@ -349,12 +376,38 @@ const choiceStyles = {
     color: theme.colors.ink,
     flex: 1,
     fontSize: 15,
-    fontWeight: "700" as const,
-    lineHeight: 21
+    fontWeight: "600",
+    lineHeight: 22
   },
   feedback: {
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
     gap: 4,
     padding: theme.spacing.md
+  },
+  completionCenter: {
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12
+  },
+  scoreCircle: {
+    alignItems: "center",
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.accent,
+    borderRadius: 56,
+    borderWidth: 4,
+    height: 112,
+    justifyContent: "center",
+    width: 112
+  },
+  scorePctText: {
+    color: "#FFFFFF",
+    fontSize: 28,
+    fontWeight: "800"
+  },
+  scoreSubText: {
+    color: theme.colors.accent,
+    fontSize: 12,
+    fontWeight: "700"
   }
-};
+});

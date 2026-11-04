@@ -1,14 +1,16 @@
 import { ProgramSelector } from "../../src/shared/ProgramSelector";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Platform, ScrollView, Text, View } from "react-native";
+import { Alert, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import {
+  Avatar,
   Button,
   Card,
   FilterChip,
   FormInput,
+  IconTile,
   MetaText,
   Pill,
   Row,
@@ -27,6 +29,7 @@ import { useRefreshOnFocus } from "../../src/shared/useRefreshOnFocus";
 import { supabase } from "../../src/lib/supabase";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
+import { theme } from "../../src/shared/theme";
 
 const fileTypes: FileType[] = ["source_sheet", "review_sheet", "recording", "video", "pdf", "other"];
 type LeadershipRole = "rabbi" | "admin";
@@ -549,9 +552,12 @@ export default function AdminScreen() {
       programSelector={<ProgramSelector manage disabled={saving} unsaved={!!fileTitle.trim() || !!editingFile} />}>
       <Card>
         <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Admin Index</SectionTitle>
-            <Text style={styles.muted}>Jump to the part of the admin tools you need.</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 220 }}>
+            <IconTile icon="settings-outline" tone="brand" size={42} />
+            <View style={{ flex: 1 }}>
+              <SectionTitle>Admin Index</SectionTitle>
+              <Text style={styles.muted}>Jump to the part of the admin tools you need.</Text>
+            </View>
           </View>
           {chaburah ? <Pill label={chaburah.name} tone="primary" /> : null}
         </Row>
@@ -571,39 +577,42 @@ export default function AdminScreen() {
       {isGlobalAdmin ? (
         <View nativeID={adminSectionDomId("chaburah")} onLayout={(event) => trackSection("chaburah", event.nativeEvent.layout.y)}>
           <Card>
-          <Row>
-            <View style={{ flex: 1, minWidth: 220 }}>
-              <SectionTitle>Managing Chaburah</SectionTitle>
+            <Row>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <SectionTitle icon="business-outline">Managing Chaburah</SectionTitle>
+              </View>
+              {chaburah ? <Pill label={chaburah.name} tone="primary" /> : null}
+            </Row>
+            <SearchField
+              onChangeText={setChaburahSearch}
+              placeholder="Search by chaburah, city, address, or rabbi..."
+              value={chaburahSearch}
+            />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {filteredAdminChaburos.map((item) => (
+                <FilterChip
+                  key={item.id}
+                  label={`${item.name} - ${item.city}`}
+                  onPress={() => setAdminChaburahId(item.id)}
+                  selected={managedChaburahId === item.id}
+                />
+              ))}
             </View>
-            {chaburah ? <Pill label={chaburah.name} tone="primary" /> : null}
-          </Row>
-          <SearchField
-            onChangeText={setChaburahSearch}
-            placeholder="Search by chaburah, city, address, or rabbi..."
-            value={chaburahSearch}
-          />
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {filteredAdminChaburos.map((item) => (
-              <FilterChip
-                key={item.id}
-                label={`${item.name} - ${item.city}`}
-                onPress={() => setAdminChaburahId(item.id)}
-                selected={managedChaburahId === item.id}
-              />
-            ))}
-          </View>
-          {filteredAdminChaburos.length === 0 ? (
-            <Text style={styles.muted}>No chaburos match that search.</Text>
-          ) : null}
+            {filteredAdminChaburos.length === 0 ? (
+              <Text style={styles.muted}>No chaburos match that search.</Text>
+            ) : null}
           </Card>
         </View>
       ) : null}
 
-      <Card>
+      <Card tone="accent">
         <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>{chaburah ? chaburah.name : "No Chaburah Selected"}</SectionTitle>
-            <Text style={styles.muted}>Manage the local details users see on Dashboard, Directory, and My Chaburah.</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 220 }}>
+            <IconTile icon="people-outline" tone="accent" size={42} />
+            <View style={{ flex: 1 }}>
+              <SectionTitle>{chaburah ? chaburah.name : "No Chaburah Selected"}</SectionTitle>
+              <Text style={styles.muted}>Manage the local details users see on Dashboard, Directory, and My Chaburah.</Text>
+            </View>
           </View>
           <Pill label={`${localFiles.length} files`} tone="accent" />
         </Row>
@@ -632,342 +641,360 @@ export default function AdminScreen() {
       {isGlobalAdmin ? (
         <View nativeID={adminSectionDomId("leadership")} onLayout={(event) => trackSection("leadership", event.nativeEvent.layout.y)}>
           <Card>
-          <Row>
-            <View style={{ flex: 1, minWidth: 220 }}>
-              <SectionTitle>Assign Local Leadership</SectionTitle>
-              <Text style={styles.muted}>Assign a rabbi or local admin to the selected chaburah by user email.</Text>
+            <Row>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <SectionTitle icon="shield-checkmark-outline">Assign Local Leadership</SectionTitle>
+                <Text style={styles.muted}>Assign a rabbi or local admin to the selected chaburah by user email.</Text>
+              </View>
+              <Pill label={`${assignedLeaders.length} assigned`} tone="accent" />
+            </Row>
+            <FormInput
+              keyboardType="email-address"
+              onChangeText={setLeaderEmail}
+              placeholder="leader@example.com"
+              value={leaderEmail}
+            />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <FilterChip label="Rabbi" onPress={() => setLeaderRole("rabbi")} selected={leaderRole === "rabbi"} />
+              <FilterChip label="Local Admin" onPress={() => setLeaderRole("admin")} selected={leaderRole === "admin"} />
             </View>
-            <Pill label={`${assignedLeaders.length} assigned`} tone="accent" />
-          </Row>
-          <FormInput
-            keyboardType="email-address"
-            onChangeText={setLeaderEmail}
-            placeholder="leader@example.com"
-            value={leaderEmail}
-          />
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip label="Rabbi" onPress={() => setLeaderRole("rabbi")} selected={leaderRole === "rabbi"} />
-            <FilterChip label="Local Admin" onPress={() => setLeaderRole("admin")} selected={leaderRole === "admin"} />
-          </View>
-          <Button disabled={saving || !managedChaburahId} label={saving ? "Saving..." : "Assign Leader"} onPress={assignLeader} />
-          {assignedLeaders.length === 0 ? (
-            <Text style={styles.muted}>No rabbi or local admin has been assigned here yet.</Text>
-          ) : (
-            assignedLeaders.map((membership) => (
-              <Row key={membership.id}>
-                <View style={{ flex: 1, minWidth: 220 }}>
-                  <Text style={styles.body}>{membership.fullName ?? "Unnamed user"}</Text>
-                  <MetaText>{membership.email ?? membership.userId}</MetaText>
+            <Button disabled={saving || !managedChaburahId} label={saving ? "Saving..." : "Assign Leader"} onPress={assignLeader} />
+            {assignedLeaders.length === 0 ? (
+              <Text style={styles.muted}>No rabbi or local admin has been assigned here yet.</Text>
+            ) : (
+              assignedLeaders.map((membership) => (
+                <View key={membership.id} style={s.rowBox}>
+                  <Row>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 220 }}>
+                      <Avatar name={membership.fullName ?? membership.email ?? "Leader"} size={36} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.body, { fontWeight: "700" }]}>{membership.fullName ?? "Unnamed user"}</Text>
+                        <MetaText>{membership.email ?? membership.userId}</MetaText>
+                      </View>
+                    </View>
+                    <Pill label={membership.memberRole === "rabbi" ? "Rabbi" : "Local Admin"} tone="primary" />
+                  </Row>
                 </View>
-                <Pill label={membership.memberRole === "rabbi" ? "Rabbi" : "Local Admin"} tone="primary" />
-              </Row>
-            ))
-          )}
+              ))
+            )}
           </Card>
         </View>
       ) : null}
 
       <View nativeID={adminSectionDomId("settings")} onLayout={(event) => trackSection("settings", event.nativeEvent.layout.y)}>
         <Card>
-        <SectionTitle>Chaburah Settings</SectionTitle>
-        {!managedChaburahId ? (
-          <Text style={styles.muted}>Join or select a chaburah before editing local settings.</Text>
-        ) : (
-          <>
-            <MetaText>Rabbi name</MetaText>
-            <FormInput onChangeText={setRabbiName} placeholder="Rabbi name" value={rabbiName} />
-            <FormInput onChangeText={setAddress} placeholder="Address" value={address} />
-            <FormInput keyboardType="email-address" onChangeText={setContactEmail} placeholder="Contact email" value={contactEmail} />
-            <View style={{ gap: 8 }}>
-              <MetaText>Schedule</MetaText>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {weekDays.map((day) => (
-                  <FilterChip key={day} label={day} onPress={() => setScheduleDay(day)} selected={scheduleDay === day} />
-                ))}
-              </View>
-              <Row>
-                <View style={{ flex: 1, minWidth: 160 }}>
-                  <FormInput onChangeText={setScheduleTime} placeholder="Time, e.g. 8:00" value={scheduleTime} />
-                </View>
+          <SectionTitle icon="options-outline">Chaburah Settings</SectionTitle>
+          {!managedChaburahId ? (
+            <Text style={styles.muted}>Join or select a chaburah before editing local settings.</Text>
+          ) : (
+            <>
+              <MetaText>Rabbi name</MetaText>
+              <FormInput onChangeText={setRabbiName} placeholder="Rabbi name" value={rabbiName} />
+              <FormInput onChangeText={setAddress} placeholder="Address" value={address} />
+              <FormInput keyboardType="email-address" onChangeText={setContactEmail} placeholder="Contact email" value={contactEmail} />
+              <View style={{ gap: 8 }}>
+                <MetaText>Schedule</MetaText>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {meridiems.map((meridiem) => (
-                    <FilterChip
-                      key={meridiem}
-                      label={meridiem}
-                      onPress={() => setScheduleMeridiem(meridiem)}
-                      selected={scheduleMeridiem === meridiem}
-                    />
+                  {weekDays.map((day) => (
+                    <FilterChip key={day} label={day} onPress={() => setScheduleDay(day)} selected={scheduleDay === day} />
                   ))}
                 </View>
-              </Row>
-            </View>
-            <FormInput keyboardType="url" onChangeText={setZoomLink} placeholder="Zoom or meeting link" value={zoomLink} />
-            <TextArea onChangeText={setDescription} placeholder="Short chaburah description" value={description} />
-            <View style={{ gap: 8 }}>
-              <MetaText>Discussion</MetaText>
-              <Row>
-                <FilterChip label="Enabled" onPress={() => setDiscussionEnabled(true)} selected={discussionEnabled} />
-                <FilterChip label="Disabled" onPress={() => setDiscussionEnabled(false)} selected={!discussionEnabled} />
-              </Row>
-            </View>
-            <View style={{ gap: 8 }}>
-              <MetaText>Ask Rav</MetaText>
-              <Text style={styles.muted}>Allow participants to submit questions about the SCP material to the local Rav.</Text>
-              <Row>
-                <FilterChip label="Enabled" onPress={() => setAskRavEnabled(true)} selected={askRavEnabled} />
-                <FilterChip label="Disabled" onPress={() => setAskRavEnabled(false)} selected={!askRavEnabled} />
-              </Row>
-            </View>
-            <View style={{ gap: 8 }}>
-              <MetaText>Joining</MetaText>
-              <Row>
-                <FilterChip label="Approval Required" onPress={() => setJoinRequiresApproval(true)} selected={joinRequiresApproval} />
-                <FilterChip label="Open Join" onPress={() => setJoinRequiresApproval(false)} selected={!joinRequiresApproval} />
-              </Row>
-            </View>
-            <Button disabled={saving} label={saving ? "Saving..." : "Save Chaburah Settings"} onPress={saveChaburah} />
-          </>
-        )}
+                <Row>
+                  <View style={{ flex: 1, minWidth: 160 }}>
+                    <FormInput onChangeText={setScheduleTime} placeholder="Time, e.g. 8:00" value={scheduleTime} />
+                  </View>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {meridiems.map((meridiem) => (
+                      <FilterChip
+                        key={meridiem}
+                        label={meridiem}
+                        onPress={() => setScheduleMeridiem(meridiem)}
+                        selected={scheduleMeridiem === meridiem}
+                      />
+                    ))}
+                  </View>
+                </Row>
+              </View>
+              <FormInput keyboardType="url" onChangeText={setZoomLink} placeholder="Zoom or meeting link" value={zoomLink} />
+              <TextArea onChangeText={setDescription} placeholder="Short chaburah description" value={description} />
+              <View style={{ gap: 8 }}>
+                <MetaText>Discussion</MetaText>
+                <Row>
+                  <FilterChip label="Enabled" onPress={() => setDiscussionEnabled(true)} selected={discussionEnabled} />
+                  <FilterChip label="Disabled" onPress={() => setDiscussionEnabled(false)} selected={!discussionEnabled} />
+                </Row>
+              </View>
+              <View style={{ gap: 8 }}>
+                <MetaText>Ask Rav</MetaText>
+                <Text style={styles.muted}>Allow participants to submit questions about the SCP material to the local Rav.</Text>
+                <Row>
+                  <FilterChip label="Enabled" onPress={() => setAskRavEnabled(true)} selected={askRavEnabled} />
+                  <FilterChip label="Disabled" onPress={() => setAskRavEnabled(false)} selected={!askRavEnabled} />
+                </Row>
+              </View>
+              <View style={{ gap: 8 }}>
+                <MetaText>Joining</MetaText>
+                <Row>
+                  <FilterChip label="Approval Required" onPress={() => setJoinRequiresApproval(true)} selected={joinRequiresApproval} />
+                  <FilterChip label="Open Join" onPress={() => setJoinRequiresApproval(false)} selected={!joinRequiresApproval} />
+                </Row>
+              </View>
+              <Button disabled={saving} label={saving ? "Saving..." : "Save Chaburah Settings"} onPress={saveChaburah} />
+            </>
+          )}
         </Card>
       </View>
 
       <View nativeID={adminSectionDomId("requests")} onLayout={(event) => trackSection("requests", event.nativeEvent.layout.y)}>
         <Card>
-        <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Join Requests</SectionTitle>
-            <Text style={styles.muted}>Approve or reject pending requests for this chaburah.</Text>
-          </View>
-          <Pill
-            label={`${pendingJoinRequests.length} pending`}
-            tone={pendingJoinRequests.length ? "accent" : "success"}
-          />
-        </Row>
-        {!managedChaburahId ? (
-          <Text style={styles.muted}>Select a chaburah before reviewing join requests.</Text>
-        ) : pendingJoinRequests.length === 0 ? (
-          <Text style={styles.muted}>No pending join requests.</Text>
-        ) : (
-          pendingJoinRequests.map((membership) => (
-            <Row key={membership.id}>
-              <View style={{ flex: 1, minWidth: 220 }}>
-                <Text style={styles.body}>{membership.fullName ?? "Unnamed user"}</Text>
-                <MetaText>{membership.email ?? membership.userId}</MetaText>
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <SectionTitle icon="person-add-outline">Join Requests</SectionTitle>
+              <Text style={styles.muted}>Approve or reject pending requests for this chaburah.</Text>
+            </View>
+            <Pill
+              label={`${pendingJoinRequests.length} pending`}
+              tone={pendingJoinRequests.length ? "accent" : "success"}
+            />
+          </Row>
+          {!managedChaburahId ? (
+            <Text style={styles.muted}>Select a chaburah before reviewing join requests.</Text>
+          ) : pendingJoinRequests.length === 0 ? (
+            <Text style={styles.muted}>No pending join requests.</Text>
+          ) : (
+            pendingJoinRequests.map((membership) => (
+              <View key={membership.id} style={s.rowBox}>
+                <Row>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 220 }}>
+                    <Avatar name={membership.fullName ?? membership.email ?? "User"} size={36} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.body, { fontWeight: "700" }]}>{membership.fullName ?? "Unnamed user"}</Text>
+                      <MetaText>{membership.email ?? membership.userId}</MetaText>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <Button
+                      disabled={saving}
+                      label="Approve"
+                      onPress={() => handleMembershipRequest(membership.id, true)}
+                      variant="secondary"
+                    />
+                    <Button
+                      disabled={saving}
+                      label="Reject"
+                      onPress={() => handleMembershipRequest(membership.id, false)}
+                      variant="ghost"
+                    />
+                  </View>
+                </Row>
               </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                <Button
-                  disabled={saving}
-                  label="Approve"
-                  onPress={() => handleMembershipRequest(membership.id, true)}
-                  variant="secondary"
-                />
-                <Button
-                  disabled={saving}
-                  label="Reject"
-                  onPress={() => handleMembershipRequest(membership.id, false)}
-                  variant="ghost"
-                />
-              </View>
-            </Row>
-          ))
-        )}
+            ))
+          )}
         </Card>
       </View>
 
       <View nativeID={adminSectionDomId("members")} onLayout={(event) => trackSection("members", event.nativeEvent.layout.y)}>
         <Card>
-        <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Members</SectionTitle>
-            <Text style={styles.muted}>Search and manage the active roster for this chaburah.</Text>
-          </View>
-          <Pill label={`${activeMemberCount} active`} tone="success" />
-        </Row>
-        {!managedChaburahId ? (
-          <Text style={styles.muted}>Select a chaburah before managing members.</Text>
-        ) : (
-          <>
-            <SearchField
-              onChangeText={setMemberSearch}
-              placeholder="Search by name, email, role, or status..."
-              value={memberSearch}
-            />
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {memberStatusFilters.map((status) => (
-                <FilterChip
-                  key={status}
-                  label={memberStatusLabel(status)}
-                  onPress={() => setMemberStatusFilter(status)}
-                  selected={memberStatusFilter === status}
-                />
-              ))}
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <SectionTitle icon="people-outline">Members</SectionTitle>
+              <Text style={styles.muted}>Search and manage the active roster for this chaburah.</Text>
             </View>
-            {filteredMembers.length === 0 ? (
-              <Text style={styles.muted}>No members match those filters.</Text>
-            ) : (
-              filteredMembers.map((membership) => {
-                const canRemove = membership.memberRole === "participant" && membership.status !== "left";
-                const canSuspend = membership.memberRole === "participant" && membership.status === "active";
-                const canReactivate =
-                  membership.memberRole === "participant" &&
-                  (membership.status === "suspended" || membership.status === "left");
-                return (
-                  <Row key={membership.id}>
-                    <View style={{ flex: 1, minWidth: 220 }}>
-                      <Text style={styles.body}>{membership.fullName ?? "Unnamed user"}</Text>
-                      <MetaText>{membership.email ?? membership.userId}</MetaText>
-                      <MetaText>Joined {formatDate(membership.joinedAt)}</MetaText>
+            <Pill label={`${activeMemberCount} active`} tone="success" />
+          </Row>
+          {!managedChaburahId ? (
+            <Text style={styles.muted}>Select a chaburah before managing members.</Text>
+          ) : (
+            <>
+              <SearchField
+                onChangeText={setMemberSearch}
+                placeholder="Search by name, email, role, or status..."
+                value={memberSearch}
+              />
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {memberStatusFilters.map((status) => (
+                  <FilterChip
+                    key={status}
+                    label={memberStatusLabel(status)}
+                    onPress={() => setMemberStatusFilter(status)}
+                    selected={memberStatusFilter === status}
+                  />
+                ))}
+              </View>
+              {filteredMembers.length === 0 ? (
+                <Text style={styles.muted}>No members match those filters.</Text>
+              ) : (
+                filteredMembers.map((membership) => {
+                  const canRemove = membership.memberRole === "participant" && membership.status !== "left";
+                  const canSuspend = membership.memberRole === "participant" && membership.status === "active";
+                  const canReactivate =
+                    membership.memberRole === "participant" &&
+                    (membership.status === "suspended" || membership.status === "left");
+                  return (
+                    <View key={membership.id} style={s.rowBox}>
+                      <Row>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 220 }}>
+                          <Avatar name={membership.fullName ?? membership.email ?? "Member"} size={36} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.body, { fontWeight: "700" }]}>{membership.fullName ?? "Unnamed user"}</Text>
+                            <MetaText>{membership.email ?? membership.userId}</MetaText>
+                            <MetaText>Joined {formatDate(membership.joinedAt)}</MetaText>
+                          </View>
+                        </View>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                          <Pill label={roleLabel(membership.memberRole)} tone="primary" />
+                          <Pill label={memberStatusLabel(membership.status)} tone={statusTone(membership.status)} />
+                          {canReactivate ? (
+                            <Button
+                              disabled={saving}
+                              label="Reactivate"
+                              onPress={() => changeMembershipStatus(membership.id, "active")}
+                              variant="secondary"
+                            />
+                          ) : null}
+                          {canSuspend ? (
+                            <Button
+                              disabled={saving}
+                              label="Suspend"
+                              onPress={() => changeMembershipStatus(membership.id, "suspended")}
+                              variant="ghost"
+                            />
+                          ) : null}
+                          {canRemove ? (
+                            <Button
+                              disabled={saving}
+                              label="Remove"
+                              onPress={() => changeMembershipStatus(membership.id, "left")}
+                              variant="ghost"
+                            />
+                          ) : null}
+                        </View>
+                      </Row>
                     </View>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                      <Pill label={roleLabel(membership.memberRole)} tone="primary" />
-                      <Pill label={memberStatusLabel(membership.status)} tone={statusTone(membership.status)} />
-                      {canReactivate ? (
-                        <Button
-                          disabled={saving}
-                          label="Reactivate"
-                          onPress={() => changeMembershipStatus(membership.id, "active")}
-                          variant="secondary"
-                        />
-                      ) : null}
-                      {canSuspend ? (
-                        <Button
-                          disabled={saving}
-                          label="Suspend"
-                          onPress={() => changeMembershipStatus(membership.id, "suspended")}
-                          variant="ghost"
-                        />
-                      ) : null}
-                      {canRemove ? (
-                        <Button
-                          disabled={saving}
-                          label="Remove"
-                          onPress={() => changeMembershipStatus(membership.id, "left")}
-                          variant="ghost"
-                        />
-                      ) : null}
-                    </View>
-                  </Row>
-                );
-              })
-            )}
-          </>
-        )}
+                  );
+                })
+              )}
+            </>
+          )}
         </Card>
       </View>
 
       <View nativeID={adminSectionDomId("publish")} onLayout={(event) => trackSection("publish", event.nativeEvent.layout.y)}>
         <Card>
-        <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>{editingFile ? "Edit Learning File" : "Publish Learning File"}</SectionTitle>
-            <Text style={styles.muted}>Publish weekly files, bechina review material, or resources for the entire zman.</Text>
-          </View>
-          {editingFile ? <Pill label="Editing" tone="accent" /> : null}
-        </Row>
-        {profile?.role === "global_admin" ? (
+          <Row>
+            <View style={{ flex: 1, minWidth: 220 }}>
+              <SectionTitle icon="cloud-upload-outline">{editingFile ? "Edit Learning File" : "Publish Learning File"}</SectionTitle>
+              <Text style={styles.muted}>Publish weekly files, bechina review material, or resources for the entire zman.</Text>
+            </View>
+            {editingFile ? <Pill label="Editing" tone="accent" /> : null}
+          </Row>
+          {profile?.role === "global_admin" ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <FilterChip label="Everyone" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
+              <FilterChip label="My Chaburah" onPress={() => setVisibility("chaburah")} selected={visibility === "chaburah"} />
+            </View>
+          ) : null}
+          {visibility === "chaburah" ? <MetaText>My Chaburah: {fileChaburah?.name ?? "No chaburah joined"}</MetaText> : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip label="Everyone" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
-            <FilterChip label="My Chaburah" onPress={() => setVisibility("chaburah")} selected={visibility === "chaburah"} />
+            <FilterChip label="Upload File" onPress={() => setFilePublishMode("upload")} selected={filePublishMode === "upload"} />
+            <FilterChip label="External Link" onPress={() => setFilePublishMode("link")} selected={filePublishMode === "link"} />
           </View>
-        ) : null}
-        {visibility === "chaburah" ? <MetaText>My Chaburah: {fileChaburah?.name ?? "No chaburah joined"}</MetaText> : null}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          <FilterChip label="Upload File" onPress={() => setFilePublishMode("upload")} selected={filePublishMode === "upload"} />
-          <FilterChip label="External Link" onPress={() => setFilePublishMode("link")} selected={filePublishMode === "link"} />
-        </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {fileTypes.map((type) => (
-            <FilterChip key={type} label={adminFileTypeLabel(type)} onPress={() => setFileType(type)} selected={fileType === type} />
-          ))}
-        </View>
-        <FormInput onChangeText={setFileTitle} placeholder="Title" value={fileTitle} />
-        <FormInput onChangeText={setFileTopic} placeholder="Topic (optional)" value={fileTopic} />
-        <View style={{ gap: 8 }}>
-          <MetaText>Coverage</MetaText>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {fileCoverages.map((coverage) => (
-              <FilterChip
-                key={coverage}
-                label={coverage === "week" ? "Week" : fileCoverageLabel(coverage)}
-                onPress={() => setFileCoverage(coverage)}
-                selected={fileCoverage === coverage}
-              />
+            {fileTypes.map((type) => (
+              <FilterChip key={type} label={adminFileTypeLabel(type)} onPress={() => setFileType(type)} selected={fileType === type} />
             ))}
           </View>
-        </View>
-        {fileCoverage === "week" ? (
+          <FormInput onChangeText={setFileTitle} placeholder="Title" value={fileTitle} />
+          <FormInput onChangeText={setFileTopic} placeholder="Topic (optional)" value={fileTopic} />
           <View style={{ gap: 8 }}>
-            <MetaText>Current week is Week {currentReviewWeek}</MetaText>
+            <MetaText>Coverage</MetaText>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {fileWeekSelections.map((week) => (
+              {fileCoverages.map((coverage) => (
                 <FilterChip
-                  key={week}
-                  label={`Week ${week}`}
-                  onPress={() => setFileWeek(week)}
-                  selected={fileWeek === week}
+                  key={coverage}
+                  label={coverage === "week" ? "Week" : fileCoverageLabel(coverage)}
+                  onPress={() => setFileCoverage(coverage)}
+                  selected={fileCoverage === coverage}
                 />
               ))}
             </View>
           </View>
-        ) : null}
-        {filePublishMode === "upload" ? (
-          <View style={{ gap: 8 }}>
+          {fileCoverage === "week" ? (
+            <View style={{ gap: 8 }}>
+              <MetaText>Current week is Week {currentReviewWeek}</MetaText>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {fileWeekSelections.map((week) => (
+                  <FilterChip
+                    key={week}
+                    label={`Week ${week}`}
+                    onPress={() => setFileWeek(week)}
+                    selected={fileWeek === week}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
+          {filePublishMode === "upload" ? (
+            <View style={{ gap: 8 }}>
+              <Button
+                disabled={saving}
+                label={selectedFile ? "Change Selected File" : editingFile?.storagePath ? "Replace Uploaded File" : "Choose File"}
+                onPress={chooseFile}
+                variant="secondary"
+              />
+              {selectedFile ? (
+                <MetaText>
+                  {selectedFile.name}
+                  {selectedFile.size ? ` - ${formatFileSize(selectedFile.size)}` : ""}
+                </MetaText>
+              ) : editingFile?.storagePath ? (
+                <Text style={styles.muted}>Current uploaded file will stay unless you choose a replacement.</Text>
+              ) : (
+                <Text style={styles.muted}>Choose a PDF, document, audio file, or source sheet from this device.</Text>
+              )}
+            </View>
+          ) : (
+            <FormInput keyboardType="url" onChangeText={setFileUrl} placeholder="https://..." value={fileUrl} />
+          )}
+          <TextArea onChangeText={setFileDescription} placeholder="Description" value={fileDescription} />
+          <Row>
             <Button
               disabled={saving}
-              label={selectedFile ? "Change Selected File" : editingFile?.storagePath ? "Replace Uploaded File" : "Choose File"}
-              onPress={chooseFile}
+              label={
+                saving
+                  ? filePublishMode === "upload"
+                    ? "Uploading..."
+                    : "Saving..."
+                  : editingFile
+                    ? "Save File Changes"
+                    : "Publish File"
+              }
+              onPress={publishFile}
             />
-            {selectedFile ? (
-              <MetaText>
-                {selectedFile.name}
-                {selectedFile.size ? ` - ${formatFileSize(selectedFile.size)}` : ""}
-              </MetaText>
-            ) : editingFile?.storagePath ? (
-              <Text style={styles.muted}>Current uploaded file will stay unless you choose a replacement.</Text>
-            ) : (
-              <Text style={styles.muted}>Choose a PDF, document, audio file, or source sheet from this device.</Text>
-            )}
-          </View>
-        ) : (
-          <FormInput keyboardType="url" onChangeText={setFileUrl} placeholder="https://..." value={fileUrl} />
-        )}
-        <TextArea onChangeText={setFileDescription} placeholder="Description" value={fileDescription} />
-        <Row>
-          <Button
-            disabled={saving}
-            label={
-              saving
-                ? filePublishMode === "upload"
-                  ? "Uploading..."
-                  : "Saving..."
-                : editingFile
-                  ? "Save File Changes"
-                  : "Publish File"
-            }
-            onPress={publishFile}
-          />
-          {editingFile ? <Button disabled={saving} label="Cancel Edit" onPress={resetFileForm} variant="ghost" /> : null}
-        </Row>
+            {editingFile ? <Button disabled={saving} label="Cancel Edit" onPress={resetFileForm} variant="ghost" /> : null}
+          </Row>
         </Card>
       </View>
 
       <View nativeID={adminSectionDomId("files")} onLayout={(event) => trackSection("files", event.nativeEvent.layout.y)}>
         <Card>
-        <SectionTitle>Manage Files</SectionTitle>
-        {localFiles.map((file) => (
-          <Row key={file.id}>
-            <View style={{ flex: 1, minWidth: 190 }}>
-              <Text style={styles.body}>{file.title}</Text>
-              <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</MetaText>
+          <SectionTitle icon="folder-open-outline">Manage Files</SectionTitle>
+          {localFiles.map((file) => (
+            <View key={file.id} style={s.rowBox}>
+              <Row>
+                <View style={{ flex: 1, minWidth: 190 }}>
+                  <Text style={[styles.body, { fontWeight: "700" }]}>{file.title}</Text>
+                  <MetaText>{fileCoverageDetailLabel(file.coverage, file.week)} - {file.topic}</MetaText>
+                </View>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
+                  <Button disabled={saving} label="Edit" onPress={() => startEditFile(file)} variant="secondary" />
+                  <Button disabled={saving} label="Delete" onPress={() => confirmDeleteFile(file)} variant="ghost" />
+                </View>
+              </Row>
             </View>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-              <Pill label={visibilityLabel(file.visibility)} tone={file.visibility === "everyone" ? "primary" : "neutral"} />
-              <Button disabled={saving} label="Edit" onPress={() => startEditFile(file)} variant="secondary" />
-              <Button disabled={saving} label="Delete" onPress={() => confirmDeleteFile(file)} variant="ghost" />
-            </View>
-          </Row>
-        ))}
-        {localFiles.length === 0 ? <Text style={styles.muted}>No files have been published yet.</Text> : null}
+          ))}
+          {localFiles.length === 0 ? <Text style={styles.muted}>No files have been published yet.</Text> : null}
         </Card>
       </View>
     </Screen>
@@ -1032,3 +1059,13 @@ function adminSectionDomId(section: AdminSection) {
 function adminFileTypeLabel(type: FileType) {
   return type === "review_sheet" ? "Review Notes" : fileTypeLabel(type);
 }
+
+const s = StyleSheet.create({
+  rowBox: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderSoft,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    padding: 12
+  }
+});
