@@ -18,6 +18,7 @@ vm.runInNewContext(ts.transpileModule(screen,{compilerOptions:{jsx:ts.JsxEmit.Re
   useAppState:()=>({chaburos:[],selectedChaburahId:"pilot"}),useWindowDimensions:()=>({width,height}),
   usesCompactNavigation:responsive.usesCompactNavigation,
   usesLandscapeMenu:responsive.usesLandscapeMenu,useSafeAreaInsets:()=>({left:0,right:0,top:0,bottom:0}),
+  isSidebarRoute:()=>true,localStyles:{},InstallBanner:"InstallBanner",InstallHeaderButton:"InstallHeaderButton",
   chaburahToolAccess:()=>({rabbiHub,admin:rabbiHub}),canAccessBeisMidrash:()=>false,
   useState:value=>[value,()=>{}],Platform:{OS:"web"},styles:{},globalStyles:{},theme:{colors:{},spacing:{xs:6}},
   SafeAreaView:"SafeAreaView",View:"View",ScrollView:"ScrollView",Pressable:"Pressable",Modal:"Modal",Text:"Text",PageHeading:"Heading",Ionicons:"Icon",
@@ -34,7 +35,7 @@ const landscape=exportsObject.Screen({title:"Shiur Builder",children:"CONTENT",p
 const landscapeHeading=all(landscape.props.render({header:jsx("Programs",{})}),"Heading")[0];
 assert.ok(landscapeHeading.props.navigationButton,"Landscape phones retain the hamburger menu");
 assert.equal(landscapeHeading.props.stackAccessory,false,"Landscape program controls share the title row");
-height=900;
+height=900;width=390;
 for(rabbiHub of [true,false]){
   const frame=exportsObject.Screen({title:"Dashboard",children:"CONTENT"});
   const items=all(frame,"Sidebar")[0].props.items.map(item=>item.name);

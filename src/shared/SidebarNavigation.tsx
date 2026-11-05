@@ -1,112 +1,467 @@
-import { ReactNode, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Href, Link } from "expo-router";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ReactNode, useState } from "react";
+import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { MY_SCP_BADGE_LOGO_URI } from "../data/myScpBrandLogos";
 import { InstallButton } from "./PwaInstall";
+import { palette, radii } from "./theme";
+
+export type NavigationGroup = "Learning" | "Management" | "Support" | "Community" | "Account";
+
+export type NavigationItemDefinition = {
+  group: NavigationGroup;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  tint: string;
+  badge?: string;
+};
 
 export const navigationItems = {
-  dashboard: { icon: "speedometer", color: "#2563EB", tint: "#EAF1FF", group: "Learning" },
+  dashboard: { icon: "speedometer", color: "#062A72", tint: "#EAF0FB", group: "Learning" },
   chaburah: { icon: "people", color: "#087E8B", tint: "#E6F5F5", group: "Learning" },
-  review: { icon: "checkmark-circle", color: "#22834A", tint: "#EAF7EE", group: "Learning" },
-  files: { icon: "folder-open", color: "#AD7412", tint: "#FFF5DE", group: "Learning" },
+  review: { icon: "checkmark-circle", color: "#127848", tint: "#E7F6EE", group: "Learning" },
+  files: { icon: "folder-open", color: "#B45309", tint: "#FEF3C7", group: "Learning" },
   "rabbi-hub": { icon: "library", color: "#8F3E68", tint: "#F9ECF2", group: "Learning" },
-  admin: { icon: "settings", color: "#546278", tint: "#EDF1F6", group: "Management" },
+  "beis-midrash": { icon: "flame", color: "#B45309", tint: "#FEF3C7", group: "Learning" },
+  "shiur-builder": { icon: "construct", color: "#062A72", tint: "#EAF0FB", group: "Learning" },
+  admin: { icon: "settings", color: "#42516B", tint: "#EDF1F6", group: "Management" },
   "global-admin": { icon: "globe", color: "#087E8B", tint: "#E6F5F5", group: "Management" },
   "beta-feedback": { icon: "chatbubbles", color: "#8F3E68", tint: "#F9ECF2", group: "Support", badge: "Beta" },
-  help: { icon: "help-circle", color: "#2563EB", tint: "#EAF1FF", group: "Support", badge: "Guide" },
-  "testing-checklist": { icon: "checkbox", color: "#22834A", tint: "#EAF7EE", group: "Support", badge: "Tasks" },
+  help: { icon: "help-circle", color: "#062A72", tint: "#EAF0FB", group: "Support", badge: "Guide" },
+  "testing-checklist": { icon: "checkbox", color: "#127848", tint: "#E7F6EE", group: "Support", badge: "Tasks" },
   directory: { icon: "map", color: "#087E8B", tint: "#E6F5F5", group: "Community" },
   "ask-rav": { icon: "chatbox-ellipses", color: "#8F3E68", tint: "#F9ECF2", group: "Community" },
-  profile: { icon: "person", color: "#2563EB", tint: "#EAF1FF", group: "Account" },
-  notifications: { icon: "notifications", color: "#AD7412", tint: "#FFF5DE", group: "Account" },
-  settings: { icon: "options", color: "#546278", tint: "#EDF1F6", group: "Account" }
-} as const;
+  profile: { icon: "person", color: "#062A72", tint: "#EAF0FB", group: "Account" },
+  notifications: { icon: "notifications", color: "#B45309", tint: "#FEF3C7", group: "Account" },
+  settings: { icon: "options", color: "#42516B", tint: "#EDF1F6", group: "Account" }
+} satisfies Record<string, NavigationItemDefinition>;
 
-export type SidebarRoute = keyof typeof navigationItems;
-export type SidebarItem = { name: SidebarRoute; label: string; href?: Href; onSelect: () => boolean | void };
-export function isSidebarRoute(name: string): name is SidebarRoute { return name in navigationItems; }
+export type SidebarRouteName = keyof typeof navigationItems;
+export type SidebarRoute = SidebarRouteName;
 
-export function SidebarNavigation({ items, selected, chaburah, width = 248, onClose, iconsOnly = false, footer }: {
-  items: SidebarItem[]; selected: string; chaburah?: string; width?: number; onClose?: () => void; iconsOnly?: boolean;
-  footer?: ReactNode;
-}) {
-  return <View style={[s.sidebar, { width }]} accessibilityLabel="Main navigation">
-    <View style={[s.brand, iconsOnly && s.railBrand]}>
-      <View style={s.brandIcon}><Ionicons name="book" size={23} color="#FFFFFF" /></View>
-      {!iconsOnly ? <View style={s.brandText}><Text style={s.brandName}>mySCP</Text>
-        {chaburah ? <Text style={s.chaburah} numberOfLines={2}>{chaburah}</Text> : null}
-      </View> : null}
-      {onClose ? <Pressable accessibilityRole="button" accessibilityLabel="Close navigation menu"
-        onPress={onClose} hitSlop={4} style={({ pressed }) => [s.close, pressed && s.hovered]}>
-        <Ionicons name="close" size={23} color="#42516B" />
-      </Pressable> : null}
-    </View>
-    <ScrollView style={s.scroll} contentContainerStyle={[s.content, iconsOnly && s.railContent]}>
-      {items.map((item, index) => {
-        const group = navigationItems[item.name].group;
-        return <View key={item.name}>
-          {!iconsOnly && (index === 0 || group !== navigationItems[items[index - 1].name].group)
-            ? <Text style={[s.group, index > 0 && s.laterGroup]}>{group}</Text> : null}
-          <SidebarButton item={item} selected={selected === item.name} mobile={!!onClose} iconsOnly={iconsOnly} />
-        </View>;
-      })}
-      {!iconsOnly ? <InstallButton onSelect={onClose} /> : null}
-    </ScrollView>
-    {footer ? <View style={{ flexShrink: 0, borderTopWidth: 1, borderColor: "#DEE6F0" }}>{footer}</View> : null}
-  </View>;
+export type SidebarNavigationItem = {
+  href?: Href | string;
+  key?: string;
+  label: string;
+  name: SidebarRouteName;
+  onSelect: () => boolean | void;
+};
+export type SidebarItem = SidebarNavigationItem;
+
+export function isSidebarRoute(name: string): name is SidebarRouteName {
+  return name in navigationItems;
 }
 
-function SidebarButton({ item, selected, mobile, iconsOnly }: { item: SidebarItem; selected: boolean; mobile: boolean; iconsOnly: boolean }) {
+export function SidebarNavigation({
+  chaburah,
+  compact = false,
+  footer,
+  headerAction,
+  iconsOnly = false,
+  items,
+  onClose,
+  selected,
+  width = 244
+}: {
+  chaburah?: string | null;
+  compact?: boolean;
+  footer?: ReactNode;
+  headerAction?: ReactNode;
+  iconsOnly?: boolean;
+  items: SidebarNavigationItem[];
+  onClose?: () => void;
+  selected?: string;
+  width?: number;
+}) {
+  return (
+    <View
+      accessibilityLabel="Main navigation"
+      style={[
+        s.sidebar,
+        compact && s.compactSidebar,
+        { width, minWidth: width, maxWidth: width }
+      ]}
+    >
+      <View style={[s.brand, iconsOnly && s.railBrand]}>
+        <View style={s.brandTop}>
+          <View style={s.brandIdentity}>
+            <View style={s.brandMark}>
+              <Image
+                accessibilityLabel="mySCP"
+                resizeMode="cover"
+                source={{ uri: MY_SCP_BADGE_LOGO_URI }}
+                style={s.brandLogoImg}
+              />
+            </View>
+            {!iconsOnly ? (
+              <View style={s.brandCopy}>
+                <View style={s.brandWordmarkRow}>
+                  <Text style={s.brandMy}>my</Text>
+                  <Text style={s.brandTitle}>SCP</Text>
+                </View>
+                <Text numberOfLines={1} style={s.brandSubtitle}>
+                  Semichas Chaver Program
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          {headerAction}
+          {onClose ? (
+            <Pressable
+              accessibilityLabel="Close navigation menu"
+              accessibilityRole="button"
+              hitSlop={4}
+              onPress={onClose}
+              style={({ pressed }) => [s.close, pressed && s.hovered]}
+            >
+              <Ionicons color="#42516B" name="close" size={22} />
+            </Pressable>
+          ) : null}
+        </View>
+        {!iconsOnly && chaburah ? (
+          <View style={s.chaburahBadge}>
+            <Ionicons color={palette.brand} name="location" size={13} />
+            <Text numberOfLines={1} style={s.chaburah}>
+              {chaburah}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[s.content, iconsOnly && s.railContent]}
+        showsVerticalScrollIndicator={true}
+        style={s.scroll}
+      >
+        {items.map((item, index) => {
+          const group = navigationItems[item.name]?.group ?? "Learning";
+          const prevGroup = index > 0 ? navigationItems[items[index - 1].name]?.group : undefined;
+          return (
+            <View key={item.key ?? item.name}>
+              {!iconsOnly && (index === 0 || group !== prevGroup) ? (
+                <Text style={[s.group, index > 0 && s.laterGroup]}>{group}</Text>
+              ) : null}
+              <SidebarButton
+                iconsOnly={iconsOnly}
+                item={item}
+                mobile={Boolean(onClose) || compact}
+                selected={selected === item.name}
+              />
+            </View>
+          );
+        })}
+        {!iconsOnly ? <InstallButton onSelect={onClose} /> : null}
+      </ScrollView>
+
+      {footer ? <View style={s.footer}>{footer}</View> : null}
+    </View>
+  );
+}
+
+function SidebarButton({
+  item,
+  selected,
+  mobile,
+  iconsOnly
+}: {
+  item: SidebarNavigationItem;
+  selected: boolean;
+  mobile: boolean;
+  iconsOnly: boolean;
+}) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [pressed, setPressed] = useState(false);
-  const visual = navigationItems[item.name];
-  const badge = "badge" in visual ? visual.badge : undefined;
-  const button = <Pressable accessibilityRole={item.href ? "link" : "button"}
-    accessibilityLabel={item.label} accessibilityState={{ selected }}
-    {...(Platform.OS === "web" ? { "aria-current": selected ? "page" : undefined, title: item.label } : {})}
-    onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)}
-    onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-    onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)}
-    onPress={(event) => { if (item.onSelect() === false) event.preventDefault(); }}
-    style={StyleSheet.flatten([s.item, mobile && s.mobileItem, iconsOnly && s.railItem, (hovered || pressed) && s.hovered, selected && s.selected, focused && s.focused])}>
-    <View style={[s.iconTile, { backgroundColor: selected ? "#FFFFFF26" : visual.tint }]}>
-      <Ionicons name={visual.icon} color={selected ? "#FFFFFF" : visual.color} size={21} />
-    </View>
-    {!iconsOnly ? <Text style={[s.label, mobile && s.mobileLabel, selected && s.selectedLabel]}>{item.label}</Text> : null}
-    {badge && !iconsOnly ? <View style={[s.badge, selected && s.selectedBadge]}>
-      <Text style={[s.badgeText, selected && s.selectedLabel]}>{badge}</Text>
-    </View> : null}
-  </Pressable>;
-  return item.href ? <Link href={item.href} asChild>{button}</Link> : button;
+  const visual: NavigationItemDefinition = navigationItems[item.name] ?? {
+    icon: "ellipse",
+    color: palette.brand,
+    tint: palette.brandSoft,
+    group: "Learning"
+  };
+  const badge = visual.badge;
+
+  const button = (
+    <Pressable
+      accessibilityLabel={item.label}
+      accessibilityRole={item.href ? "link" : "button"}
+      accessibilityState={{ selected }}
+      {...(Platform.OS === "web"
+        ? { "aria-current": selected ? ("page" as const) : undefined, title: item.label }
+        : {})}
+      onBlur={() => setFocused(false)}
+      onFocus={() => setFocused(true)}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      onPress={(event) => {
+        if (item.onSelect() === false) event.preventDefault?.();
+      }}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={StyleSheet.flatten([
+        s.item,
+        mobile && s.mobileItem,
+        iconsOnly && s.railItem,
+        (hovered || pressed) && !selected && s.hovered,
+        selected && s.selected,
+        focused && s.focused
+      ])}
+    >
+      <View
+        style={[
+          s.iconTile,
+          { backgroundColor: selected ? "rgba(255, 255, 255, 0.18)" : visual.tint }
+        ]}
+      >
+        <Ionicons
+          color={selected ? "#FFFFFF" : visual.color}
+          name={visual.icon}
+          size={20}
+        />
+      </View>
+      {!iconsOnly ? (
+        <Text
+          style={[s.label, mobile && s.mobileLabel, selected && s.selectedLabel]}
+        >
+          {item.label}
+        </Text>
+      ) : null}
+      {badge && !iconsOnly ? (
+        <View style={[s.badge, selected && s.selectedBadge]}>
+          <Text style={[s.badgeText, selected && s.selectedBadgeText]}>{badge}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+
+  return item.href ? (
+    <Link asChild href={item.href as never}>
+      {button}
+    </Link>
+  ) : (
+    button
+  );
 }
 
 const s = StyleSheet.create({
-  sidebar: { height: "100%", flexShrink: 0, backgroundColor: "#FFFFFF", borderRightWidth: 1, borderRightColor: "#DEE6F0" },
-  brand: { flexDirection: "row", alignItems: "center", gap: 11, padding: 18, borderBottomWidth: 1, borderBottomColor: "#EDF1F6" },
-  railBrand: { paddingHorizontal: 12, paddingVertical: 8 },
-  railContent: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 8 },
-  railItem: { width: 44, height: 44, minHeight: 44, paddingHorizontal: 0, paddingVertical: 0, justifyContent: "center" },
-  brandIcon: { width: 40, height: 40, borderRadius: 8, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center" },
-  brandText: { flex: 1, minWidth: 0 },
-  close: { width: 44, height: 44, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  brandName: { color: "#172033", fontSize: 21, lineHeight: 27, fontWeight: "800", letterSpacing: 0 },
-  chaburah: { color: "#68788F", fontSize: 11, lineHeight: 16, marginTop: 2 },
-  scroll: { flex: 1, minHeight: 0 },
-  content: { paddingHorizontal: 10, paddingBottom: 20 },
-  group: { fontSize: 10, fontWeight: "700", color: "#738198", lineHeight: 14, marginHorizontal: 10, marginTop: 14, marginBottom: 6 },
-  laterGroup: { marginTop: 18 },
-  item: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 46, paddingHorizontal: 9, paddingVertical: 6,
-    borderRadius: 8, borderWidth: 2, borderColor: "#E8EDF4", backgroundColor: "#F8FAFC", marginBottom: 4 },
-  hovered: { backgroundColor: "#F1F5FA" },
-  mobileItem: { minHeight: 50, paddingVertical: 7 },
-  mobileLabel: { fontSize: 14, lineHeight: 20 },
-  selected: { backgroundColor: "#2874ED", borderColor: "#2874ED" },
-  focused: { borderColor: "#133E8A" },
-  iconTile: { width: 32, height: 32, borderRadius: 7, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  label: { flex: 1, minWidth: 0, color: "#42516B", fontSize: 12, lineHeight: 17, fontWeight: "600", letterSpacing: 0 },
-  selectedLabel: { color: "#FFFFFF", fontWeight: "700" },
-  badge: { borderRadius: 5, backgroundColor: "#F2F5FA", paddingHorizontal: 5, paddingVertical: 2 },
-  badgeText: { fontSize: 9, lineHeight: 13, color: "#66758D", fontWeight: "700" },
-  selectedBadge: { backgroundColor: "#FFFFFF26" }
+  sidebar: {
+    height: "100%",
+    maxHeight: "100%",
+    flexGrow: 0,
+    flexShrink: 0,
+    backgroundColor: "#FFFFFF",
+    borderRightWidth: 1,
+    borderRightColor: palette.border
+  },
+  compactSidebar: {
+    borderRightColor: palette.border
+  },
+  brand: {
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EDF1F6"
+  },
+  railBrand: {
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  brandTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8
+  },
+  brandIdentity: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+    minWidth: 0
+  },
+  brandMark: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: palette.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    flexShrink: 0
+  },
+  brandLogoImg: {
+    width: 36,
+    height: 36
+  },
+  brandCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  brandWordmarkRow: {
+    flexDirection: "row",
+    alignItems: "baseline"
+  },
+  brandMy: {
+    color: palette.accentStrong,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: "800",
+    fontStyle: "italic"
+  },
+  brandTitle: {
+    color: palette.brand,
+    fontSize: 19,
+    lineHeight: 22,
+    fontWeight: "900",
+    letterSpacing: 0
+  },
+  brandSubtitle: {
+    color: palette.inkMuted,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "600",
+    marginTop: 1
+  },
+  chaburahBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: palette.brandSurface,
+    borderColor: palette.brandBorder,
+    borderWidth: 1,
+    borderRadius: radii.sm,
+    paddingHorizontal: 9,
+    paddingVertical: 5
+  },
+  chaburah: {
+    color: palette.brand,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "700",
+    flex: 1
+  },
+  close: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0
+  },
+  content: {
+    paddingHorizontal: 10,
+    paddingBottom: 20
+  },
+  railContent: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 8
+  },
+  group: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#5B6B86",
+    lineHeight: 15,
+    marginHorizontal: 8,
+    marginTop: 12,
+    marginBottom: 6
+  },
+  laterGroup: {
+    marginTop: 16
+  },
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 46,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#E2E8F2",
+    backgroundColor: "#F8FAFC",
+    marginBottom: 5
+  },
+  railItem: {
+    width: 44,
+    height: 44,
+    minHeight: 44,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    justifyContent: "center"
+  },
+  hovered: {
+    backgroundColor: "#EEF3FB",
+    borderColor: palette.brandBorder
+  },
+  mobileItem: {
+    minHeight: 50,
+    paddingVertical: 7
+  },
+  mobileLabel: {
+    fontSize: 14,
+    lineHeight: 20
+  },
+  selected: {
+    backgroundColor: palette.brand,
+    borderColor: palette.brandDeep
+  },
+  focused: {
+    borderColor: palette.accentStrong
+  },
+  iconTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0
+  },
+  label: {
+    flex: 1,
+    minWidth: 0,
+    color: "#253659",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600",
+    letterSpacing: 0
+  },
+  selectedLabel: {
+    color: "#FFFFFF",
+    fontWeight: "700"
+  },
+  badge: {
+    borderRadius: 6,
+    backgroundColor: "#EEF2F8",
+    borderWidth: 1,
+    borderColor: "#DCE4F0",
+    paddingHorizontal: 6,
+    paddingVertical: 2
+  },
+  badgeText: {
+    fontSize: 10,
+    lineHeight: 13,
+    color: "#516282",
+    fontWeight: "700"
+  },
+  selectedBadge: {
+    backgroundColor: "rgba(246, 186, 54, 0.22)",
+    borderColor: "rgba(246, 186, 54, 0.55)"
+  },
+  selectedBadgeText: {
+    color: palette.accent,
+    fontWeight: "800"
+  },
+  footer: {
+    flexShrink: 0,
+    borderTopWidth: 1,
+    borderColor: "#DEE6F0",
+    paddingTop: 8
+  }
 });

@@ -1,6 +1,7 @@
 export const SUMMER_PROGRAM = "summer-5786";
 export const WINTER_PROGRAM = "winter-5787";
 export const TEFILLIN_PROGRAM = "summer-5787";
+export const defaultProgramId = WINTER_PROGRAM;
 // Hide the old test program while retaining access to authorized new programs.
 export const WINTER_ONLY_ROLLOUT = true;
 
@@ -19,6 +20,8 @@ export interface ProgramAccessContext {
   isGlobalAdmin?: boolean;
 }
 
+export type ProgramVisibilityContext = ProgramAccessContext;
+
 export const legacySummerProgram: LearningProgram = {
   id: SUMMER_PROGRAM, name: "Summer 5786", topic: "Nat Bar Nat", defaultWeek: 12, archived: false
 };
@@ -33,12 +36,22 @@ export function selectablePrograms(programs: LearningProgram[], access: ProgramA
     !p.earlyAccess || access.isGlobalAdmin || (access.chaburahId && p.allowedChaburahIds?.includes(access.chaburahId)));
 }
 
+export const visibleLearningPrograms = selectablePrograms;
+
 export function rolloutProgramSelection(requested: string | undefined, programs: LearningProgram[], ready: boolean,
   access: ProgramAccessContext = {}) {
   if (!ready) return SUMMER_PROGRAM;
   const available = selectablePrograms(programs, access);
   if (available.some((p) => p.id === requested)) return requested!;
   return available.find((p) => p.id === WINTER_PROGRAM)?.id ?? available[0]?.id ?? SUMMER_PROGRAM;
+}
+
+export function resolveStoredProgramId(
+  requested: string | undefined,
+  programs: LearningProgram[],
+  access: ProgramAccessContext = {}
+) {
+  return rolloutProgramSelection(requested, programs, true, access);
 }
 
 export function belongsToProgram(item: { programId?: string }, programId: string) {

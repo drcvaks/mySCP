@@ -7,7 +7,7 @@ export function usesLandscapeMenu(width: number, height: number) {
 }
 
 export function navigationRailWidth(width: number, height: number) {
-  return usesCompactNavigation(width, height) ? 0 : width < 1100 ? 224 : 248;
+  return usesCompactNavigation(width, height) ? 0 : width < 1100 ? 232 : 252;
 }
 
 export function availableContentWidth(width: number, height: number) {

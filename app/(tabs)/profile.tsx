@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import { Button, Card, FormInput, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
+import { Avatar, Button, Card, FormInput, Pill, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
 import { roleLabel } from "../../src/shared/format";
 import { supabase } from "../../src/lib/supabase";
 import { useAppState } from "../../src/state/AppState";
@@ -61,15 +61,22 @@ export default function ProfileScreen() {
   return (
     <Screen title="Profile" eyebrow="Settings" onRefresh={refreshProfile} refreshing={loading}>
       <Card>
-        <SectionTitle>{profile.fullName || "Name not set"}</SectionTitle>
-        <Text style={styles.muted}>{roleLabel(profile.role)}</Text>
-        <Text style={styles.body}>{profile.email}</Text>
+        <Row>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 14, flex: 1, minWidth: 220 }}>
+            <Avatar name={profile.fullName || profile.email} size={52} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <SectionTitle>{profile.fullName || "Name not set"}</SectionTitle>
+              <Text style={styles.body}>{profile.email}</Text>
+            </View>
+          </View>
+          <Pill label={roleLabel(profile.role)} tone="accent" />
+        </Row>
       </Card>
 
       <StatusBanner message={message} tone={message.includes("saved") ? "success" : "error"} />
 
       <Card>
-        <SectionTitle>Edit Profile</SectionTitle>
+        <SectionTitle icon="person-outline">Edit Profile</SectionTitle>
         <Row>
           <View style={{ flex: 1, minWidth: 150 }}>
             <FormInput onChangeText={setFirstName} placeholder="First name" value={firstName} />
@@ -83,7 +90,7 @@ export default function ProfileScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>Registration Details</SectionTitle>
+        <SectionTitle icon="card-outline">Registration Details</SectionTitle>
         <Text style={styles.body}>{city || "City not set"}, {profile.country}</Text>
         <Text style={styles.muted}>Current chaburah: {currentChaburah?.name ?? "Not joined"}</Text>
         <Text style={styles.muted}>Role: {roleLabel(profile.role)}</Text>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
-import { Button, Card, FilterChip, MetaText, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
+import { StyleSheet, Text, View } from "react-native";
+import { Button, Card, FilterChip, IconTile, MetaText, Row, Screen, SectionTitle, StatusBanner, styles } from "../../src/shared/components";
 import { supabase } from "../../src/lib/supabase";
+import { theme } from "../../src/shared/theme";
 import { useAuthState } from "../../src/state/AuthState";
 import { useAppState } from "../../src/state/AppState";
 
@@ -64,7 +65,7 @@ export default function SettingsScreen() {
   );
 
   useEffect(() => {
-    loadPreferences();
+    void loadPreferences();
   }, [profile?.id]);
 
   async function loadPreferences() {
@@ -125,35 +126,42 @@ export default function SettingsScreen() {
       ) : null}
 
       <Card>
-        <SectionTitle>Notifications</SectionTitle>
-        <Text style={styles.muted}>Choose how you want to be notified. Delivery will use these settings as notification features are connected.</Text>
+        <Row>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 220 }}>
+            <IconTile icon="notifications-outline" tone="brand" size={42} />
+            <View style={{ flex: 1 }}>
+              <SectionTitle>Notifications</SectionTitle>
+              <Text style={styles.muted}>Choose how you want to be notified across email and in-app alerts.</Text>
+            </View>
+          </View>
+        </Row>
         {visibleNotificationEvents.map((event) => (
-          <View key={event.key} style={{ gap: 8 }}>
+          <View key={event.key} style={s.eventRow}>
             <Row>
-              <View style={{ flex: 1, minWidth: 220 }}>
-                <Text style={styles.body}>{event.title}</Text>
+              <View style={{ flex: 1, minWidth: 220, gap: 2 }}>
+                <Text style={[styles.body, { fontWeight: "700" }]}>{event.title}</Text>
                 <Text style={styles.muted}>{event.description}</Text>
               </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <FilterChip
+                  label="Email"
+                  onPress={() => togglePreference(event.key, "email")}
+                  selected={preferences[event.key].email}
+                />
+                <FilterChip
+                  label="In App"
+                  onPress={() => togglePreference(event.key, "inApp")}
+                  selected={preferences[event.key].inApp}
+                />
+              </View>
             </Row>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              <FilterChip
-                label="Email"
-                onPress={() => togglePreference(event.key, "email")}
-                selected={preferences[event.key].email}
-              />
-              <FilterChip
-                label="In App"
-                onPress={() => togglePreference(event.key, "inApp")}
-                selected={preferences[event.key].inApp}
-              />
-            </View>
           </View>
         ))}
         <Button disabled={saving || loading} label={saving ? "Saving..." : "Save Notification Settings"} onPress={savePreferences} />
       </Card>
 
       <Card>
-        <SectionTitle>Delivery Notes</SectionTitle>
+        <SectionTitle icon="information-circle-outline">Delivery Notes</SectionTitle>
         <MetaText>Email and in-app notification delivery will be connected in a later checkpoint.</MetaText>
         <Text style={styles.muted}>These preferences are saved now so future notification features can respect each user's choices.</Text>
       </Card>
@@ -184,3 +192,13 @@ function mapPreferencesFromRow(row: {
     uploads: { email: row.uploads_email, inApp: row.uploads_in_app }
   };
 }
+
+const s = StyleSheet.create({
+  eventRow: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderSoft,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    padding: 12
+  }
+});

@@ -23,7 +23,7 @@ function load(file) {
     if (name === "@expo/vector-icons") return { Ionicons: "Icon" };
     if (name === "./SidebarNavigation") return navigation;
     if (name === "./responsiveLayout") return responsive;
-    if (name === "./components") return { Button: "Button", Pill: "Pill" };
+    if (name === "./components") return { Button: "Button", Pill: "Pill", styles: {} };
     throw new Error(name);
   } });
   return exports;
@@ -49,14 +49,14 @@ assert.ok(all(spacedHeader, "View").some(view => Array.isArray(view.props.style)
 const stackedHeader = PageHeading({ title: "Dashboard", pathname: "/dashboard", accountButton: account, accessory: "Programs", stackAccessory: true });
 assert.ok(!all(stackedHeader, "View").some(view => Array.isArray(view.props.style) && view.props.style.some(style => style?.marginLeft === 12)),
   "Stacked phone headers do not waste space beside the account icon");
-assert.equal(all(PageHeading({ title: "Shiur Builder", pathname: "/shiur-builder" }), "Icon")[0].props.name, "library");
+assert.equal(all(PageHeading({ title: "Shiur Builder", pathname: "/shiur-builder" }), "Icon")[0].props.name, navigationItems["shiur-builder"].icon);
 viewportWidth = 360;
-const phoneHeader = PageHeading({ title: "This Week in SCP", eyebrow: "A long congregation name", pathname: "/dashboard" });
+const phoneHeader = PageHeading({ title: "This Week in SCP", eyebrow: "A long congregation name", pathname: "/dashboard", compact: true });
 assert.equal(all(phoneHeader, "Text")[0].props.numberOfLines, 1, "Phone eyebrow cannot consume multiple header lines");
 assert.equal(all(phoneHeader, "Text")[1].props.style[1].fontSize, 21);
 const { WorkflowCard } = load("src/shared/WorkflowCard.tsx");
 const card = WorkflowCard({ label: "Shiur Builder", meta: "Official SCP material", onPress: () => opened++ });
-assert.equal(all(card, "Icon")[0].props.name, "library");
+assert.equal(all(card, "Icon")[0].props.name, navigationItems["rabbi-hub"].icon);
 assert.equal(all(card, "Button")[0].props.label, "Open");
 all(card, "Button")[0].props.onPress();
 assert.equal(opened, 1);

@@ -44,7 +44,7 @@ vm.runInNewContext(ts.transpileModule(mobile.getText(ast), {
 const phoneTabs = mobileContext.MobileTabBar({ state: { routes, index: routes.length - 1 } });
 assert.equal(phoneTabs.props.state.routes[phoneTabs.props.state.index].name, "rabbi-hub", "Builder keeps its parent bottom tab highlighted");
 const sidebar = fs.readFileSync("src/shared/SidebarNavigation.tsx", "utf8");
-assert.ok(sidebar.includes("style={StyleSheet.flatten([s.item"), "Expo Link asChild must receive a concrete style object, not a Pressable callback");
+assert.match(sidebar, /style=\{StyleSheet\.flatten\(\[\s*s\.item/, "Expo Link asChild must receive a concrete style object, not a Pressable callback");
 assert.ok(!sidebar.includes("style={({ pressed }) => [s.item"), "Linked navigation rows keep concrete styles");
 const preview = fs.readFileSync("app/navigation-preview.tsx", "utf8");
 assert.ok(preview.includes('href: "/navigation-preview"'), "Visual tests must exercise the same Link wrapper as production");

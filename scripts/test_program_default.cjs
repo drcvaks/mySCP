@@ -16,8 +16,9 @@ const modules = {
   react: { useEffect: () => {}, useState: (initial) => [initial, () => {}] },
   "react/jsx-runtime": { jsx: element, jsxs: element },
   "react-native": native,
+  "./learningPrograms": { selectablePrograms: programs => programs },
   "./components": { Button: "Button", FilterChip: "FilterChip", FormInput: "FormInput",
-    MetaText: "MetaText", Row: "Row", styles: {} }
+    MetaText: "MetaText", Pill: "Pill", Row: "Row", styles: {} }
 };
 const context = {
   exports: {}, require: (name) => modules[name] ?? {},
@@ -52,7 +53,7 @@ async function main() {
   button.props.onPress();
   await new Promise(setImmediate);
   assert.equal(saved, 0, "Cancel must not update the default");
-  assert.ok(confirmation.includes("Members of Vaks Chaburah will start in Winter 5787"));
+  assert.ok(confirmation.includes("Members of Vaks Chaburah with access to Winter 5787 will start there"));
   assert.ok(confirmation.includes("Summer 5786 will remain available."));
   assert.ok(confirmation.includes("Week counters won't change."));
   accept = true;

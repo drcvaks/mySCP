@@ -3,10 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import {
+  Avatar,
   Button,
   Card,
+  EmptyState,
   FilterChip,
   FormInput,
+  IconTile,
   MetaText,
   Pill,
   Row,
@@ -552,17 +555,20 @@ export default function RabbiHubScreen() {
 
       {activeTool === "shiur-builder" ? (
         <Card>
-        <Row>
-          <View style={{ flex: 1, minWidth: 260 }}>
-            <SectionTitle>Shiur Builder</SectionTitle>
-            <Text style={styles.muted}>
-              Build longer review packets from official notes and Q&A. This is for after-shiur material, Shabbos table discussion, and a clearer take-home packet.
-            </Text>
-          </View>
-          <View style={{ minWidth: 160 }}>
-            <Button label="Open Builder" onPress={() => router.push("/(tabs)/shiur-builder")} />
-          </View>
-        </Row>
+          <Row>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14, flex: 1, minWidth: 260 }}>
+              <IconTile icon="layers-outline" tone="accent" size={44} />
+              <View style={{ flex: 1, gap: 3 }}>
+                <SectionTitle>Shiur Builder</SectionTitle>
+                <Text style={styles.muted}>
+                  Build longer review packets from official notes and Q&A. This is for after-shiur material, Shabbos table discussion, and a clearer take-home packet.
+                </Text>
+              </View>
+            </View>
+            <View style={{ minWidth: 160 }}>
+              <Button label="Open Builder" onPress={() => router.push("/(tabs)/shiur-builder")} />
+            </View>
+          </Row>
         </Card>
       ) : null}
 
@@ -570,11 +576,14 @@ export default function RabbiHubScreen() {
         <>
           <Card>
             <Row>
-              <View style={{ flex: 1, minWidth: 220 }}>
-                <SectionTitle>Ask Rav Inbox</SectionTitle>
-                <Text style={styles.muted}>
-                  {managedChaburah ? managedChaburah.name : "Current chaburah"} questions that need a response.
-                </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14, flex: 1, minWidth: 220 }}>
+                <IconTile icon="mail-unread-outline" tone="brand" size={44} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <SectionTitle>Ask Rav Inbox</SectionTitle>
+                  <Text style={styles.muted}>
+                    {managedChaburah ? managedChaburah.name : "Current chaburah"} questions that need a response.
+                  </Text>
+                </View>
               </View>
               <Pill label={`${submittedQuestions.length} open`} tone={submittedQuestions.length ? "accent" : "success"} />
             </Row>
@@ -582,53 +591,69 @@ export default function RabbiHubScreen() {
 
           {submittedQuestions.length === 0 ? (
             <Card>
-              <SectionTitle>No Open Questions</SectionTitle>
-              <Text style={styles.muted}>Submitted questions will appear here for the assigned rabbi.</Text>
+              <EmptyState
+                icon="checkmark-done-circle-outline"
+                title="No Open Questions"
+                body="Submitted questions will appear here for the assigned rabbi."
+              />
             </Card>
           ) : (
-            submittedQuestions.map((question) => (
-              <Card key={question.id}>
-                <Row>
-                  <View style={{ flex: 1, minWidth: 220 }}>
+            submittedQuestions.map((question) => {
+              const sender = question.askerName || question.askerEmail || "Unknown participant";
+              return (
+                <Card key={question.id}>
+                  <Row>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 220 }}>
+                      <Avatar name={sender} size={36} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.body, { fontWeight: "700" }]}>{sender}</Text>
+                        <MetaText>
+                          From {sender} - {new Date(question.submittedAt).toLocaleDateString()}
+                        </MetaText>
+                      </View>
+                    </View>
                     <Pill label="Submitted" tone="accent" />
-                    <MetaText>
-                      From {question.askerName || question.askerEmail || "Unknown participant"} - {new Date(question.submittedAt).toLocaleDateString()}
-                    </MetaText>
+                  </Row>
+                  <View style={localStyles.questionBox}>
+                    <Text style={styles.body}>{question.question}</Text>
                   </View>
-                </Row>
-                <Text style={styles.body}>{question.question}</Text>
-                {activeQuestionId === question.id ? (
-                  <>
-                    <TextArea onChangeText={setAnswer} placeholder="Write the answer..." value={answer} />
-                    <Row>
-                      <View style={{ minWidth: 130 }}>
-                        <Button disabled={saving || answer.trim().length < 5} label="Save Answer" onPress={() => submitAnswer(question.id)} />
-                      </View>
-                      <View style={{ minWidth: 100 }}>
-                        <Button label="Cancel" onPress={() => setActiveQuestionId(null)} variant="ghost" />
-                      </View>
-                    </Row>
-                  </>
-                ) : (
-                  <Button
-                    label="Answer Question"
-                    onPress={() => {
-                      setActiveQuestionId(question.id);
-                      setAnswer("");
-                    }}
-                    variant="secondary"
-                  />
-                )}
-              </Card>
-            ))
+                  {activeQuestionId === question.id ? (
+                    <View style={{ gap: 10 }}>
+                      <TextArea onChangeText={setAnswer} placeholder="Write the answer..." value={answer} />
+                      <Row>
+                        <View style={{ minWidth: 130 }}>
+                          <Button disabled={saving || answer.trim().length < 5} label="Save Answer" onPress={() => submitAnswer(question.id)} />
+                        </View>
+                        <View style={{ minWidth: 100 }}>
+                          <Button label="Cancel" onPress={() => setActiveQuestionId(null)} variant="ghost" />
+                        </View>
+                      </Row>
+                    </View>
+                  ) : (
+                    <View style={{ alignSelf: "flex-start" }}>
+                      <Button
+                        label="Answer Question"
+                        icon="create-outline"
+                        onPress={() => {
+                          setActiveQuestionId(question.id);
+                          setAnswer("");
+                        }}
+                        variant="secondary"
+                      />
+                    </View>
+                  )}
+                </Card>
+              );
+            })
           )}
 
           <Card>
-            <SectionTitle>Recently Answered</SectionTitle>
+            <SectionTitle icon="checkmark-circle-outline">Recently Answered</SectionTitle>
             {answeredQuestions.slice(0, 4).map((question) => (
-              <View key={question.id} style={{ gap: 4 }}>
+              <View key={question.id} style={localStyles.answeredRow}>
                 <MetaText>{new Date(question.answeredAt ?? question.submittedAt).toLocaleDateString()}</MetaText>
-                <Text style={styles.muted}>{question.question}</Text>
+                <Text style={[styles.body, { fontWeight: "600" }]}>{question.question}</Text>
+                {question.answer ? <Text style={styles.muted}>{question.answer}</Text> : null}
               </View>
             ))}
             {answeredQuestions.length === 0 ? <Text style={styles.muted}>No answered questions yet.</Text> : null}
@@ -640,11 +665,14 @@ export default function RabbiHubScreen() {
         <View style={localStyles.webWorkspace}>
           <Card>
             <Row>
-              <View style={{ flex: 1, minWidth: 320 }}>
-                <SectionTitle>Quick Review Question Workspace</SectionTitle>
-                <Text style={styles.muted}>
-                  Build short weekly quiz questions for participants to answer in the Review tab.
-                </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14, flex: 1, minWidth: 320 }}>
+                <IconTile icon="help-circle-outline" tone="brand" size={44} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <SectionTitle>Quick Review Question Workspace</SectionTitle>
+                  <Text style={styles.muted}>
+                    Build short weekly quiz questions for participants to answer in the Review tab.
+                  </Text>
+                </View>
               </View>
               <Pill label={`Week ${buildWeek}`} tone="primary" />
             </Row>
@@ -671,7 +699,7 @@ export default function RabbiHubScreen() {
           <View style={localStyles.webQuestionColumns}>
             <View style={localStyles.webBuilderColumn} onLayout={(event) => setQuestionFormOffset(event.nativeEvent.layout.y)}>
               <Card>
-                <SectionTitle>{editingQuestionId ? "Edit Review Question" : "Create Draft Question"}</SectionTitle>
+                <SectionTitle icon="create-outline">{editingQuestionId ? "Edit Review Question" : "Create Draft Question"}</SectionTitle>
                 <Text style={styles.muted}>New questions are saved as drafts and are not visible to participants until you publish them.</Text>
                 {profile?.role === "global_admin" ? (
                   <View style={localStyles.webChipRow}>
@@ -771,7 +799,7 @@ export default function RabbiHubScreen() {
 
             <View style={localStyles.webListColumn} onLayout={(event) => setStagedQuestionsOffset(event.nativeEvent.layout.y)}>
               <Card>
-                <SectionTitle>Draft Questions</SectionTitle>
+                <SectionTitle icon="document-text-outline">Draft Questions</SectionTitle>
                 <Row>
                   <Text style={styles.muted}>Week {buildWeek} drafts are private until published.</Text>
                   <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
@@ -780,6 +808,7 @@ export default function RabbiHubScreen() {
                   disabled={saving || !managedChaburahId || buildWeekModelQuestions.length === 0}
                   label={saving ? "Adding..." : `Add All Week ${buildWeek} Model Questions (${buildWeekModelQuestions.length})`}
                   onPress={cloneAllModelQuestions}
+                  variant="secondary"
                 />
                 {stagedQuestions.length === 0 ? (
                   <Text style={styles.muted}>No draft questions for this week yet. Create one or use the public library below.</Text>
@@ -814,7 +843,7 @@ export default function RabbiHubScreen() {
 
             <View style={localStyles.webListColumn}>
               <Card>
-                <SectionTitle>Published Questions</SectionTitle>
+                <SectionTitle icon="checkmark-done-outline">Published Questions</SectionTitle>
                 <Row>
                   <Text style={styles.muted}>Live for participants to review.</Text>
                   <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
@@ -846,7 +875,7 @@ export default function RabbiHubScreen() {
 
           {profile?.role === "global_admin" ? (
             <Card>
-              <SectionTitle>Draft Library Questions</SectionTitle>
+              <SectionTitle icon="library-outline">Draft Library Questions</SectionTitle>
               <Row>
                 <Text style={styles.muted}>These Week {buildWeek} public-library questions are saved as drafts and are not visible to participants yet.</Text>
                 <Pill label={`${stagedLibraryQuestions.length} drafts`} tone={stagedLibraryQuestions.length ? "accent" : "neutral"} />
@@ -882,7 +911,7 @@ export default function RabbiHubScreen() {
           ) : null}
 
           <Card>
-            <SectionTitle>Public Question Library</SectionTitle>
+            <SectionTitle icon="globe-outline">Public Question Library</SectionTitle>
             <Row>
               <View style={{ flex: 1, minWidth: 320 }}>
                 <Text style={styles.muted}>
@@ -931,7 +960,7 @@ export default function RabbiHubScreen() {
                       <View key={question.id} style={localStyles.webLibraryItem}>
                         <Row>
                           <View style={{ flex: 1, minWidth: 220 }}>
-                            <Text style={styles.body}>{question.prompt}</Text>
+                            <Text style={[styles.body, { fontWeight: "700" }]}>{question.prompt}</Text>
                             <MetaText>
                               Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
                             </MetaText>
@@ -967,327 +996,328 @@ export default function RabbiHubScreen() {
         </View>
       ) : activeTool === "quick-review" ? (
         <>
-      <Card>
-        <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <SectionTitle>Review Question Builder</SectionTitle>
-            <Text style={styles.muted}>
-              Build a draft set for your chaburah, then publish the week when the questions are ready.
-            </Text>
-          </View>
-          <Pill label={`Week ${buildWeek}`} tone="primary" />
-        </Row>
-        <View style={{ gap: 8 }}>
-          <MetaText>Build Questions For</MetaText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {reviewWeeks.map((reviewWeek) => (
-              <FilterChip
-                key={reviewWeek}
-                label={`Week ${reviewWeek}`}
-                onPress={() => setBuildWeek(reviewWeek)}
-                selected={buildWeek === reviewWeek}
-              />
-            ))}
-          </View>
-        </View>
-        <Row>
-          <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
-          <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
-        </Row>
-      </Card>
-
-      <View onLayout={(event) => setQuestionFormOffset(event.nativeEvent.layout.y)}>
-        <Card>
-        <SectionTitle>{editingQuestionId ? "Edit Review Question" : "Create Draft Question"}</SectionTitle>
-        <Text style={styles.muted}>New questions are saved as drafts and are not visible to participants until you publish them.</Text>
-        {profile?.role === "global_admin" ? (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip label="Public Library" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
-            <FilterChip
-              label="Current Chaburah"
-              onPress={() => {
-                setVisibility("chaburah");
-                setIsModelQuestion(false);
-              }}
-              selected={visibility === "chaburah"}
-            />
-          </View>
-        ) : null}
-        {profile?.role === "global_admin" && visibility === "everyone" ? (
-          <View style={{ gap: 8 }}>
-            <MetaText>Library Use</MetaText>
-            <Text style={styles.muted}>Model questions are quick defaults rabbonim can add to drafts when they do not have time to build a full set.</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              <FilterChip label="Model Question" onPress={() => setIsModelQuestion(true)} selected={isModelQuestion} />
-              <FilterChip label="Regular Library" onPress={() => setIsModelQuestion(false)} selected={!isModelQuestion} />
-            </View>
-          </View>
-        ) : null}
-        <MetaText>Saving to Week {buildWeek}. Current week is Week {currentReviewWeek}.</MetaText>
-        <View style={{ gap: 8 }}>
-          <MetaText>Question Type</MetaText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip
-              label="True / False"
-              onPress={() => {
-                setQuestionKind("true_false");
-                setCorrectChoiceIndex("0");
-              }}
-              selected={questionKind === "true_false"}
-            />
-            <FilterChip
-              label="Multiple Choice"
-              onPress={() => {
-                setQuestionKind("multiple_choice");
-                setCorrectChoiceIndex("0");
-              }}
-              selected={questionKind === "multiple_choice"}
-            />
-          </View>
-        </View>
-        <TextArea
-          onChangeText={setPrompt}
-          placeholder="Write the review question exactly as participants should see it..."
-          value={prompt}
-        />
-        {questionKind === "multiple_choice" ? (
-          <View style={{ gap: 8 }}>
-            <MetaText>How many answer options?</MetaText>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {optionCounts.map((count) => (
-                <FilterChip
-                  key={count}
-                  label={`${count}`}
-                  onPress={() => updateOptionCount(count)}
-                  selected={optionCount === count}
-                />
-              ))}
-            </View>
-            {multipleChoiceOptions.slice(0, optionCount).map((option, index) => (
-              <FormInput
-                key={index}
-                onChangeText={(value) => updateMultipleChoiceOption(index, value)}
-                placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                value={option}
-              />
-            ))}
-          </View>
-        ) : null}
-        <View style={{ gap: 8 }}>
-          <MetaText>Correct Answer</MetaText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {correctAnswerOptions.map((choice, index) => (
-              <FilterChip
-                key={`${choice}-${index}`}
-                label={questionKind === "multiple_choice" ? String.fromCharCode(65 + index) : choice}
-                onPress={() => setCorrectChoiceIndex(String(index))}
-                selected={correctChoiceIndex === String(index)}
-              />
-            ))}
-          </View>
-        </View>
-        <TextArea onChangeText={setExplanation} placeholder="Explanation shown after the answer" value={explanation} />
-        <Button
-          disabled={saving}
-          label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : visibility === "everyone" ? "Save Library Draft" : "Save Draft Question"}
-          onPress={saveReviewQuestion}
-        />
-        {editingQuestionId ? <Button label="Cancel Edit" onPress={resetReviewForm} variant="ghost" /> : null}
-        </Card>
-      </View>
-
-      <View onLayout={(event) => setStagedQuestionsOffset(event.nativeEvent.layout.y)}>
-        <Card>
-          <SectionTitle>Draft Questions</SectionTitle>
-          <Row>
-            <Text style={styles.muted}>These Week {buildWeek} questions are saved as drafts and are not visible to participants yet.</Text>
-            <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
-          </Row>
-          {stagedQuestions.length === 0 ? (
-            <Text style={styles.muted}>No draft questions for this week yet. Create one or use the public library below.</Text>
-          ) : null}
-          {stagedQuestions.length > 0 ? (
-            <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
-              <View style={{ gap: 12 }}>
-                {stagedQuestions.map((question, index) => (
-                  <ReviewQuestionManagerRow
-                    key={question.id}
-                    index={index}
-                    question={question}
-                    saving={saving}
-                    onEdit={startEditReviewQuestion}
-                    onRemove={removeStagedQuestion}
-                    onToggle={toggleReviewQuestion}
+          <Card>
+            <Row>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <SectionTitle icon="help-circle-outline">Review Question Builder</SectionTitle>
+                <Text style={styles.muted}>
+                  Build a draft set for your chaburah, then publish the week when the questions are ready.
+                </Text>
+              </View>
+              <Pill label={`Week ${buildWeek}`} tone="primary" />
+            </Row>
+            <View style={{ gap: 8 }}>
+              <MetaText>Build Questions For</MetaText>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {reviewWeeks.map((reviewWeek) => (
+                  <FilterChip
+                    key={reviewWeek}
+                    label={`Week ${reviewWeek}`}
+                    onPress={() => setBuildWeek(reviewWeek)}
+                    selected={buildWeek === reviewWeek}
                   />
                 ))}
               </View>
-            </ScrollView>
+            </View>
+            <Row>
+              <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
+              <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
+            </Row>
+          </Card>
+
+          <View onLayout={(event) => setQuestionFormOffset(event.nativeEvent.layout.y)}>
+            <Card>
+              <SectionTitle icon="create-outline">{editingQuestionId ? "Edit Review Question" : "Create Draft Question"}</SectionTitle>
+              <Text style={styles.muted}>New questions are saved as drafts and are not visible to participants until you publish them.</Text>
+              {profile?.role === "global_admin" ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <FilterChip label="Public Library" onPress={() => setVisibility("everyone")} selected={visibility === "everyone"} />
+                  <FilterChip
+                    label="Current Chaburah"
+                    onPress={() => {
+                      setVisibility("chaburah");
+                      setIsModelQuestion(false);
+                    }}
+                    selected={visibility === "chaburah"}
+                  />
+                </View>
+              ) : null}
+              {profile?.role === "global_admin" && visibility === "everyone" ? (
+                <View style={{ gap: 8 }}>
+                  <MetaText>Library Use</MetaText>
+                  <Text style={styles.muted}>Model questions are quick defaults rabbonim can add to drafts when they do not have time to build a full set.</Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <FilterChip label="Model Question" onPress={() => setIsModelQuestion(true)} selected={isModelQuestion} />
+                    <FilterChip label="Regular Library" onPress={() => setIsModelQuestion(false)} selected={!isModelQuestion} />
+                  </View>
+                </View>
+              ) : null}
+              <MetaText>Saving to Week {buildWeek}. Current week is Week {currentReviewWeek}.</MetaText>
+              <View style={{ gap: 8 }}>
+                <MetaText>Question Type</MetaText>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <FilterChip
+                    label="True / False"
+                    onPress={() => {
+                      setQuestionKind("true_false");
+                      setCorrectChoiceIndex("0");
+                    }}
+                    selected={questionKind === "true_false"}
+                  />
+                  <FilterChip
+                    label="Multiple Choice"
+                    onPress={() => {
+                      setQuestionKind("multiple_choice");
+                      setCorrectChoiceIndex("0");
+                    }}
+                    selected={questionKind === "multiple_choice"}
+                  />
+                </View>
+              </View>
+              <TextArea
+                onChangeText={setPrompt}
+                placeholder="Write the review question exactly as participants should see it..."
+                value={prompt}
+              />
+              {questionKind === "multiple_choice" ? (
+                <View style={{ gap: 8 }}>
+                  <MetaText>How many answer options?</MetaText>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {optionCounts.map((count) => (
+                      <FilterChip
+                        key={count}
+                        label={`${count}`}
+                        onPress={() => updateOptionCount(count)}
+                        selected={optionCount === count}
+                      />
+                    ))}
+                  </View>
+                  {multipleChoiceOptions.slice(0, optionCount).map((option, index) => (
+                    <FormInput
+                      key={index}
+                      onChangeText={(value) => updateMultipleChoiceOption(index, value)}
+                      placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                      value={option}
+                    />
+                  ))}
+                </View>
+              ) : null}
+              <View style={{ gap: 8 }}>
+                <MetaText>Correct Answer</MetaText>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {correctAnswerOptions.map((choice, index) => (
+                    <FilterChip
+                      key={`${choice}-${index}`}
+                      label={questionKind === "multiple_choice" ? String.fromCharCode(65 + index) : choice}
+                      onPress={() => setCorrectChoiceIndex(String(index))}
+                      selected={correctChoiceIndex === String(index)}
+                    />
+                  ))}
+                </View>
+              </View>
+              <TextArea onChangeText={setExplanation} placeholder="Explanation shown after the answer" value={explanation} />
+              <Button
+                disabled={saving}
+                label={saving ? "Saving..." : editingQuestionId ? "Save Changes" : visibility === "everyone" ? "Save Library Draft" : "Save Draft Question"}
+                onPress={saveReviewQuestion}
+              />
+              {editingQuestionId ? <Button label="Cancel Edit" onPress={resetReviewForm} variant="ghost" /> : null}
+            </Card>
+          </View>
+
+          <View onLayout={(event) => setStagedQuestionsOffset(event.nativeEvent.layout.y)}>
+            <Card>
+              <SectionTitle icon="document-text-outline">Draft Questions</SectionTitle>
+              <Row>
+                <Text style={styles.muted}>These Week {buildWeek} questions are saved as drafts and are not visible to participants yet.</Text>
+                <Pill label={`${stagedQuestions.length} drafts`} tone={stagedQuestions.length ? "accent" : "neutral"} />
+              </Row>
+              {stagedQuestions.length === 0 ? (
+                <Text style={styles.muted}>No draft questions for this week yet. Create one or use the public library below.</Text>
+              ) : null}
+              {stagedQuestions.length > 0 ? (
+                <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
+                  <View style={{ gap: 12 }}>
+                    {stagedQuestions.map((question, index) => (
+                      <ReviewQuestionManagerRow
+                        key={question.id}
+                        index={index}
+                        question={question}
+                        saving={saving}
+                        onEdit={startEditReviewQuestion}
+                        onRemove={removeStagedQuestion}
+                        onToggle={toggleReviewQuestion}
+                      />
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+              {stagedQuestions.length > 0 ? (
+                <Button
+                  disabled={saving}
+                  label={saving ? "Publishing..." : `Publish Week ${buildWeek}`}
+                  onPress={publishStagedWeek}
+                />
+              ) : null}
+            </Card>
+          </View>
+
+          {profile?.role === "global_admin" ? (
+            <Card>
+              <SectionTitle icon="library-outline">Draft Library Questions</SectionTitle>
+              <Row>
+                <Text style={styles.muted}>These Week {buildWeek} public-library questions are saved as drafts and are not visible to participants yet.</Text>
+                <Pill label={`${stagedLibraryQuestions.length} drafts`} tone={stagedLibraryQuestions.length ? "accent" : "neutral"} />
+              </Row>
+              {stagedLibraryQuestions.length === 0 ? (
+                <Text style={styles.muted}>No draft public-library questions for this week yet.</Text>
+              ) : null}
+              {stagedLibraryQuestions.map((question, index) => (
+                <ReviewQuestionManagerRow
+                  key={question.id}
+                  index={index}
+                  question={question}
+                  saving={saving}
+                  onEdit={startEditReviewQuestion}
+                  onRemove={removeStagedQuestion}
+                  onToggle={toggleReviewQuestion}
+                />
+              ))}
+              {stagedLibraryQuestions.length > 0 ? (
+                <Button
+                  disabled={saving}
+                  label={saving ? "Publishing..." : `Publish Library Week ${buildWeek}`}
+                  onPress={publishStagedLibraryWeek}
+                />
+              ) : null}
+            </Card>
           ) : null}
-          {stagedQuestions.length > 0 ? (
+
+          <Card>
+            <SectionTitle icon="sparkles-outline">Model Questions</SectionTitle>
+            <Row>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <Text style={styles.muted}>Add the model questions to Week {buildWeek} drafts. You can review them before publishing.</Text>
+              </View>
+              <Pill label={`${buildWeekModelQuestions.length} model`} tone={buildWeekModelQuestions.length ? "accent" : "neutral"} />
+            </Row>
             <Button
-              disabled={saving}
-              label={saving ? "Publishing..." : `Publish Week ${buildWeek}`}
-              onPress={publishStagedWeek}
+              disabled={saving || !managedChaburahId || buildWeekModelQuestions.length === 0}
+              label={saving ? "Adding..." : `Add All Week ${buildWeek} Model Questions to Drafts (${buildWeekModelQuestions.length})`}
+              onPress={cloneAllModelQuestions}
+              variant="secondary"
             />
-          ) : null}
-        </Card>
-      </View>
+            {buildWeekModelQuestions.length === 0 ? (
+              <Text style={styles.muted}>No model questions match Week {buildWeek} yet.</Text>
+            ) : null}
+          </Card>
 
-      {profile?.role === "global_admin" ? (
-        <Card>
-          <SectionTitle>Draft Library Questions</SectionTitle>
-          <Row>
-            <Text style={styles.muted}>These Week {buildWeek} public-library questions are saved as drafts and are not visible to participants yet.</Text>
-            <Pill label={`${stagedLibraryQuestions.length} drafts`} tone={stagedLibraryQuestions.length ? "accent" : "neutral"} />
-          </Row>
-          {stagedLibraryQuestions.length === 0 ? (
-            <Text style={styles.muted}>No draft public-library questions for this week yet.</Text>
-          ) : null}
-          {stagedLibraryQuestions.map((question, index) => (
-            <ReviewQuestionManagerRow
-              key={question.id}
-              index={index}
-              question={question}
-              saving={saving}
-              onEdit={startEditReviewQuestion}
-              onRemove={removeStagedQuestion}
-              onToggle={toggleReviewQuestion}
-            />
-          ))}
-          {stagedLibraryQuestions.length > 0 ? (
-            <Button
-              disabled={saving}
-              label={saving ? "Publishing..." : `Publish Library Week ${buildWeek}`}
-              onPress={publishStagedLibraryWeek}
-            />
-          ) : null}
-        </Card>
-      ) : null}
+          <Card>
+            <SectionTitle icon="globe-outline">Public Question Library</SectionTitle>
+            <Row>
+              <View style={{ flex: 1, minWidth: 220 }}>
+                <Text style={styles.muted}>
+                  Browse all published public library questions, including model and regular questions, and copy useful ones into Week {buildWeek} drafts.
+                </Text>
+              </View>
+              <Pill
+                label={`${visibleLibraryQuestions.length} shown`}
+                tone="accent"
+              />
+            </Row>
+            <View style={{ gap: 8 }}>
+              <MetaText>Question Type</MetaText>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <FilterChip label="All" onPress={() => setLibraryKind("all")} selected={libraryKind === "all"} />
+                <FilterChip label="Model Questions" onPress={() => setLibraryKind("model")} selected={libraryKind === "model"} />
+              </View>
+            </View>
+            <View style={{ gap: 8 }}>
+              <MetaText>Browse Library From</MetaText>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <FilterChip label="All Weeks" onPress={() => setLibraryWeek("all")} selected={libraryWeek === "all"} />
+                {reviewWeeks.map((reviewWeek) => (
+                  <FilterChip
+                    key={reviewWeek}
+                    label={`Week ${reviewWeek}`}
+                    onPress={() => setLibraryWeek(reviewWeek)}
+                    selected={libraryWeek === reviewWeek}
+                  />
+                ))}
+              </View>
+            </View>
+            {publicLibraryQuestions.length === 0 ? (
+              <Text style={styles.muted}>No published public library questions match this week yet.</Text>
+            ) : null}
+            {publicLibraryQuestions.length > 0 && visibleLibraryQuestions.length === 0 ? (
+              <Text style={styles.muted}>No model questions match this library week yet.</Text>
+            ) : null}
+            {visibleLibraryQuestions.length > 0 ? (
+              <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
+                <View style={{ gap: 12 }}>
+                  {visibleLibraryQuestions.map((question) => {
+                    const inDraft = draftLibrarySourceIds.has(question.id);
+                    const isPublished = publishedLibrarySourceIds.has(question.id);
+                    const alreadyUsed = inDraft || isPublished;
+                    return (
+                      <View key={question.id} style={localStyles.compactQuestionRow}>
+                        <Row>
+                          <View style={{ flex: 1, minWidth: 220 }}>
+                            <Text style={[styles.body, { fontWeight: "700" }]}>{question.prompt}</Text>
+                            <MetaText>
+                              Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
+                            </MetaText>
+                          </View>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                            {question.isModelQuestion ? <Pill label="Model" tone="accent" /> : null}
+                            {inDraft ? <Pill label="In Draft" tone="accent" /> : null}
+                            {isPublished ? <Pill label="Published" tone="success" /> : null}
+                            <Pill label="Library" tone="primary" />
+                          </View>
+                        </Row>
+                        <Row>
+                          <MetaText>{alreadyUsed ? `Already added to Week ${buildWeek}` : `Copies into Week ${buildWeek}`}</MetaText>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                            <Button
+                              disabled={saving || !managedChaburahId || alreadyUsed}
+                              label={isPublished ? "Published" : inDraft ? "In Draft" : "Use Question"}
+                              onPress={() => cloneLibraryQuestion(question.id)}
+                              variant={alreadyUsed ? "ghost" : "secondary"}
+                            />
+                            {profile?.role === "global_admin" ? (
+                              <Button disabled={saving} label="Edit Library" onPress={() => startEditReviewQuestion(question)} variant="ghost" />
+                            ) : null}
+                          </View>
+                        </Row>
+                      </View>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            ) : null}
+          </Card>
 
-      <Card>
-        <SectionTitle>Model Questions</SectionTitle>
-        <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <Text style={styles.muted}>Add the model questions to Week {buildWeek} drafts. You can review them before publishing.</Text>
-          </View>
-          <Pill label={`${buildWeekModelQuestions.length} model`} tone={buildWeekModelQuestions.length ? "accent" : "neutral"} />
-        </Row>
-        <Button
-          disabled={saving || !managedChaburahId || buildWeekModelQuestions.length === 0}
-          label={saving ? "Adding..." : `Add All Week ${buildWeek} Model Questions to Drafts (${buildWeekModelQuestions.length})`}
-          onPress={cloneAllModelQuestions}
-        />
-        {buildWeekModelQuestions.length === 0 ? (
-          <Text style={styles.muted}>No model questions match Week {buildWeek} yet.</Text>
-        ) : null}
-      </Card>
-
-      <Card>
-        <SectionTitle>Public Question Library</SectionTitle>
-        <Row>
-          <View style={{ flex: 1, minWidth: 220 }}>
-            <Text style={styles.muted}>
-              Browse all published public library questions, including model and regular questions, and copy useful ones into Week {buildWeek} drafts.
-            </Text>
-          </View>
-          <Pill
-            label={`${visibleLibraryQuestions.length} shown`}
-            tone="accent"
-          />
-        </Row>
-        <View style={{ gap: 8 }}>
-          <MetaText>Question Type</MetaText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip label="All" onPress={() => setLibraryKind("all")} selected={libraryKind === "all"} />
-            <FilterChip label="Model Questions" onPress={() => setLibraryKind("model")} selected={libraryKind === "model"} />
-          </View>
-        </View>
-        <View style={{ gap: 8 }}>
-          <MetaText>Browse Library From</MetaText>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <FilterChip label="All Weeks" onPress={() => setLibraryWeek("all")} selected={libraryWeek === "all"} />
-            {reviewWeeks.map((reviewWeek) => (
-              <FilterChip
-                key={reviewWeek}
-                label={`Week ${reviewWeek}`}
-                onPress={() => setLibraryWeek(reviewWeek)}
-                selected={libraryWeek === reviewWeek}
+          <Card>
+            <SectionTitle icon="checkmark-done-outline">Published Questions</SectionTitle>
+            <Row>
+              <Text style={styles.muted}>These Week {buildWeek} questions are live for participants to review.</Text>
+              <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
+            </Row>
+            {publishedQuestions.length === 0 ? (
+              <Text style={styles.muted}>No published questions for this week yet.</Text>
+            ) : null}
+            {publishedQuestions.map((question, index) => (
+              <ReviewQuestionManagerRow
+                key={question.id}
+                index={index}
+                question={question}
+                saving={saving}
+                onEdit={startEditReviewQuestion}
+                onRemove={removeStagedQuestion}
+                onToggle={toggleReviewQuestion}
               />
             ))}
-          </View>
-        </View>
-        {publicLibraryQuestions.length === 0 ? (
-          <Text style={styles.muted}>No published public library questions match this week yet.</Text>
-        ) : null}
-        {publicLibraryQuestions.length > 0 && visibleLibraryQuestions.length === 0 ? (
-          <Text style={styles.muted}>No model questions match this library week yet.</Text>
-        ) : null}
-        {visibleLibraryQuestions.length > 0 ? (
-          <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
-            <View style={{ gap: 12 }}>
-              {visibleLibraryQuestions.map((question) => {
-                const inDraft = draftLibrarySourceIds.has(question.id);
-                const isPublished = publishedLibrarySourceIds.has(question.id);
-                const alreadyUsed = inDraft || isPublished;
-                return (
-                  <View key={question.id} style={{ gap: 8 }}>
-                    <Row>
-                      <View style={{ flex: 1, minWidth: 220 }}>
-                        <Text style={styles.body}>{question.prompt}</Text>
-                        <MetaText>
-                          Week {question.week} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
-                        </MetaText>
-                      </View>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                        {question.isModelQuestion ? <Pill label="Model" tone="accent" /> : null}
-                        {inDraft ? <Pill label="In Draft" tone="accent" /> : null}
-                        {isPublished ? <Pill label="Published" tone="success" /> : null}
-                        <Pill label="Library" tone="primary" />
-                      </View>
-                    </Row>
-                    <Row>
-                      <MetaText>{alreadyUsed ? `Already added to Week ${buildWeek}` : `Copies into Week ${buildWeek}`}</MetaText>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                        <Button
-                          disabled={saving || !managedChaburahId || alreadyUsed}
-                          label={isPublished ? "Published" : inDraft ? "In Draft" : "Use Question"}
-                          onPress={() => cloneLibraryQuestion(question.id)}
-                          variant={alreadyUsed ? "ghost" : "secondary"}
-                        />
-                        {profile?.role === "global_admin" ? (
-                          <Button disabled={saving} label="Edit Library" onPress={() => startEditReviewQuestion(question)} variant="ghost" />
-                        ) : null}
-                      </View>
-                    </Row>
-                  </View>
-                );
-              })}
-            </View>
-          </ScrollView>
-        ) : null}
-      </Card>
-
-      <Card>
-        <SectionTitle>Published Questions</SectionTitle>
-        <Row>
-          <Text style={styles.muted}>These Week {buildWeek} questions are live for participants to review.</Text>
-          <Pill label={`${publishedQuestions.length} published`} tone={publishedQuestions.length ? "success" : "neutral"} />
-        </Row>
-        {publishedQuestions.length === 0 ? (
-          <Text style={styles.muted}>No published questions for this week yet.</Text>
-        ) : null}
-        {publishedQuestions.map((question, index) => (
-          <ReviewQuestionManagerRow
-            key={question.id}
-            index={index}
-            question={question}
-            saving={saving}
-            onEdit={startEditReviewQuestion}
-            onRemove={removeStagedQuestion}
-            onToggle={toggleReviewQuestion}
-          />
-        ))}
-      </Card>
+          </Card>
         </>
       ) : null}
       {activeTool === "quick-review" && managedChaburahId && chaburahToolAccess(profile, memberships, selectedChaburahId).rabbiHub ?
@@ -1316,15 +1346,15 @@ function ReviewQuestionManagerRow({
 }) {
   const staged = question.publicationStatus === "draft";
   return (
-    <View style={[{ gap: 8 }, compact && localStyles.compactQuestionRow]}>
+    <View style={[localStyles.compactQuestionRow, compact && { padding: 12 }]}>
       <Row>
-        <View style={{ flex: 1, minWidth: compact ? 160 : 220 }}>
+        <View style={{ flex: 1, minWidth: compact ? 160 : 220, gap: 2 }}>
           <MetaText>
             Question {index + 1} - {question.kind === "true_false" ? "True / False" : "Multiple Choice"}
           </MetaText>
-          <Text style={styles.body}>{question.prompt}</Text>
+          <Text style={[styles.body, { fontWeight: "700" }]}>{question.prompt}</Text>
         </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
           <Pill
             label={question.publicationStatus === "published" ? "Published" : "Draft"}
             tone={question.publicationStatus === "published" ? "success" : "accent"}
@@ -1353,11 +1383,28 @@ function ReviewQuestionManagerRow({
 }
 
 const localStyles = StyleSheet.create({
-  compactQuestionRow: {
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
+  questionBox: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderSoft,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
-    padding: theme.spacing.sm
+    padding: 12
+  },
+  answeredRow: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.borderSoft,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    gap: 4,
+    padding: 12
+  },
+  compactQuestionRow: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    gap: 10,
+    padding: 14
   },
   webBuilderColumn: {
     flex: 1.28,
@@ -1381,8 +1428,9 @@ const localStyles = StyleSheet.create({
     paddingRight: 2
   },
   webLibraryItem: {
+    backgroundColor: theme.colors.surfaceMuted,
     borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     flexBasis: 320,
     flexGrow: 1,

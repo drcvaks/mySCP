@@ -28,7 +28,7 @@ const stubs = {
   "react/jsx-runtime": {jsx, jsxs: jsx},
   "@expo/vector-icons": {Ionicons: "Icon"},
   "@react-navigation/bottom-tabs": {BottomTabBar: "BottomTabBar"},
-  "expo-router": {Redirect: "Redirect", Tabs: tabs, useSegments: () => ["(tabs)", route]},
+  "expo-router": {Redirect: "Redirect", Tabs: tabs, useSegments: () => ["(tabs)", route], useGlobalSearchParams: () => ({})},
   "react-native": {Platform: {get OS() {return platform;}}, StyleSheet: {create: value => value}, useWindowDimensions: () => ({width, height}), View: "View", Text: "Text", ActivityIndicator: "Loading"},
   "react-native-safe-area-context": {SafeAreaView: "SafeAreaView", useSafeAreaInsets: () => ({bottom: bottomInset, left: 0, right: 0, top: 0})},
   "../../src/shared/SidebarNavigation": {navigationItems},
@@ -59,8 +59,8 @@ for (const [os, viewportWidth, viewportHeight = 900] of [["web",1440],["web",320
     const idle = icon({ focused: false }), active = icon({ focused: true });
     assert.equal(idle.props.children.props.name, navigationItems.files.icon);
     assert.equal(idle.props.children.props.color, navigationItems.files.color);
-    assert.equal(active.props.children.props.color, "#FFFFFF");
-    assert.equal(active.props.style[1].backgroundColor, "#2563EB");
+    assert.equal(active.props.children.props.color, "#F6BA36");
+    assert.equal(active.props.style[1].backgroundColor, "#062A72");
     assert.equal(tree.props.screenOptions.tabBarHideOnKeyboard, true);
     bottomInset = 24;
     const insetOptions = layout.default().props.screenOptions;
@@ -73,10 +73,10 @@ for (const [os, viewportWidth, viewportHeight = 900] of [["web",1440],["web",320
   }
   chaburah = "other";
   tree = layout.default();
-  assert.equal(screen(tree, "rabbi-hub").props.options.href, null);
+  assert.equal(screen(tree, "rabbi-hub").props.options.href, undefined, "Worldwide Beis Midrash remains accessible to approved Rabbis");
   assert.equal(screen(tree, "admin").props.options.href, null);
-  assert.equal(screen(tree, "review").props.options.href, undefined);
-  for (route of ["admin", "rabbi-hub", "shiur-builder", "shiur-import-preview", "source-sheets-import-preview"]) {
+  assert.equal(screen(tree, "review").props.options.href, compact ? null : undefined);
+  for (route of ["admin", "shiur-builder", "shiur-import-preview", "source-sheets-import-preview"]) {
     tree = layout.default();
     assert.equal(tree.type, "Redirect");assert.equal(tree.props.href, "/(tabs)/dashboard");
   }

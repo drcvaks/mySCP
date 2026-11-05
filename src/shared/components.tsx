@@ -1,178 +1,388 @@
-import { cloneElement, ReactElement, ReactNode, RefObject, useEffect, useRef, useState } from "react";
-import { Alert, Modal, Platform, Pressable, ScrollView, ScrollViewProps, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
+import {
+  cloneElement,
+  isValidElement,
+  PropsWithChildren,
+  ReactElement,
+  ReactNode,
+  RefObject,
+  useEffect,
+  useRef,
+  useState
+} from "react";
+import {
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  ScrollViewProps,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextStyle,
+  useWindowDimensions,
+  View,
+  ViewStyle
+} from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { globalStyles, theme } from "./theme";
-import { useAuthState } from "../state/AuthState";
 import { useAppState } from "../state/AppState";
+import { useAuthState } from "../state/AuthState";
+import { AccountMenu } from "./AccountMenu";
 import { PageHeading } from "./PageHeading";
 import { canAccessBeisMidrash, chaburahToolAccess } from "./permissions";
-import { SidebarItem, SidebarNavigation } from "./SidebarNavigation";
-import { usesCompactNavigation, usesLandscapeMenu } from "./responsiveLayout";
-import { AccountMenu, SignOutButton } from "./AccountMenu";
+import { ProgramControlSlots } from "./ProgramSelector";
 import { InstallBanner, InstallHeaderButton } from "./PwaInstall";
+import { usesCompactNavigation, usesLandscapeMenu } from "./responsiveLayout";
+import { isSidebarRoute, SidebarNavigation } from "./SidebarNavigation";
+import { SignOutButton } from "./SignOutButton";
+import { globalStyles, theme } from "./theme";
 
-interface ScreenProps {
+export {
+  Avatar,
+  Banner,
+  EmptyState,
+  IconTile,
+  Inline,
+  MenuItem,
+  OverflowMenu,
+  ProgressBar,
+  SegmentedTabs,
+  SkeletonList,
+  StatTile
+} from "./ui";
+
+type PressState = { pressed: boolean; hovered?: boolean; focused?: boolean };
+
+type ProgramSelectorElement = ReactElement<{
+  disabled?: boolean;
+  render?: (slots: ProgramControlSlots) => ReactNode;
+}>;
+
+export function Screen({
+  title,
+  subtitle,
+  eyebrow,
+  action,
+  headerAccessory,
+  toolbar,
+  onRefresh,
+  refreshing = false,
+  scrollRef,
+  onScroll,
+  programSelector,
+  children
+}: PropsWithChildren<{
   title: string;
+  subtitle?: string;
   eyebrow?: string;
-  children: ReactNode;
+  action?: ReactNode;
+  headerAccessory?: ReactNode;
+  toolbar?: ReactNode;
   onRefresh?: () => void | Promise<void>;
   refreshing?: boolean;
   scrollRef?: RefObject<ScrollView | null>;
   onScroll?: ScrollViewProps["onScroll"];
-  programSelector?: ReactElement<{ render?: (slots: { header: ReactNode; management: ReactNode }) => ReactNode }>;
-  toolbar?: ReactNode;
-}
-
-export function Screen({ title, eyebrow, children, onRefresh, refreshing = false, scrollRef, onScroll, programSelector, toolbar }: ScreenProps) {
+  programSelector?: ProgramSelectorElement;
+}>) {
   const router = useRouter();
   const pathname = usePathname();
   const { profile } = useAuthState();
   const { chaburos, memberships, selectedChaburahId } = useAppState();
-  const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
   const { width, height } = useWindowDimensions();
-  const showDrawerButton = usesCompactNavigation(width, height);
-  const landscapePhone = usesLandscapeMenu(width, height);
   const insets = useSafeAreaInsets();
-  const drawerWidth = Math.min(width - 24 - (landscapePhone ? insets.left : 0), 344);
+  const compact = usesCompactNavigation(width, height);
+  const landscapePhone = usesLandscapeMenu(width, height);
   const [menuOpen, setMenuOpen] = useState(false);
-  const selectedChaburah = chaburos.find((chaburah) => chaburah.id === selectedChaburahId);
-  const askRavEnabled = selectedChaburah?.askRavEnabled ?? true;
-  const drawerRoutes: { name: SidebarItem["name"]; label: string; show?: boolean }[] = [
-    { name: "dashboard", label: "Dashboard", show: landscapePhone },
-    { name: "chaburah", label: "My Chaburah", show: landscapePhone },
-    { name: "review", label: "Review", show: landscapePhone || toolAccess.rabbiHub || canAccessBeisMidrash(profile, memberships) },
-    { name: "files", label: "Files", show: landscapePhone },
-    { name: "rabbi-hub", label: "Rabbi Hub", show: landscapePhone && (toolAccess.rabbiHub || canAccessBeisMidrash(profile, memberships)) },
-    { name: "admin", label: "Admin", show: toolAccess.admin },
-    { name: "global-admin", label: "Global Admin", show: profile?.role === "global_admin" },
-    { name: "beta-feedback", label: "Beta Feedback" },
-    { name: "help", label: "Help / How to Use" },
-    { name: "testing-checklist", label: "Tester Checklist" },
-    { name: "directory", label: "Directory" },
-    { name: "ask-rav", label: "Ask Rav", show: askRavEnabled },
-    { name: "profile", label: "Profile" },
-    { name: "notifications", label: "Notifications" },
-    { name: "settings", label: "Settings" }
-  ];
-  const drawerItems: SidebarItem[] = drawerRoutes.filter((item) => item.show !== false).map((item) => ({
-    name: item.name, label: item.label, onSelect: () => navigateTo(item.name)
-  }));
-  const currentRoute = pathname.split("/").filter(Boolean).pop() ?? "dashboard";
-  const selectedRoute = ["beis-midrash", "shiur-builder", "shiur-import-preview", "source-sheets-import-preview"].includes(currentRoute)
-    ? "rabbi-hub" : currentRoute;
 
-  function navigateTo(name: SidebarItem["name"]) {
-    setMenuOpen(false);
-    router.navigate(`/(tabs)/${name}` as never);
+  const rawRoute = pathname.split("/").filter(Boolean).pop() ?? "dashboard";
+  const currentRoute = [
+    "shiur-builder",
+    "shiur-import-preview",
+    "source-sheets-import-preview",
+    "beis-midrash"
+  ].includes(rawRoute)
+    ? "rabbi-hub"
+    : isSidebarRoute(rawRoute)
+      ? rawRoute
+      : "dashboard";
+
+  const activeChaburahId = selectedChaburahId ?? profile?.chaburahId;
+  const activeChaburah = chaburos.find((item) => item.id === activeChaburahId)?.name ?? null;
+  const toolAccess = chaburahToolAccess(profile, memberships, selectedChaburahId);
+  const askRavEnabled = chaburos.find(item => item.id === selectedChaburahId)?.askRavEnabled ?? true;
+  const beisMidrashAllowed = canAccessBeisMidrash(profile, memberships);
+  const isGlobalAdmin = profile?.role === "global_admin";
+
+  const drawerItems = [
+    { name: "dashboard" as const, label: "Dashboard", show: landscapePhone },
+    { name: "chaburah" as const, label: "My Chaburah", show: landscapePhone },
+    { name: "review" as const, label: "Review", show: landscapePhone || toolAccess.rabbiHub || beisMidrashAllowed },
+    { name: "files" as const, label: "Files", show: landscapePhone },
+    { name: "rabbi-hub" as const, label: "Rabbi Hub", show: landscapePhone && (toolAccess.rabbiHub || beisMidrashAllowed) },
+    { name: "admin" as const, label: "Admin", show: toolAccess.admin },
+    { name: "global-admin" as const, label: "Global Admin", show: isGlobalAdmin },
+    { name: "beta-feedback" as const, label: "Beta Feedback", show: true },
+    { name: "help" as const, label: "Help / How to Use", show: true },
+    { name: "testing-checklist" as const, label: "Tester Checklist", show: true },
+    { name: "directory" as const, label: "Directory", show: true },
+    { name: "ask-rav" as const, label: "Ask Rav", show: askRavEnabled },
+    { name: "profile" as const, label: "Profile", show: true },
+    { name: "notifications" as const, label: "Notifications", show: true },
+    { name: "settings" as const, label: "Settings", show: true }
+  ]
+    .filter((item) => item.show)
+    .map((item) => ({
+      key: item.name,
+      name: item.name,
+      label: item.label,
+      onSelect: () => {
+        setMenuOpen(false);
+        router.navigate(`/(tabs)/${item.name}` as never);
+      }
+    }));
+
+  const menuButton = compact ? (
+    <Pressable
+      accessibilityLabel="Open navigation menu"
+      accessibilityRole="button"
+      onPress={() => setMenuOpen(true)}
+      style={localStyles.menuButton}
+    >
+      <Ionicons color={theme.colors?.brand ?? "#062A72"} name="menu" size={20} />
+    </Pressable>
+  ) : undefined;
+
+  const accountAction = (
+    <View style={localStyles.headerActions}>
+      {action}
+      <InstallHeaderButton />
+      <AccountMenu onRefresh={onRefresh} refreshing={refreshing} />
+    </View>
+  );
+
+  function renderFrame(slots?: ProgramControlSlots) {
+    const accessory = slots?.header ?? headerAccessory;
+    const stackAccessory = Boolean(accessory) && !landscapePhone && width < 1100;
+    return (
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[
+          globalStyles.screen,
+          compact && {
+            paddingLeft: Math.max(insets.left, 0),
+            paddingRight: Math.max(insets.right, 0)
+          }
+        ]}
+      >
+        <View style={[localStyles.headerShell, compact && localStyles.compactHeaderShell]}>
+          <View style={[localStyles.headerInner, compact && localStyles.compactHeaderInner]}>
+            <PageHeading
+              accessory={accessory}
+              action={accountAction}
+              compact={compact}
+              eyebrow={eyebrow}
+              navigationButton={menuButton}
+              routeName={currentRoute}
+              stackAccessory={stackAccessory}
+              subtitle={subtitle}
+              title={title}
+            />
+          </View>
+        </View>
+
+        {toolbar ? <View style={localStyles.screenToolbar}>{toolbar}</View> : null}
+
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[globalStyles.content, compact && globalStyles.compactContent]}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
+          <InstallBanner />
+          {slots?.management}
+          {children}
+        </ScrollView>
+
+        {compact ? (
+          <Modal
+            animationType="fade"
+            onRequestClose={() => setMenuOpen(false)}
+            transparent
+            visible={menuOpen}
+          >
+            <View style={localStyles.drawerOverlay}>
+              <Pressable
+                accessibilityLabel="Dismiss navigation menu"
+                onPress={() => setMenuOpen(false)}
+                style={StyleSheet.absoluteFill}
+              />
+              <SafeAreaView
+                edges={["top", "bottom", "left"]}
+                style={{
+                  backgroundColor: theme.colors?.surface ?? "#FFFFFF",
+                  height: "100%",
+                  maxWidth: "86%"
+                }}
+              >
+                <SidebarNavigation
+                  chaburah={activeChaburah}
+                  compact
+                  footer={<SignOutButton onSignedOut={() => setMenuOpen(false)} variant="drawer" />}
+                  items={drawerItems}
+                  onClose={() => setMenuOpen(false)}
+                  selected={rawRoute}
+                  width={Math.min(288, Math.max(244, width - 56))}
+                />
+              </SafeAreaView>
+            </View>
+          </Modal>
+        ) : null}
+      </SafeAreaView>
+    );
   }
 
-  // One controller owns both slots, keeping switches and management saves in sync.
-  const renderScreen = ({ header = null, management = null }: { header?: ReactNode; management?: ReactNode } = {}) => (
-    <SafeAreaView style={globalStyles.screen} edges={landscapePhone ? ["top", "left", "right", "bottom"] : ["top"]}>
-      <View style={[styles.headerShell, !showDrawerButton && styles.wideHeaderShell]}>
-        <View style={[styles.screenHeader, !showDrawerButton && styles.wideHeaderContent]}>
-          <PageHeading title={title} eyebrow={eyebrow} pathname={pathname}
-            accountButton={<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><InstallHeaderButton /><AccountMenu onRefresh={onRefresh} refreshing={refreshing} /></View>}
-            accessory={header} stackAccessory={width < 1100 && !landscapePhone}
-            navigationButton={showDrawerButton ? (
-            <Pressable
-              accessibilityLabel="Open navigation menu"
-              accessibilityRole="button"
-              onPress={() => setMenuOpen(true)}
-              style={styles.menuButton}
-            >
-              <Ionicons name="menu" color={theme.colors.ink} size={28} />
-            </Pressable>
-          ) : null} />
-        </View>
-      </View>
-      {toolbar ? <View style={styles.screenToolbar}>{toolbar}</View> : null}
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={[globalStyles.content, showDrawerButton && styles.phoneContent, !showDrawerButton && styles.wideContent]}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      >
-        <View style={styles.betaNotice}>
-          <Ionicons name="flask-outline" color={theme.colors.primary} size={18} />
-          <Text style={styles.betaNoticeText}>
-            You are using a beta version of mySCP. Please report bugs or confusing parts in Beta Feedback.
-          </Text>
-        </View>
-        <InstallBanner />
-        {management}
-        {children}
-      </ScrollView>
-      <Modal animationType="fade" transparent visible={menuOpen} onRequestClose={() => setMenuOpen(false)}>
-        <View style={styles.drawerBackdrop}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Dismiss navigation menu"
-            style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} />
-          <SafeAreaView edges={landscapePhone ? ["top", "bottom", "left"] : ["top", "bottom"]}
-            style={[styles.drawerPanel, { width: drawerWidth + (landscapePhone ? insets.left : 0) }]}>
-            <SidebarNavigation items={drawerItems} selected={selectedRoute} chaburah={selectedChaburah?.name}
-              width={drawerWidth} onClose={() => setMenuOpen(false)} footer={<SignOutButton />} />
-          </SafeAreaView>
-        </View>
-      </Modal>
-    </SafeAreaView>
+  if (programSelector) {
+    return cloneElement(programSelector, {
+      disabled: programSelector.props.disabled,
+      render: renderFrame
+    });
+  }
+
+  return renderFrame();
+}
+
+export function Card({
+  children,
+  tone = "default",
+  compact = false,
+  style
+}: PropsWithChildren<{
+  tone?: "default" | "warm" | "accent" | "brand" | "hero" | "inverse" | "muted";
+  compact?: boolean;
+  style?: StyleProp<ViewStyle>;
+}>) {
+  return (
+    <View
+      style={[
+        globalStyles.card,
+        compact && globalStyles.cardCompact,
+        (tone === "warm" || tone === "accent") && globalStyles.cardWarm,
+        tone === "brand" && globalStyles.cardBrand,
+        (tone === "inverse" || tone === "hero") && globalStyles.cardInverse,
+        tone === "muted" && { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.border },
+        style
+      ]}
+    >
+      {children}
+    </View>
   );
-  return programSelector ? cloneElement(programSelector, { render: renderScreen }) : renderScreen();
 }
 
-export function Card({ children }: { children: ReactNode }) {
-  return <View style={styles.card}>{children}</View>;
+export function CompactCard({ children, style }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
+  return <View style={[globalStyles.card, globalStyles.cardCompact, style]}>{children}</View>;
 }
 
-export function CompactCard({ children }: { children: ReactNode }) {
-  return <View style={styles.compactCard}>{children}</View>;
+export function SectionTitle({
+  children,
+  icon,
+  style
+}: PropsWithChildren<{
+  icon?: keyof typeof Ionicons.glyphMap;
+  style?: StyleProp<TextStyle>;
+}>) {
+  if (icon) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <Ionicons color={theme.colors.brand} name={icon} size={18} />
+        <Text style={[globalStyles.sectionTitle, { flexShrink: 1 }, style]}>{children}</Text>
+      </View>
+    );
+  }
+  return <Text style={[globalStyles.sectionTitle, style]}>{children}</Text>;
 }
 
-export function Row({ children }: { children: ReactNode }) {
-  return <View style={styles.row}>{children}</View>;
+export function BodyText({ children, style }: PropsWithChildren<{ style?: StyleProp<TextStyle> }>) {
+  return <Text style={[globalStyles.body, style]}>{children}</Text>;
+}
+
+export function MetaText({ children, style }: PropsWithChildren<{ style?: StyleProp<TextStyle> }>) {
+  return <Text style={[globalStyles.muted, style]}>{children}</Text>;
 }
 
 export function Pill({
   label,
-  tone = "neutral"
+  tone = "default",
+  icon
 }: {
   label: string;
-  tone?: "neutral" | "primary" | "accent" | "success" | "danger";
+  tone?: "default" | "primary" | "info" | "warn" | "accent" | "gold" | "success" | "danger" | "neutral";
+  icon?: keyof typeof Ionicons.glyphMap;
 }) {
+  const normalizedTone =
+    tone === "primary"
+      ? "default"
+      : tone === "accent"
+        ? "gold"
+        : tone;
+  const toneStyles = {
+    default: { bg: theme.colors.brandSoft, border: theme.colors.brandBorder, fg: theme.colors.brand },
+    info: { bg: theme.colors.infoSoft, border: theme.colors.infoBorder, fg: theme.colors.info },
+    warn: { bg: theme.colors.warningSoft, border: theme.colors.warningBorder, fg: theme.colors.warning },
+    gold: { bg: theme.colors.accentSoft, border: theme.colors.accentBorder, fg: theme.colors.accentDeep },
+    success: { bg: theme.colors.successSoft, border: theme.colors.successBorder, fg: theme.colors.success },
+    danger: { bg: theme.colors.dangerSoft, border: theme.colors.dangerBorder, fg: theme.colors.danger },
+    neutral: { bg: theme.colors.surfaceMuted, border: theme.colors.border, fg: theme.colors.inkSecondary }
+  }[normalizedTone];
+
   return (
     <View
       style={[
-        styles.pill,
-        tone === "primary" && styles.pillPrimary,
-        tone === "accent" && styles.pillAccent,
-        tone === "success" && styles.pillSuccess,
-        tone === "danger" && styles.pillDanger
+        globalStyles.pill,
+        { backgroundColor: toneStyles.bg, borderColor: toneStyles.border, flexDirection: "row", alignItems: "center", gap: 4 }
       ]}
     >
-      <Text style={[styles.pillText, tone !== "neutral" && styles.pillStrongText]}>{label}</Text>
+      {icon ? <Ionicons color={toneStyles.fg} name={icon} size={12} /> : null}
+      <Text style={[globalStyles.pillText, { color: toneStyles.fg }]}>{label}</Text>
     </View>
   );
 }
 
 export function FilterChip({
   label,
+  active,
   selected,
+  disabled = false,
   onPress
 }: {
   label: string;
+  active?: boolean;
   selected?: boolean;
+  disabled?: boolean;
   onPress?: () => void;
 }) {
+  const isSelected = Boolean(selected ?? active);
   return (
     <Pressable
+      accessibilityLabel={label}
       accessibilityRole="button"
+      accessibilityState={{ disabled, selected: isSelected }}
+      {...(Platform.OS === "web" ? { "aria-pressed": isSelected } : {})}
+      disabled={disabled}
       onPress={onPress}
-      style={[styles.filterChip, selected && styles.filterChipSelected]}
+      style={({ pressed, focused }: PressState) => [
+        globalStyles.chip,
+        isSelected ? globalStyles.chipActive : null,
+        pressed && !disabled ? { opacity: 0.86 } : null,
+        focused ? theme.focusRing : null,
+        disabled ? globalStyles.buttonDisabled : null
+      ]}
     >
-      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{label}</Text>
+      <Text style={[globalStyles.chipText, isSelected ? globalStyles.chipTextActive : null]}>{label}</Text>
     </Pressable>
   );
 }
@@ -186,15 +396,24 @@ export function SearchField({
   onChangeText: (value: string) => void;
   placeholder: string;
 }) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={styles.searchBox}>
-      <Ionicons name="search" color={theme.colors.muted} size={18} />
+    <View
+      style={[
+        styles.searchBox,
+        focused ? { borderColor: theme.colors.brand, backgroundColor: "#FFFFFF" } : null
+      ]}
+    >
+      <Ionicons color={theme.colors.inkMuted} name="search" size={18} />
       <TextInput
+        accessibilityLabel={placeholder}
         autoCapitalize="none"
         autoCorrect={false}
+        onBlur={() => setFocused(false)}
         onChangeText={onChangeText}
+        onFocus={() => setFocused(true)}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.muted}
+        placeholderTextColor={theme.colors.inkSubtle}
         style={styles.searchInput}
         value={value}
       />
@@ -206,23 +425,45 @@ export function FormInput({
   value,
   onChangeText,
   placeholder,
+  multiline,
+  secureTextEntry,
+  autoCapitalize = "none",
   keyboardType = "default",
   textDirection
 }: {
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
-  keyboardType?: "default" | "email-address" | "numeric" | "url";
+  multiline?: boolean;
+  secureTextEntry?: boolean;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  keyboardType?: "default" | "email-address" | "numeric" | "phone-pad" | "url";
   textDirection?: "ltr" | "rtl";
 }) {
+  const [focused, setFocused] = useState(false);
   return (
     <TextInput
-      autoCapitalize="none"
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      placeholderTextColor={theme.colors.muted}
+      accessibilityLabel={placeholder}
+      autoCapitalize={autoCapitalize}
       keyboardType={keyboardType}
-      style={[styles.formInput, textDirection && { writingDirection: textDirection, textAlign: textDirection === "rtl" ? "right" : "left" }]}
+      multiline={multiline}
+      onBlur={() => setFocused(false)}
+      onChangeText={onChangeText}
+      onFocus={() => setFocused(true)}
+      placeholder={placeholder}
+      placeholderTextColor={theme.colors.inkSubtle}
+      secureTextEntry={secureTextEntry}
+      style={[
+        globalStyles.input,
+        multiline ? globalStyles.inputMultiline : null,
+        textDirection ? { writingDirection: textDirection, textAlign: textDirection === "rtl" ? "right" : "left" } : null,
+        focused
+          ? {
+              borderColor: theme.colors.brand,
+              backgroundColor: "#FFFFFF"
+            }
+          : null
+      ]}
       value={value}
     />
   );
@@ -237,30 +478,25 @@ export function TextArea({
   onChangeText: (value: string) => void;
   placeholder: string;
 }) {
+  const [focused, setFocused] = useState(false);
   return (
     <TextInput
+      accessibilityLabel={placeholder}
       multiline
+      onBlur={() => setFocused(false)}
       onChangeText={onChangeText}
+      onFocus={() => setFocused(true)}
       placeholder={placeholder}
-      placeholderTextColor={theme.colors.muted}
-      style={styles.textArea}
+      placeholderTextColor={theme.colors.inkSubtle}
+      style={[
+        globalStyles.input,
+        globalStyles.inputMultiline,
+        focused ? { borderColor: theme.colors.brand, backgroundColor: "#FFFFFF" } : null
+      ]}
       textAlignVertical="top"
       value={value}
     />
   );
-}
-
-export function ProgressBar({ value }: { value: number }) {
-  const clamped = Math.max(0, Math.min(100, value));
-  return (
-    <View style={styles.progressTrack}>
-      <View style={[styles.progressFill, { width: `${clamped}%` }]} />
-    </View>
-  );
-}
-
-export function MetaText({ children }: { children: ReactNode }) {
-  return <Text style={styles.meta}>{children}</Text>;
 }
 
 export function StatusBanner({
@@ -283,58 +519,84 @@ export function StatusBanner({
   }, [message, tone]);
 
   if (!message) return null;
+  const icon = tone === "success" ? "checkmark-circle" : tone === "error" ? "alert-circle" : "information-circle";
+  const color = tone === "success" ? theme.colors.success : tone === "error" ? theme.colors.danger : theme.colors.brand;
+  const bg = tone === "success" ? theme.colors.successSoft : tone === "error" ? theme.colors.dangerSoft : theme.colors.brandSoft;
+  const border = tone === "success" ? theme.colors.successBorder : tone === "error" ? theme.colors.dangerBorder : theme.colors.brandBorder;
+
   return (
     <View
-      style={[
-        styles.statusBanner,
-        tone === "success" && styles.statusSuccess,
-        tone === "error" && styles.statusError,
-        tone === "info" && styles.statusInfo
-      ]}
+      accessibilityRole={tone === "error" ? "alert" : undefined}
+      style={[styles.statusBanner, { backgroundColor: bg, borderColor: border }]}
     >
-      <Text
-        style={[
-          styles.statusText,
-          tone === "success" && styles.statusSuccessText,
-          tone === "error" && styles.statusErrorText,
-          tone === "info" && styles.statusInfoText
-        ]}
-      >
-        {message}
-      </Text>
+      <Ionicons color={color} name={icon} size={18} style={{ marginTop: 1 }} />
+      <Text style={[styles.statusText, { color }]}>{message}</Text>
     </View>
   );
 }
 
 export function Button({
   label,
-  variant = "primary",
   onPress,
-  disabled = false
+  secondary,
+  disabled = false,
+  tone,
+  variant,
+  icon,
+  compact = false,
+  fullWidth = false,
+  style
 }: {
   label: string;
-  variant?: "primary" | "secondary" | "ghost";
   onPress?: () => void;
+  secondary?: boolean;
   disabled?: boolean;
+  tone?: "primary" | "secondary" | "ghost" | "gold" | "accent" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "gold" | "accent" | "danger";
+  icon?: keyof typeof Ionicons.glyphMap;
+  compact?: boolean;
+  fullWidth?: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
+  const rawTone = variant ?? tone ?? (secondary ? "secondary" : "primary");
+  const resolvedTone = rawTone === "accent" ? "gold" : rawTone;
+  const iconColor =
+    resolvedTone === "secondary" || resolvedTone === "gold"
+      ? theme.colors.ink
+      : resolvedTone === "ghost"
+        ? theme.colors.brand
+        : resolvedTone === "danger"
+          ? theme.colors.danger
+          : theme.colors.inkOnBrand;
+
   return (
     <Pressable
+      accessibilityLabel={label}
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        variant === "secondary" && styles.secondaryButton,
-        variant === "ghost" && styles.ghostButton,
-        pressed && !disabled && styles.buttonPressed,
-        disabled && styles.buttonDisabled
+      style={({ pressed, focused }: PressState) => [
+        globalStyles.button,
+        fullWidth ? { alignSelf: "stretch", width: "100%", minHeight: 42 } : null,
+        compact ? { paddingVertical: 7, paddingHorizontal: 12, minHeight: 36 } : null,
+        resolvedTone === "secondary" ? globalStyles.buttonSecondary : null,
+        resolvedTone === "ghost" ? globalStyles.buttonGhost : null,
+        resolvedTone === "gold" ? globalStyles.buttonGold : null,
+        resolvedTone === "danger" ? globalStyles.buttonDanger : null,
+        pressed && !disabled ? { opacity: 0.88 } : null,
+        focused ? theme.focusRing : null,
+        disabled ? globalStyles.buttonDisabled : null,
+        style
       ]}
     >
+      {icon ? <Ionicons color={iconColor} name={icon} size={15} /> : null}
       <Text
         style={[
-          styles.buttonText,
-          variant === "secondary" && styles.secondaryButtonText,
-          variant === "ghost" && styles.ghostButtonText
+          globalStyles.buttonText,
+          resolvedTone === "secondary" ? globalStyles.buttonSecondaryText : null,
+          resolvedTone === "ghost" ? globalStyles.buttonGhostText : null,
+          resolvedTone === "gold" ? globalStyles.buttonGoldText : null,
+          resolvedTone === "danger" ? globalStyles.buttonDangerText : null
         ]}
       >
         {label}
@@ -343,335 +605,198 @@ export function Button({
   );
 }
 
-export function SectionTitle({ children, icon }: { children: ReactNode; icon?: keyof typeof Ionicons.glyphMap }) {
-  return icon ? <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minWidth: 0 }}>
-    <Ionicons name={icon} color="#3F6F9D" size={18} />
-    <Text style={[styles.sectionTitle, { flexShrink: 1 }]}>{children}</Text>
-  </View> : <Text style={styles.sectionTitle}>{children}</Text>;
+export function Row({
+  children,
+  spread = false,
+  style
+}: PropsWithChildren<{ spread?: boolean; style?: StyleProp<ViewStyle> }>) {
+  const valid = Array.isArray(children)
+    ? children.filter((child) => child !== null && child !== undefined && child !== false)
+    : isValidElement(children)
+      ? [children]
+      : children;
+  return <View style={[spread ? globalStyles.spreadRow : globalStyles.row, style]}>{valid}</View>;
 }
 
-export const styles = StyleSheet.create({
-  eyebrow: {
-    color: theme.colors.accent,
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0,
-    textTransform: "uppercase"
-  },
-  wideContent: {
-    alignSelf: "center",
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl
-  },
-  phoneContent: { padding: 12, gap: 12, paddingBottom: 24 },
-  screenToolbar: { backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingHorizontal: 12, paddingVertical: 6 },
-  headerShell: {
-    alignItems: "center",
-    backgroundColor: theme.colors.surface,
-    borderBottomColor: theme.colors.border,
-    borderBottomWidth: 1,
-    paddingVertical: 12,
-    width: "100%",
-    zIndex: 10
-  },
-  wideHeaderShell: {
-    alignSelf: "center",
-    paddingHorizontal: 0
-  },
-  screenHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    maxWidth: 1040,
-    paddingHorizontal: theme.spacing.md,
-    width: "100%"
-  },
-  wideHeaderContent: { paddingHorizontal: theme.spacing.lg },
-  titleBlock: {
-    flex: 1,
-    gap: 2
-  },
-  menuButton: {
-    alignItems: "center",
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    height: 44,
-    flexShrink: 0,
-    justifyContent: "center",
-    width: 44
-  },
-  disabledButton: {
-    opacity: 0.55
-  },
-  drawerBackdrop: {
-    backgroundColor: "rgba(31, 41, 51, 0.35)",
-    flex: 1
-  },
-  drawerPanel: {
-    backgroundColor: theme.colors.surface,
-    borderRightColor: theme.colors.border,
-    borderRightWidth: 1,
-    flex: 1,
-    maxWidth: "100%"
-  },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    gap: theme.spacing.sm,
-    padding: theme.spacing.md,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.025,
-    shadowRadius: 3,
-    ...Platform.select({ android: { elevation: 1, padding: 14 } })
-  },
-  compactCard: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    gap: theme.spacing.xs,
-    padding: theme.spacing.md,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    ...Platform.select({ android: { elevation: 1, padding: 14 } })
-  },
-  row: {
-    alignItems: "center",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.sm,
-    justifyContent: "space-between"
-  },
-  pill: {
-    alignSelf: "flex-start",
-    backgroundColor: "#F2F4F7",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5
-  },
-  pillPrimary: {
-    backgroundColor: theme.colors.primarySoft
-  },
-  pillAccent: {
-    backgroundColor: theme.colors.accentSoft
-  },
-  pillSuccess: {
-    backgroundColor: theme.colors.successSoft
-  },
-  pillDanger: {
-    backgroundColor: theme.colors.dangerSoft
-  },
-  pillText: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: "700"
-  },
-  pillStrongText: {
-    color: theme.colors.ink
-  },
-  filterChip: {
-    alignItems: "center",
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 40,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs
-  },
-  filterChipSelected: {
-    backgroundColor: "#2563EB",
-    borderColor: "#2563EB"
-  },
-  filterChipText: {
-    color: theme.colors.ink,
-    fontSize: 14,
-    fontWeight: "600"
-  },
-  filterChipTextSelected: {
-    color: "#FFFFFF"
-  },
+export function Divider() {
+  return <View style={globalStyles.divider} />;
+}
+
+export const styles = {
+  ...globalStyles,
+  titleBlock: { flex: 1, gap: 2 },
+  compactCard: { ...globalStyles.card, ...globalStyles.cardCompact },
+  pillPrimary: { backgroundColor: theme.colors.brandSoft },
+  pillInfo: { backgroundColor: theme.colors.infoSoft },
+  pillAccent: { backgroundColor: theme.colors.accentSoft },
+  pillSuccess: { backgroundColor: theme.colors.successSoft },
+  pillDanger: { backgroundColor: theme.colors.dangerSoft },
+  pillStrongText: { color: theme.colors.ink },
+  filterChip: globalStyles.chip,
+  filterChipSelected: globalStyles.chipActive,
+  filterChipText: globalStyles.chipText,
+  filterChipTextSelected: globalStyles.chipTextActive,
   searchBox: {
-    alignItems: "center",
+    alignItems: "center" as const,
     backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radii.md,
     borderWidth: 1,
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    minHeight: 48,
-    paddingHorizontal: theme.spacing.md
+    flexDirection: "row" as const,
+    gap: 10,
+    minHeight: 44,
+    paddingHorizontal: 13
   },
   searchInput: {
     color: theme.colors.ink,
     flex: 1,
-    fontSize: 16,
-    minHeight: 48
+    fontSize: 14,
+    minHeight: 44
   },
-  formInput: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    color: theme.colors.ink,
-    fontSize: 16,
-    minHeight: 50,
-    paddingHorizontal: theme.spacing.md
-  },
+  formInput: globalStyles.input,
   textArea: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    color: theme.colors.ink,
-    fontSize: 16,
-    lineHeight: 23,
-    minHeight: 132,
-    padding: theme.spacing.md
+    ...globalStyles.input,
+    ...globalStyles.inputMultiline
   },
   progressTrack: {
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: 999,
+    backgroundColor: theme.colors.brandSoft,
+    borderRadius: theme.radii.pill,
     height: 8,
-    overflow: "hidden"
+    overflow: "hidden" as const
   },
   progressFill: {
     backgroundColor: theme.colors.accent,
-    borderRadius: 999,
-    height: "100%"
+    borderRadius: theme.radii.pill,
+    height: "100%" as const
   },
-  meta: {
-    color: theme.colors.muted,
-    fontSize: 13,
-    lineHeight: 18
-  },
+  meta: globalStyles.muted,
   statusBanner: {
-    borderRadius: theme.radius.sm,
+    alignItems: "flex-start" as const,
+    borderRadius: theme.radii.md,
     borderWidth: 1,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm
-  },
-  statusSuccess: {
-    backgroundColor: theme.colors.successSoft,
-    borderColor: "#86EFAC"
-  },
-  statusError: {
-    backgroundColor: theme.colors.dangerSoft,
-    borderColor: "#FDA29B"
-  },
-  statusInfo: {
-    backgroundColor: theme.colors.accentSoft,
-    borderColor: "#F2D37A"
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: "800",
-    lineHeight: 20
-  },
-  statusSuccessText: {
-    color: theme.colors.success
-  },
-  statusErrorText: {
-    color: theme.colors.danger
-  },
-  statusInfoText: {
-    color: theme.colors.primary
-  },
-  button: {
-    alignItems: "center",
-    backgroundColor: "#2563EB",
-    borderRadius: theme.radius.sm,
-    alignSelf: "stretch",
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: theme.spacing.md,
+    flexDirection: "row" as const,
+    gap: 10,
+    paddingHorizontal: 14,
     paddingVertical: 10
   },
-  secondaryButton: {
-    backgroundColor: "#F0F4FA",
-    borderWidth: 1,
-    borderColor: "#DCE5F1"
-  },
-  ghostButton: {
-    backgroundColor: "transparent",
-    minHeight: 44
-  },
-  buttonPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.99 }]
-  },
-  buttonDisabled: {
-    opacity: 0.45
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 20,
-    textAlign: "center"
-  },
-  betaNotice: {
-    alignItems: "center",
-    backgroundColor: "#FFFAED",
-    borderColor: "#F1E3B4",
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm
-  },
-  betaNoticeText: {
-    color: theme.colors.primary,
+  statusText: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: "500",
-    lineHeight: 18
+    fontSize: 13,
+    fontWeight: "700" as const,
+    lineHeight: 19
   },
-  secondaryButtonText: {
-    color: theme.colors.primary
-  },
-  ghostButtonText: {
-    color: theme.colors.primary
-  },
-  sectionTitle: {
-    color: theme.colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-    lineHeight: 23
-  },
-  body: {
-    color: theme.colors.ink,
-    fontSize: 15,
-    lineHeight: 22
-  },
-  muted: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    lineHeight: 20
-  },
+  secondaryButton: globalStyles.buttonSecondary,
+  ghostButton: globalStyles.buttonGhost,
+  secondaryButtonText: globalStyles.buttonSecondaryText,
+  ghostButtonText: globalStyles.buttonGhostText,
   successText: {
     color: theme.colors.success,
     fontSize: 14,
-    fontWeight: "800"
+    fontWeight: "800" as const
   },
   errorText: {
     color: theme.colors.danger,
     fontSize: 14,
-    fontWeight: "800"
+    fontWeight: "800" as const
   },
   statNumber: {
-    color: theme.colors.primary,
+    color: theme.colors.brand,
     fontSize: 24,
-    fontWeight: "900"
+    fontWeight: "900" as const
+  },
+  headerShell: {
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border
+  },
+  screenHeader: {
+    maxWidth: 1280,
+    width: "100%" as const,
+    alignSelf: "center" as const,
+    paddingHorizontal: 14,
+    paddingVertical: 10
+  },
+  wideHeaderContent: {
+    paddingHorizontal: 22,
+    paddingVertical: 13
+  },
+  wideContent: {
+    paddingHorizontal: 22
+  },
+  betaNotice: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.accentBorder,
+    borderWidth: 1,
+    borderRadius: theme.radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  betaNoticeText: {
+    color: theme.colors.inkSecondary,
+    fontSize: 12,
+    lineHeight: 17,
+    flex: 1
+  }
+};
+
+const localStyles = StyleSheet.create({
+  headerShell: {
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border
+  },
+  compactHeaderShell: {
+    borderBottomColor: theme.colors.border
+  },
+  headerInner: {
+    maxWidth: 1280,
+    width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: 22,
+    paddingVertical: 13
+  },
+  compactHeaderInner: {
+    paddingHorizontal: 14,
+    paddingVertical: 10
+  },
+  screenToolbar: {
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 8
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  menuButton: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radii.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
+    backgroundColor: theme.colors.surfaceSubtle,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(6, 42, 114, 0.36)",
+    flexDirection: "row"
+  },
+  closeDrawerButton: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.radii.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSubtle,
+    alignItems: "center",
+    justifyContent: "center"
   }
 });
